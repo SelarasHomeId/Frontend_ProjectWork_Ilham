@@ -160,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage(
-                    'assets/background.jpg'), // Background image path
+                    'lib/assets/background.jpg'), // Background image path
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
                   Colors.black.withOpacity(0.5),
@@ -178,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     // Logo
                     Image.asset(
-                      'assets/selaras_logo2.png', // Logo path
+                      'lib/assets/selaras_logo2.png', // Logo path
                       height: 100,
                     ),
                     SizedBox(height: 20),
