@@ -25,11 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
         String password = _passwordController.text;
 
         if (username != 'admin' && password != 'admin123') {
-          _showErrorDialog('Username dan password salah');
-        } else if (username != 'admin') {
-          _showErrorDialog('Username tidak diketahui');
-        } else if (password != 'admin123') {
-          _showErrorDialog('Password salah');
+          _showErrorDialog('Username atau password salah');
         } else {
           _showSuccessDialog();
         }
