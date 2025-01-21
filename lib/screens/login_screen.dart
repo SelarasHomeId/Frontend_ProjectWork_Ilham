@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'dashboard_screen.dart';
+import 'package:selarashomeid/screens/home_screen.dart';
+import 'package:selarashomeid/service/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -14,27 +16,84 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isPasswordVisible = false;
   bool _isDialogLoading = false;
 
-  void _login() {
+  void _login() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    // Arahkan ke Dashboard jika token tersedia, atau ke Login jika tidak
+    if (token != null && token.isNotEmpty) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (context) => HomeScreen(roleId: 1, token: token),
+        ),
+      );
+    }
+
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
-      Future.delayed(Duration(seconds: 2), () {
-        String username = _usernameController.text;
-        String password = _passwordController.text;
+      String email = _usernameController.text.trim();
+      String password = _passwordController.text;
 
-        if (username != 'admin' && password != 'admin123') {
-          _showErrorDialog('Username atau password salah');
-        } else {
-          _showSuccessDialog();
-        }
+      try {
+        final response = await ApiService.apiRequest(
+            method: 'POST',
+            endpoint: '/auth/login',
+            body: {
+              'email': email,
+              'password': password,
+              'login_from': 'mobile'
+            },
+            token: null,
+            contentType: 'application/json');
 
         setState(() {
           _isLoading = false;
         });
-      });
+
+        if (response != null && response['success'] == true) {
+          final token = response['data']['token'];
+          final email = response['data']['data']['email'];
+          final name = response['data']['data']['name'];
+          final id = response['data']['data']['id'];
+          final roleId = response['data']['data']['role']['id'];
+          final divisiId = response['data']['data']['divisi']['id'];
+          final roleName = response['data']['data']['role']['name'];
+          final divisiName = response['data']['data']['divisi']['name'];
+
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', token);
+          await prefs.setString('name', name);
+          await prefs.setString('email', email);
+          await prefs.setInt('id', id);
+          await prefs.setInt('roleId', roleId);
+          await prefs.setInt('divisiId', divisiId);
+          await prefs.setString('roleName', roleName);
+          await prefs.setString('divisiName', divisiName);
+          _navigateToDashboard(roleId, token);
+        } else {
+          _showErrorDialog(
+              response?['message'] ?? 'Username atau password salah');
+        }
+      } catch (e) {
+        setState(() {
+          _isLoading = false;
+        });
+        _showErrorDialog('Terjadi kesalahan: $e');
+      }
     }
+  }
+
+  void _navigateToDashboard(int roleId, String token) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (context) => HomeScreen(roleId: roleId, token: token),
+      ),
+    );
   }
 
   void _showErrorDialog(String message) {
@@ -75,7 +134,11 @@ class _LoginScreenState extends State<LoginScreen> {
       });
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (context) => DashboardScreen()),
+        MaterialPageRoute(
+            builder: (context) => HomeScreen(
+                  roleId: 1,
+                  token: '',
+                )),
       );
     });
   }
@@ -85,7 +148,17 @@ class _LoginScreenState extends State<LoginScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Reset Password'),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded, // Menambahkan ikon tanda seru
+                color: Colors.red,
+                size: 30, // Ukuran ikon
+              ),
+              SizedBox(width: 10), // Jarak antara ikon dan teks
+              Text('Reset Password'),
+            ],
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -98,11 +171,13 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
           actions: [
-            TextButton(
+            ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
                 _showResetSuccessDialog();
               },
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red, foregroundColor: Colors.white),
               child: Text('Submit'),
             ),
           ],
@@ -129,7 +204,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Text(
                 "Permintaan Reset Password Telah dikirim ke Email kamu, Pastikan Email yang Anda Input Sudah Benar",
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 16.0),
+                style: TextStyle(fontSize: 15.0),
               ),
             ],
           ),
@@ -156,7 +231,7 @@ class _LoginScreenState extends State<LoginScreen> {
             decoration: BoxDecoration(
               image: DecorationImage(
                 image: AssetImage(
-                    'lib/assets/background.jpg'), // Background image path
+                    'assets/background.jpg'), // Background image path
                 fit: BoxFit.cover,
                 colorFilter: ColorFilter.mode(
                   Colors.black.withOpacity(0.5),
@@ -174,7 +249,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   children: [
                     // Logo
                     Image.asset(
-                      'lib/assets/selaras_logo2.png', // Logo path
+                      'assets/selaras_logo2.png', // Logo path
                       height: 100,
                     ),
                     SizedBox(height: 20),
@@ -217,7 +292,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 TextFormField(
                                   controller: _usernameController,
                                   decoration: InputDecoration(
-                                    labelText: 'Username',
+                                    labelText: 'Email',
                                     prefixIcon: Icon(Icons.account_circle),
                                     border: UnderlineInputBorder(),
                                     enabledBorder: UnderlineInputBorder(
@@ -230,13 +305,13 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please enter your username';
+                                      return 'Masukkan Email';
                                     }
                                     return null;
                                   },
                                 ),
                                 SizedBox(height: 30),
-                                TextField(
+                                TextFormField(
                                   controller: _passwordController,
                                   decoration: InputDecoration(
                                     labelText: 'Password',
@@ -264,6 +339,12 @@ class _LoginScreenState extends State<LoginScreen> {
                                     ),
                                   ),
                                   obscureText: !_isPasswordVisible,
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Masukkan password';
+                                    }
+                                    return null;
+                                  },
                                 ),
                                 SizedBox(height: 20),
                                 Container(
@@ -272,15 +353,23 @@ class _LoginScreenState extends State<LoginScreen> {
                                     onPressed: _isLoading ? null : _login,
                                     style: ElevatedButton.styleFrom(
                                         backgroundColor:
-                                            Color.fromARGB(255, 213, 37, 29)),
-                                    child: Text(
-                                      'Login',
-                                      style: TextStyle(color: Colors.white),
-                                    ),
+                                            Color.fromARGB(255, 213, 37, 29),
+                                        foregroundColor: Colors.white),
+                                    child: _isLoading
+                                        ? CircularProgressIndicator(
+                                            valueColor:
+                                                AlwaysStoppedAnimation<Color>(
+                                                    const Color.fromARGB(
+                                                        255, 255, 255, 255)),
+                                          )
+                                        : Text('Login'),
                                   ),
                                 ),
                                 TextButton(
                                   onPressed: _showPasswordResetDialog,
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.black,
+                                  ),
                                   child: Text('Forgot Password?'),
                                 ),
                               ],
