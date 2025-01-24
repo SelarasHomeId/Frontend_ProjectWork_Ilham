@@ -6,7 +6,9 @@ import 'package:selarashomeid/utils/constant.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
-  // Metode untuk login
+  // ==================================================================================================== //
+
+  // function api request for use api backend
   static Future<Map<String, dynamic>?> apiRequest({
     required String method,
     required String endpoint,
@@ -14,16 +16,17 @@ class ApiService {
     String? token,
     String contentType = 'application/json',
   }) async {
+    // init
+    http.Response response;
     final url = '$baseUrl$endpoint';
     Map<String, String> header = {'Content-Type': contentType};
     if (token != null) {
       header['Authorization'] = 'Bearer $token';
     }
-    http.Response response;
 
     try {
-      // Fungsi untuk mengirim request
-      Future<http.Response> sendRequest() async {
+      // function hit api
+      Future<http.Response> hitAPI() async {
         switch (method.toUpperCase()) {
           case 'POST':
             return contentType == 'application/json'
@@ -49,38 +52,30 @@ class ApiService {
         }
       }
 
-      // Kirim request awal
-      response = await sendRequest();
+      // hit api
+      response = await hitAPI();
 
-      // Jika status code 401, refresh token
+      // cek if refresh token needed
       if (response.statusCode == 401 && endpoint != '/auth/login') {
         final newToken = await _refreshToken(token);
-        if (newToken != null) {
-          // Update header dengan token baru
-          header['Authorization'] = 'Bearer $newToken';
 
-          // Kirim ulang permintaan dengan token baru
-          response = await sendRequest();
+        if (newToken != null) {
+          header['Authorization'] = 'Bearer $newToken';
+          response = await hitAPI();
         } else {
           throw Exception('Failed to refresh token');
         }
       }
 
-      // Periksa status response
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> json = jsonDecode(response.body);
-        return json;
-      } else {
-        print("Error: ${response.statusCode} - ${response.body}");
-        return null;
-      }
+      // return body
+      final Map<String, dynamic> jsonBody = jsonDecode(response.body);
+      return jsonBody;
     } catch (e) {
-      print("Exception: $e");
       return null;
     }
   }
 
-// Fungsi untuk menangani multipart request
+  // function hit api with multipart/form-data
   static Future<http.Response> _handleMultipartRequest(
       String method,
       String url,
@@ -94,64 +89,77 @@ class ApiService {
     return await http.Response.fromStream(await request.send());
   }
 
-// Fungsi untuk refresh token
-  static Future<String?> _refreshToken(String? oldToken) async {
+  // function refresh token
+  static Future<String?> _refreshToken(String? token) async {
     try {
       final response = await http.post(
         Uri.parse('$baseUrl/auth/refresh-token'),
-        headers: {'Authorization': 'Bearer $oldToken'},
+        headers: {'Authorization': 'Bearer $token'},
       );
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final newToken = data['data']['token'];
-
-        // Simpan token baru di SharedPreferences
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('accessToken', newToken);
-
+        await prefs.setString('token', newToken);
         return newToken;
       } else {
-        print("Failed to refresh token: ${response.body}");
         return null;
       }
     } catch (e) {
-      print("Error refreshing token: $e");
       return null;
     }
   }
 
-//get user profile
-  static Future<Map<String, String>> getUserProfile() async {
-    final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('name') ?? 'User Name';
-    final email = prefs.getString('email') ?? 'user@example.com';
-    final initials = name.isNotEmpty
-        ? name.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
-        : 'U';
+  // ==================================================================================================== //
 
-    return {
-      'name': name,
-      'email': email,
-      'initials': initials,
-    };
+  // auth
+  static Future<Map<String, dynamic>?> authLogin(
+      String email, String password) async {
+    final response = await apiRequest(
+        method: 'POST',
+        endpoint: '/auth/login',
+        body: {'email': email, 'password': password, 'login_from': 'mobile'},
+        token: null,
+        contentType: 'application/json');
+
+    return response;
   }
 
-//Logout
-  static Future<void> logout(BuildContext context) async {
-    try {
-      // Bersihkan token dari SharedPreferences
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.clear(); // Hapus semua data session pengguna
+  static Future<void> authLogout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
 
-      // Arahkan pengguna ke LoginScreen
+    final response = await apiRequest(
+        method: 'POST',
+        endpoint: '/auth/logout',
+        body: null,
+        token: token,
+        contentType: 'application/json');
+
+    if (response != null && response['success'] == true) {
+      await prefs.clear();
       Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
-        (route) => false, // Menghapus semua riwayat navigasi sebelumnya
-      );
-    } catch (e) {
-      // Tangani error jika diperlukan
-      print('Error saat logout: $e');
+          context,
+          MaterialPageRoute(builder: (context) => LoginScreen()),
+          (route) => false);
     }
   }
+
+  // workspace
+  static Future<List<Map<String, dynamic>>> workspaceFind() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await apiRequest(
+      method: 'GET',
+      endpoint: '/workspace',
+      body: null,
+      token: token,
+      contentType: 'application/json',
+    );
+
+    return List<Map<String, dynamic>>.from(response?['data']['data']);
+  }
+
+  // ==================================================================================================== //
 }

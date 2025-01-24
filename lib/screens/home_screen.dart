@@ -3,6 +3,7 @@ import 'package:selarashomeid/widgets/sidebar_widget.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/widgets/appbar_widget.dart';
 import 'package:selarashomeid/widgets/dashboard_widget.dart';
+import 'package:selarashomeid/widgets/workspace_widget.dart';
 
 class HomeScreen extends StatefulWidget {
   final int roleId;
@@ -17,6 +18,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _menuItems = [];
   bool _isLoading = true;
+  Widget _currentWidget =
+      DashboardWidget(roleId: 0, token: ''); // Default widget
 
   @override
   void initState() {
@@ -30,15 +33,9 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final response = await ApiService.apiRequest(
-        method: 'GET',
-        endpoint: '/workspace',
-        body: null,
-        token: widget.token,
-        contentType: 'application/json',
-      );
+      final response = await ApiService.workspaceFind();
       setState(() {
-        _menuItems = List<Map<String, dynamic>>.from(response?['data']['data']);
+        _menuItems = response;
         _isLoading = false;
       });
     } catch (e) {
@@ -51,6 +48,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  // Menambahkan logika untuk mengganti widget yang ditampilkan
+  void _onMenuItemSelected(String menuName) {
+    setState(() {
+      if (menuName == 'Dashboard') {
+        _currentWidget =
+            DashboardWidget(roleId: widget.roleId, token: widget.token);
+      } else {
+        _currentWidget = WorkspaceWidget(
+            workspace: menuName, token: widget.token); // Default widget
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -61,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
           menuItems: _menuItems,
           isLoading: _isLoading,
           roleId: widget.roleId,
+          onMenuItemSelected: _onMenuItemSelected, // Pass callback
         ),
       ),
       body: SafeArea(
@@ -68,9 +79,8 @@ class _HomeScreenState extends State<HomeScreen> {
             ? Center(child: CircularProgressIndicator())
             : Padding(
                 padding: const EdgeInsets.all(16.0),
-                child: DashboardWidget(
-                    roleId: widget.roleId,
-                    token: widget.token), // Menggunakan DashboardWidget
+                child:
+                    _currentWidget, // Menampilkan widget yang sesuai dengan pilihan
               ),
       ),
     );

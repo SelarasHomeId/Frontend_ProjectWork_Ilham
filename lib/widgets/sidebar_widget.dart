@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/general.dart';
 
 class Sidebar extends StatefulWidget {
   final List<Map<String, dynamic>> menuItems;
   final bool isLoading;
   final int roleId;
+  final Function(String) onMenuItemSelected; // Callback untuk memilih menu
 
   Sidebar({
     required this.menuItems,
     required this.isLoading,
     required this.roleId,
+    required this.onMenuItemSelected, // Terima callback
   });
 
   @override
@@ -42,7 +45,7 @@ class _SidebarState extends State<Sidebar> {
                 children: [
                   // Header User dengan FutureBuilder
                   FutureBuilder<Map<String, String>>(
-                    future: ApiService.getUserProfile(),
+                    future: General.getUserProfile(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return Center(child: CircularProgressIndicator());
@@ -112,7 +115,7 @@ class _SidebarState extends State<Sidebar> {
                                     size: screenWidth * 0.07,
                                   ),
                                   onPressed: () {
-                                    ApiService.logout(context);
+                                    ApiService.authLogout(context);
                                   },
                                 ),
                               ),
@@ -134,13 +137,11 @@ class _SidebarState extends State<Sidebar> {
                             leading: Icon(Icons.dashboard),
                             title: Text('Dashboard'),
                             onTap: () {
-                              Navigator.pushNamed(
-                                context,
-                                '/dashboard',
-                              );
+                              widget.onMenuItemSelected('Dashboard');
                             },
                           ),
                           ValueListenableBuilder<bool>(
+                            // Workspaces
                             valueListenable: _isWorkspaceExpanded,
                             builder: (context, isExpanded, child) {
                               return ExpansionTile(
@@ -156,8 +157,8 @@ class _SidebarState extends State<Sidebar> {
                                         Icon(Icons.subdirectory_arrow_right),
                                     title: Text(item['name']),
                                     onTap: () {
-                                      Navigator.pushNamed(
-                                          context, item['name']);
+                                      widget.onMenuItemSelected(item['name']);
+                                      Navigator.pop(context);
                                     },
                                   );
                                 }).toList(),
@@ -165,6 +166,7 @@ class _SidebarState extends State<Sidebar> {
                             },
                           ),
                           ValueListenableBuilder<bool>(
+                            // Master Data
                             valueListenable: _isMasterDataExpanded,
                             builder: (context, isExpanded, child) {
                               return ExpansionTile(
@@ -179,8 +181,7 @@ class _SidebarState extends State<Sidebar> {
                                     leading: Icon(Icons.person),
                                     title: Text('User'),
                                     onTap: () {
-                                      Navigator.pushNamed(
-                                          context, '/master/user');
+                                      widget.onMenuItemSelected('User');
                                     },
                                   ),
                                   if (widget.roleId == 1)
@@ -188,8 +189,7 @@ class _SidebarState extends State<Sidebar> {
                                       leading: Icon(Icons.business),
                                       title: Text('Divisi'),
                                       onTap: () {
-                                        Navigator.pushNamed(
-                                            context, '/master/division');
+                                        widget.onMenuItemSelected('Divisi');
                                       },
                                     ),
                                 ],

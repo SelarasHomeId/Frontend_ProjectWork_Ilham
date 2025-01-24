@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/home_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/general.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -39,16 +40,7 @@ class _LoginScreenState extends State<LoginScreen> {
       String password = _passwordController.text;
 
       try {
-        final response = await ApiService.apiRequest(
-            method: 'POST',
-            endpoint: '/auth/login',
-            body: {
-              'email': email,
-              'password': password,
-              'login_from': 'mobile'
-            },
-            token: null,
-            contentType: 'application/json');
+        final response = await ApiService.authLogin(email, password);
 
         setState(() {
           _isLoading = false;
@@ -64,15 +56,16 @@ class _LoginScreenState extends State<LoginScreen> {
           final roleName = response['data']['data']['role']['name'];
           final divisiName = response['data']['data']['divisi']['name'];
 
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('token', token);
-          await prefs.setString('name', name);
-          await prefs.setString('email', email);
-          await prefs.setInt('id', id);
-          await prefs.setInt('roleId', roleId);
-          await prefs.setInt('divisiId', divisiId);
-          await prefs.setString('roleName', roleName);
-          await prefs.setString('divisiName', divisiName);
+          await General.saveToSharedPreferences({
+            'token': token,
+            'email': email,
+            'name': name,
+            'id': id,
+            'roleId': roleId,
+            'divisiId': divisiId,
+            'roleName': roleName,
+            'divisiName': divisiName,
+          });
           _navigateToDashboard(roleId, token);
         } else {
           _showErrorDialog(

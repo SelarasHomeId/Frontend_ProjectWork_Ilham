@@ -1,11 +1,21 @@
 import 'package:flutter/material.dart';
 
-class SalesWidget extends StatelessWidget {
+class WorkspaceWidget extends StatefulWidget {
+  final String workspace;
+  final String token;
+
+  WorkspaceWidget({required this.workspace, required this.token});
+
+  @override
+  _WorkspaceWidgetState createState() => _WorkspaceWidgetState();
+}
+
+class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Sales Workspace'),
+        title: Text(widget.workspace),
         backgroundColor: Colors.blueAccent,
       ),
       body: SingleChildScrollView(

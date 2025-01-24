@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/home_screen.dart';
 import 'package:selarashomeid/screens/login_screen.dart';
-import 'package:selarashomeid/widgets/dashboard_widget.dart';
-import 'package:selarashomeid/widgets/sales_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -46,35 +44,30 @@ class _MyAppState extends State<MyApp> {
       theme: ThemeData(
         primarySwatch: Colors.blue, // Tema aplikasi
       ),
+      initialRoute: '/',
       routes: {
-        '/marketing-sales': (context) =>
-            SalesWidget(), // Rute untuk Marketing/Sales
-      },
-      home: FutureBuilder<Map<String, dynamic>>(
-        future: _checkLoginStatus,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            // Tampilkan splash screen atau loading saat menunggu
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasData) {
-            var data = snapshot.data!;
-            bool isLoggedIn = data['isLoggedIn'];
-            String token = data['token'];
-            int roleId = data['roleId'];
+        '/': (context) => FutureBuilder<Map<String, dynamic>>(
+              future: _checkLoginStatus,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasData) {
+                  var data = snapshot.data!;
+                  bool isLoggedIn = data['isLoggedIn'];
+                  String token = data['token'];
+                  int roleId = data['roleId'];
 
-            // Arahkan ke Dashboard jika sudah login, atau ke Login jika belum login
-            if (isLoggedIn) {
-              return HomeScreen(
-                  roleId: roleId,
-                  token: token); // Kirim data ke DashboardScreen
-            } else {
-              return LoginScreen();
-            }
-          } else {
-            return LoginScreen(); // Jika tidak ada data, arahkan ke login screen
-          }
-        },
-      ),
+                  if (isLoggedIn) {
+                    return HomeScreen(roleId: roleId, token: token);
+                  } else {
+                    return LoginScreen();
+                  }
+                } else {
+                  return LoginScreen();
+                }
+              },
+            ),
+      },
     );
   }
 }
