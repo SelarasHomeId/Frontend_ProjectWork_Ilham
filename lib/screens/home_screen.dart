@@ -16,10 +16,10 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  List<Map<String, dynamic>> _menuItems = [];
-  bool _isLoading = true;
+  List<Map<String, dynamic>> _menuItems = []; // Menyimpan daftar workspace
+  bool _isLoading = true; // Status loading
   Widget _currentWidget =
-      DashboardWidget(roleId: 0, token: ''); // Default widget
+      DashboardWidget(roleId: 0, token: ''); // Widget default
 
   @override
   void initState() {
@@ -27,13 +27,15 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchMenuItems();
   }
 
+  /// Fetch data workspace dari API
   Future<void> _fetchMenuItems() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      final response = await ApiService.workspaceFind();
+      final response =
+          await ApiService.workspaceFind(); // Panggil API workspace
       setState(() {
         _menuItems = response;
         _isLoading = false;
@@ -48,15 +50,26 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Menambahkan logika untuk mengganti widget yang ditampilkan
+  /// Fungsi untuk mengganti widget berdasarkan menu yang dipilih
   void _onMenuItemSelected(String menuName) {
     setState(() {
       if (menuName == 'Dashboard') {
         _currentWidget =
             DashboardWidget(roleId: widget.roleId, token: widget.token);
       } else {
+        // Cari workspaceId berdasarkan nama workspace
+        final selectedWorkspace = _menuItems.firstWhere(
+          (item) => item['name'] == menuName,
+          orElse: () => {'id': 0}, // Fallback ID jika tidak ditemukan
+        );
+
         _currentWidget = WorkspaceWidget(
-            workspace: menuName, token: widget.token); // Default widget
+          workspace: menuName,
+          workspaceId: selectedWorkspace['id'] is int
+              ? selectedWorkspace['id'] // Pastikan workspaceId bertipe int
+              : int.tryParse(selectedWorkspace['id'].toString()) ??
+                  0, // Konversi ke int jika perlu
+        );
       }
     });
   }
@@ -64,24 +77,20 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBarWidget(),
+      appBar: AppBarWidget(), // AppBar custom
       backgroundColor: Colors.white,
       drawer: Drawer(
         child: Sidebar(
-          menuItems: _menuItems,
-          isLoading: _isLoading,
-          roleId: widget.roleId,
-          onMenuItemSelected: _onMenuItemSelected, // Pass callback
+          menuItems: _menuItems, // Kirim daftar menu
+          isLoading: _isLoading, // Status loading
+          roleId: widget.roleId, // Role pengguna
+          onMenuItemSelected: _onMenuItemSelected, // Callback untuk menu
         ),
       ),
       body: SafeArea(
         child: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : Padding(
-                padding: const EdgeInsets.all(16.0),
-                child:
-                    _currentWidget, // Menampilkan widget yang sesuai dengan pilihan
-              ),
+            ? Center(child: CircularProgressIndicator()) // Loading indicator
+            : _currentWidget, // Tampilkan widget sesuai menu
       ),
     );
   }

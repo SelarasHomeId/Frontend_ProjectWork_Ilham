@@ -13,6 +13,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _usernameController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  final TextEditingController _resetEmailController = TextEditingController();
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isDialogLoading = false;
@@ -21,7 +22,6 @@ class _LoginScreenState extends State<LoginScreen> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
-    // Arahkan ke Dashboard jika token tersedia, atau ke Login jika tidak
     if (token != null && token.isNotEmpty) {
       Navigator.pushReplacement(
         context,
@@ -136,82 +136,243 @@ class _LoginScreenState extends State<LoginScreen> {
     });
   }
 
+  // Reset password pop-up
   void _showPasswordResetDialog() {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Row(
-            children: [
-              Icon(
-                Icons.warning_amber_rounded, // Menambahkan ikon tanda seru
-                color: Colors.red,
-                size: 30, // Ukuran ikon
-              ),
-              SizedBox(width: 10), // Jarak antara ikon dan teks
-              Text('Reset Password'),
-            ],
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Enter your email to receive a password reset link:'),
-              TextField(
-                decoration: InputDecoration(
-                  labelText: 'Email',
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: -15,
+                      right: -15,
+                      child: GestureDetector(
+                        onTap: () => Navigator.of(context).pop(),
+                        child: CircleAvatar(
+                          radius: 18,
+                          backgroundColor: Colors.black,
+                          child: Icon(
+                            Icons.close,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Reset Password',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            ElevatedButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-                _showResetSuccessDialog();
-              },
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red, foregroundColor: Colors.white),
-              child: Text('Submit'),
+                SizedBox(height: 20),
+                Text(
+                  'Masukkan email Anda untuk menerima tautan reset password:',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+                SizedBox(height: 20),
+                TextField(
+                  controller: _resetEmailController,
+                  decoration: InputDecoration(
+                    labelText: 'Email',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _isLoading
+                      ? null // Disable button saat sedang loading
+                      : () async {
+                          String email = _resetEmailController.text.trim();
+
+                          if (email.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: Text("Email tidak boleh kosong")));
+                            return;
+                          }
+
+                          setState(() {
+                            _isLoading = true; // Tampilkan indikator loading
+                          });
+
+                          try {
+                            final response =
+                                await ApiService.sendForgotPasswordEmail(email);
+
+                            // Debugging log untuk memeriksa response
+                            debugPrint('Response dari API: $response');
+
+                            if (response != null &&
+                                response['success'] == true) {
+                              // Jika sukses
+                              setState(() {
+                                _isLoading = false; // Selesai loading
+                              });
+                              _showResetSuccessDialog();
+                            } else {
+                              setState(() {
+                                _isLoading = false; // Selesai loading
+                              });
+                              // Menampilkan error jika gagal
+                              _showErrorResetDialog(response?['message'] ??
+                                  'Gagal mengirim email reset password');
+                            }
+                          } catch (e) {
+                            // Menangkap error saat pemanggilan API
+                            debugPrint('Error saat mengirim email reset: $e');
+                            setState(() {
+                              _isLoading = false; // Selesai loading
+                            });
+                            _showErrorResetDialog('Terjadi kesalahan: $e');
+                          }
+                        },
+                  child: Text('Submit'),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.green,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
   }
 
+// Menampilkan dialog loading saat menunggu API response
+  void _showLoadingDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false, // Agar pengguna tidak bisa menutup dialog ini
+      builder: (BuildContext context) {
+        return Center(
+          child: CircularProgressIndicator(),
+        );
+      },
+    );
+  }
+
+// Menampilkan dialog sukses reset password
   void _showResetSuccessDialog() {
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          contentPadding: EdgeInsets.symmetric(vertical: 20.0),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.check_circle,
-                color: Colors.green,
-                size: 80,
-              ),
-              SizedBox(height: 20),
-              Text(
-                "Permintaan Reset Password Telah dikirim ke Email kamu, Pastikan Email yang Anda Input Sudah Benar",
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15.0),
-              ),
-            ],
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
           ),
-          actions: [
-            Center(
-              child: TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('OK'),
-              ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.check_circle,
+                  color: Colors.green,
+                  size: 80,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  "Permintaan Reset Password Telah dikirim ke Email kamu, Pastikan Email yang Anda Input Sudah Benar",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15.0),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('OK'),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.green,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
+  }
+
+// Menampilkan dialog error jika gagal mengirim reset password
+  void _showErrorResetDialog(String message) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.error,
+                  color: Colors.red,
+                  size: 80,
+                ),
+                SizedBox(height: 20),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15.0),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: Text('OK'),
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    backgroundColor: Colors.red,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _resetEmailController
+        .dispose(); // Menambahkan dispose untuk controller baru
+    super.dispose();
   }
 
   @override
@@ -358,12 +519,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                         : Text('Login'),
                                   ),
                                 ),
-                                TextButton(
-                                  onPressed: _showPasswordResetDialog,
-                                  style: TextButton.styleFrom(
-                                    foregroundColor: Colors.black,
+                                SizedBox(height: 10),
+                                GestureDetector(
+                                  onTap: _showPasswordResetDialog,
+                                  child: Text(
+                                    'Forgot Password?',
+                                    style: TextStyle(
+                                      color:
+                                          const Color.fromARGB(255, 7, 54, 92),
+                                      fontSize: 16,
+                                    ),
                                   ),
-                                  child: Text('Forgot Password?'),
                                 ),
                               ],
                             ),

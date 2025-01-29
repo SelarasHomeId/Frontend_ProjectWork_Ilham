@@ -138,6 +138,7 @@ class _SidebarState extends State<Sidebar> {
                             title: Text('Dashboard'),
                             onTap: () {
                               widget.onMenuItemSelected('Dashboard');
+                              Navigator.pop(context);
                             },
                           ),
                           ValueListenableBuilder<bool>(
@@ -182,6 +183,7 @@ class _SidebarState extends State<Sidebar> {
                                     title: Text('User'),
                                     onTap: () {
                                       widget.onMenuItemSelected('User');
+                                      Navigator.pop(context);
                                     },
                                   ),
                                   if (widget.roleId == 1)
@@ -190,6 +192,7 @@ class _SidebarState extends State<Sidebar> {
                                       title: Text('Divisi'),
                                       onTap: () {
                                         widget.onMenuItemSelected('Divisi');
+                                        Navigator.pop(context);
                                       },
                                     ),
                                 ],

@@ -20,6 +20,7 @@ class ApiService {
     http.Response response;
     final url = '$baseUrl$endpoint';
     Map<String, String> header = {'Content-Type': contentType};
+
     if (token != null) {
       header['Authorization'] = 'Bearer $token';
     }
@@ -29,10 +30,14 @@ class ApiService {
       Future<http.Response> hitAPI() async {
         switch (method.toUpperCase()) {
           case 'POST':
-            return contentType == 'application/json'
-                ? http.post(Uri.parse(url),
-                    headers: header, body: jsonEncode(body))
-                : await _handleMultipartRequest(method, url, header, body);
+            if (contentType == 'application/json') {
+              return http.post(
+                Uri.parse(url),
+                headers: header,
+                body: jsonEncode(body),
+              );
+            }
+            return _handleMultipartRequest(method, url, header, body);
           case 'GET':
             return http.get(Uri.parse(url), headers: header);
           case 'PUT':
@@ -54,7 +59,6 @@ class ApiService {
 
       // hit api
       response = await hitAPI();
-
       // cek if refresh token needed
       if (response.statusCode == 401 && endpoint != '/auth/login') {
         final newToken = await _refreshToken(token);
@@ -71,7 +75,8 @@ class ApiService {
       final Map<String, dynamic> jsonBody = jsonDecode(response.body);
       return jsonBody;
     } catch (e) {
-      return null;
+      // return null;
+      rethrow;
     }
   }
 
@@ -159,6 +164,121 @@ class ApiService {
     );
 
     return List<Map<String, dynamic>>.from(response?['data']['data']);
+  }
+
+  // Send email forgot password
+  static Future<Map<String, dynamic>?> sendForgotPasswordEmail(
+      String email) async {
+    final response = await apiRequest(
+      method: 'POST',
+      endpoint: '/auth/send-email/forgot-password',
+      body: {'email': email},
+      token: null, // Token tidak diperlukan untuk reset password
+      contentType: 'application/json',
+    );
+
+    return response;
+  }
+
+  // Fungsi untuk mendapatkan notifikasi
+  static Future<Map<String, dynamic>?> getNotifications(String token) async {
+    final response = await apiRequest(
+      method: 'GET',
+      endpoint: '/notifikasi?order=created_at&order_by=desc',
+      body: null,
+      token: token,
+      contentType: 'application/json',
+    );
+    return response;
+  }
+
+  static Future<dynamic> handleBoard({
+    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
+    required int workspaceId, // Tidak boleh null dan wajib diisi
+    int? boardId, // Diperlukan untuk Update dan Delete
+    Map<String, dynamic>? data, // Body data untuk Create atau Update
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint = '/board/$workspaceId?order=sort_number&order_by=asc';
+    } else if (method == 'POST') {
+      endpoint = '/board'; // Endpoint untuk create board
+    } else if (method == 'PUT' && boardId != null) {
+      endpoint = '/board/$boardId'; // Endpoint untuk update board
+    } else if (method == 'DELETE' && boardId != null) {
+      endpoint = '/board/$boardId'; // Endpoint untuk delete board
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: data,
+      token: token,
+      contentType: 'application/json',
+    );
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      if (method == 'GET') {
+        return List<Map<String, dynamic>>.from(response['data']['data']);
+      } else {
+        return response['data']; // Return hasil operasi selain GET
+      }
+    } else {
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
+  static Future<dynamic> handleTask({
+    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
+    required int boardId, // Tidak boleh null dan wajib diisi
+    int? taskId,
+    Map<String, dynamic>? data, // Body data untuk Create atau Update
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint = '/task/$boardId?order=sort_number&order_by=asc';
+    } else if (method == 'POST') {
+      endpoint = '/task'; // Endpoint untuk create board
+    } else if (method == 'PUT' && taskId != null) {
+      endpoint = '/task/$taskId'; // Endpoint untuk update board
+    } else if (method == 'DELETE' && taskId != null) {
+      endpoint = '/task/$taskId'; // Endpoint untuk delete board
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: data,
+      token: token,
+      contentType: 'application/json',
+    );
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      if (method == 'GET') {
+        final currentData = response['data']['data'] ?? [];
+        return List<Map<String, dynamic>>.from(currentData);
+      } else {
+        return response['data']; // Return hasil operasi selain GET
+      }
+    } else {
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
   }
 
   // ==================================================================================================== //
