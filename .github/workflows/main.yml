@@ -1,10 +1,6 @@
 name: "CI/CD"
 
 on:
-  pull_request:
-    branches:
-      - development
-      - production
   push:
     branches:
       - development
@@ -98,7 +94,12 @@ jobs:
         id: extract_version
         run: |
           version=$(grep '^version: ' pubspec.yaml | cut -d ' ' -f 2 | tr -d '\r')
-          echo "VERSION=$version" >> $GITHUB_ENV
+          if [[ "${{ github.ref_name }}" == "production" ]]; then
+            version="${version}-production"
+          else
+            version="${version}-development"
+          fi
+          echo "VERSION=${version}" | tee -a $GITHUB_ENV
 
         #13 Check if Tag Exists
       - name: Check if Tag Exists

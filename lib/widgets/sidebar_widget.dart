@@ -6,7 +6,7 @@ class Sidebar extends StatefulWidget {
   final List<Map<String, dynamic>> menuItems;
   final bool isLoading;
   final int roleId;
-  final Function(String) onMenuItemSelected; // Callback untuk memilih menu
+  final Function(String, int) onMenuItemSelected; // Callback untuk memilih menu
 
   Sidebar({
     required this.menuItems,
@@ -137,7 +137,8 @@ class _SidebarState extends State<Sidebar> {
                             leading: Icon(Icons.dashboard),
                             title: Text('Dashboard'),
                             onTap: () {
-                              widget.onMenuItemSelected('Dashboard');
+                              widget.onMenuItemSelected('Dashboard', 0);
+                              Navigator.pop(context);
                             },
                           ),
                           ValueListenableBuilder<bool>(
@@ -157,7 +158,8 @@ class _SidebarState extends State<Sidebar> {
                                         Icon(Icons.subdirectory_arrow_right),
                                     title: Text(item['name']),
                                     onTap: () {
-                                      widget.onMenuItemSelected(item['name']);
+                                      widget.onMenuItemSelected(
+                                          item['name'], item['id']);
                                       Navigator.pop(context);
                                     },
                                   );
@@ -181,15 +183,26 @@ class _SidebarState extends State<Sidebar> {
                                     leading: Icon(Icons.person),
                                     title: Text('User'),
                                     onTap: () {
-                                      widget.onMenuItemSelected('User');
+                                      widget.onMenuItemSelected('User', 0);
+                                      Navigator.pop(context);
                                     },
                                   ),
+                                  if (widget.roleId == 1)
+                                    ListTile(
+                                      leading: Icon(Icons.account_tree),
+                                      title: Text('Role'),
+                                      onTap: () {
+                                        widget.onMenuItemSelected('role', 0);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
                                   if (widget.roleId == 1)
                                     ListTile(
                                       leading: Icon(Icons.business),
                                       title: Text('Divisi'),
                                       onTap: () {
-                                        widget.onMenuItemSelected('Divisi');
+                                        widget.onMenuItemSelected('Divisi', 0);
+                                        Navigator.pop(context);
                                       },
                                     ),
                                 ],

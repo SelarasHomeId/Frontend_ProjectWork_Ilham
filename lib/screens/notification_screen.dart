@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:selarashomeid/service/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationScreen extends StatefulWidget {
   @override
@@ -8,6 +10,43 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen> {
   String selectedFilter = "Today";
   bool showUnreadOnly = false;
+  bool isLoading = false;
+  List<NotificationItem> notifications = [];
+
+  @override
+  void initState() {
+    super.initState();
+    fetchNotifications();
+  }
+
+  // Fungsi untuk mengambil notifikasi
+  Future<void> fetchNotifications() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    // Panggil ApiService untuk mendapatkan notifikasi
+    final response = await ApiService.getNotifications(token);
+
+    if (response != null && response['success'] == true) {
+      final List<dynamic> dataList = response['data']['data'];
+
+      setState(() {
+        notifications =
+            dataList.map((item) => NotificationItem.fromJson(item)).toList();
+        isLoading = false;
+      });
+    } else {
+      setState(() {
+        isLoading = false;
+      });
+      // Show error message if needed
+      print('Failed to load notifications');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -74,32 +113,64 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
             SizedBox(height: 16),
             Expanded(
-              child: ListView(
-                children: [
-                  if (!showUnreadOnly || (showUnreadOnly && true))
-                    ListTile(
-                      leading: Icon(Icons.notifications),
-                      title: Text("New message from Alice"),
-                      subtitle: Text("Today, 10:00 AM"),
-                    ),
-                  if (!showUnreadOnly || (showUnreadOnly && false))
-                    ListTile(
-                      leading: Icon(Icons.notifications),
-                      title: Text("Your order has been shipped"),
-                      subtitle: Text("Yesterday, 4:00 PM"),
-                    ),
-                  if (!showUnreadOnly || (showUnreadOnly && true))
-                    ListTile(
-                      leading: Icon(Icons.notifications),
-                      title: Text("Reminder: Meeting at 3 PM"),
-                      subtitle: Text("Today, 9:00 AM"),
-                    ),
-                ],
-              ),
+              child: isLoading
+                  ? Center(child: CircularProgressIndicator())
+                  : notifications.isEmpty
+                      ? Center(child: Text("No notifications"))
+                      : ListView.builder(
+                          itemCount: notifications.length,
+                          itemBuilder: (context, index) {
+                            final notification = notifications[index];
+                            if (showUnreadOnly && notification.isRead) {
+                              return SizedBox
+                                  .shrink(); // Skip if marked as read
+                            }
+
+                            return ListTile(
+                              leading: Icon(Icons.notifications),
+                              title: Text(notification.title),
+                              subtitle: Text(notification.message),
+                              trailing: Icon(
+                                notification.isRead
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
+                                color: notification.isRead
+                                    ? Colors.green
+                                    : Colors.red,
+                              ),
+                              onTap: () {
+                                // Handle notification tap (mark as read, navigate, etc.)
+                              },
+                            );
+                          },
+                        ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class NotificationItem {
+  final String title;
+  final String message;
+  final String createdAt;
+  final bool isRead;
+
+  NotificationItem({
+    required this.title,
+    required this.message,
+    required this.createdAt,
+    required this.isRead,
+  });
+
+  factory NotificationItem.fromJson(Map<String, dynamic> json) {
+    return NotificationItem(
+      title: json['title'],
+      message: json['message'],
+      createdAt: json['created_at'],
+      isRead: json['is_read'],
     );
   }
 }
