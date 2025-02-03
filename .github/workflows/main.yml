@@ -99,7 +99,7 @@ jobs:
           else
             version="${version}-development"
           fi
-          echo "VERSION=$version" >> $GITHUB_ENV
+          echo "VERSION=${version}" | tee -a $GITHUB_ENV
 
         #13 Check if Tag Exists
       - name: Check if Tag Exists
