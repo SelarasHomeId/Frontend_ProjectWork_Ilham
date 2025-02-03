@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:selarashomeid/screens/login_screen.dart';
@@ -41,10 +42,18 @@ class ApiService {
           case 'GET':
             return http.get(Uri.parse(url), headers: header);
           case 'PUT':
-            return contentType == 'application/json'
-                ? http.put(Uri.parse(url),
-                    headers: header, body: jsonEncode(body))
-                : await _handleMultipartRequest(method, url, header, body);
+            if (contentType == 'application/json') {
+              return http.put(
+                Uri.parse(url),
+                headers: header,
+                body: jsonEncode(body),
+              );
+            }
+            return _handleMultipartRequest(method, url, header, body);
+          // return contentType == 'application/json'
+          //     ? http.put(Uri.parse(url),
+          //         headers: header, body: jsonEncode(body))
+          //     : await _handleMultipartRequest(method, url, header, body);
           case 'DELETE':
             return http.delete(Uri.parse(url), headers: header);
           case 'PATCH':
@@ -265,8 +274,12 @@ class ApiService {
       endpoint: endpoint,
       body: data,
       token: token,
-      contentType: 'application/json',
+      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
     );
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
 
     // Validasi response
     if (response != null && response['success'] == true) {
@@ -278,6 +291,81 @@ class ApiService {
       }
     } else {
       throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
+  static Future<dynamic> handleLabel({
+    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
+    int? labelId,
+    Map<String, dynamic>? data, // Body data untuk Create atau Update
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint = '/task/label${labelId != null ? "/$labelId" : ""}';
+    } else if (method == 'POST') {
+      endpoint = '/task/label'; // Endpoint untuk create board
+    } else if (method == 'PUT' && labelId != null) {
+      endpoint = '/task/label/$labelId'; // Endpoint untuk update board
+    } else if (method == 'DELETE' && labelId != null) {
+      endpoint = '/task/label/$labelId'; // Endpoint untuk delete board
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: data,
+      token: token,
+      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
+    );
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      if (method == 'GET') {
+        final currentData = response['data']['data'] ?? [];
+        return List<Map<String, dynamic>>.from(currentData);
+      } else {
+        return response['data']; // Return hasil operasi selain GET
+      }
+    } else {
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
+  static Future<dynamic> handleDetailTask(
+    int taskId,
+  ) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint = "/task/detail/$taskId";
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: "GET",
+      endpoint: endpoint,
+      token: token,
+    );
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      return response['data']['data']; // Return hasil operasi selain GET
+    } else {
+      throw Exception('Operasi GET gagal pada endpoint $endpoint');
     }
   }
 

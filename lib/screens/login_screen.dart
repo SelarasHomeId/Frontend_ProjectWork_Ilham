@@ -101,6 +101,7 @@ class _LoginScreenState extends State<LoginScreen> {
       showDialog(
         context: context,
         builder: (context) {
+          print(message);
           return AlertDialog(
             title: Text('Login Error'),
             content: Text(message),

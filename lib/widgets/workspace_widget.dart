@@ -33,6 +33,10 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   }
 
   Future<void> onLoadListBoard() async {
+    if (controller.groupDatas.isNotEmpty) {
+      controller.clear();
+    }
+
     for (final singleBoard in _boards) {
       try {
         final currentBoardId = singleBoard["id"];
@@ -43,7 +47,12 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
 
         var taskAsList = <AppFlowyGroupItem>[];
         for (final singleTask in (getDataTask as List)) {
-          taskAsList.add(TextItem(singleTask["title"]));
+          taskAsList.add(
+            TextItem(
+              singleTask["title"],
+              singleTask["id"].toString(),
+            ),
+          );
         } //ambil data task
         // final taskAsList =
         //     (getDataTask as List).map((e) => TextItem(e["title"])).toList();
@@ -78,7 +87,9 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
           debugPrint('Move $fromGroupId:$fromIndex to $toGroupId:$toIndex');
         },
       );
-
+      print("ini menu yang di klik");
+      print(widget.workspace);
+      print(widget.workspaceId);
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
@@ -90,6 +101,8 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       setState(() {
         _isLoading = false;
       });
+      print("ini data boards nya ya");
+      print(_boards);
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -280,6 +293,9 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                     boardController: boardController,
                     addTask: (boardId) async {
                       _showCreateTaskDialog(boardId);
+                    },
+                    onLoadBoard: () async {
+                      return onLoadListBoard();
                     },
                   )
         // SingleChildScrollView(

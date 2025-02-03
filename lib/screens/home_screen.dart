@@ -51,25 +51,14 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// Fungsi untuk mengganti widget berdasarkan menu yang dipilih
-  void _onMenuItemSelected(String menuName) {
+  void _onMenuItemSelected(String menuName, int menuId) {
     setState(() {
       if (menuName == 'Dashboard') {
         _currentWidget =
             DashboardWidget(roleId: widget.roleId, token: widget.token);
       } else {
-        // Cari workspaceId berdasarkan nama workspace
-        final selectedWorkspace = _menuItems.firstWhere(
-          (item) => item['name'] == menuName,
-          orElse: () => {'id': 0}, // Fallback ID jika tidak ditemukan
-        );
-
-        _currentWidget = WorkspaceWidget(
-          workspace: menuName,
-          workspaceId: selectedWorkspace['id'] is int
-              ? selectedWorkspace['id'] // Pastikan workspaceId bertipe int
-              : int.tryParse(selectedWorkspace['id'].toString()) ??
-                  0, // Konversi ke int jika perlu
-        );
+        _currentWidget =
+            WorkspaceWidget(workspace: menuName, workspaceId: menuId);
       }
     });
   }

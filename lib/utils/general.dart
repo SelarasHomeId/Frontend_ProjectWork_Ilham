@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class General {
@@ -64,5 +65,16 @@ class General {
       'email': email,
       'initials': initials,
     };
+  }
+
+  String colorToString(Color color) {
+    String colorString = color.value.toString(); // Mengubah menjadi string
+    return colorString;
+  }
+
+  Color stringToColor(String colorString) {
+    int colorInt = int.parse(colorString); // Mengonversi string ke integer
+    Color color = Color(colorInt); // Mengubah integer menjadi Color
+    return color;
   }
 }

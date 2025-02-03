@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selarashomeid/screens/detail_task_screen.dart';
 
 import 'widgets/board/appflowy_board.dart';
 
@@ -6,11 +7,13 @@ class WidgetBoard extends StatefulWidget {
   final AppFlowyBoardScrollController boardController;
   final AppFlowyBoardController controller;
   final Future<void> Function(int boardId) addTask;
+  final Future<void> Function() onLoadBoard;
   const WidgetBoard({
     super.key,
     required this.boardController,
     required this.controller,
     required this.addTask,
+    required this.onLoadBoard,
   });
 
   @override
@@ -32,14 +35,28 @@ class _WidgetBoardState extends State<WidgetBoard> {
       cardBuilder: (context, group, groupItem) {
         return AppFlowyGroupCard(
           key: ValueKey(groupItem.id),
-          child: _buildCard(groupItem),
+          child: InkWell(
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DetailTaskScreen(
+                      boardId: int.tryParse(group.id)!,
+                      taskId: int.tryParse(groupItem.id)!,
+                    ),
+                  ),
+                );
+
+                await widget.onLoadBoard();
+              },
+              child: _buildCard(groupItem)),
         );
       },
       boardScrollController: widget.boardController,
       footerBuilder: (context, columnData) {
         return AppFlowyGroupFooter(
           icon: const Icon(Icons.add, size: 20),
-          title: const Text('Update'),
+          title: const Text('Add Task'),
           height: 50,
           margin: config.groupBodyPadding,
           onAddButtonClick: () {
@@ -138,11 +155,15 @@ class _RichTextCardState extends State<RichTextCard> {
 
 class TextItem extends AppFlowyGroupItem {
   final String s;
+  final String currentId;
 
-  TextItem(this.s);
+  TextItem(
+    this.s,
+    this.currentId,
+  );
 
   @override
-  String get id => s;
+  String get id => currentId;
 }
 
 class RichTextItem extends AppFlowyGroupItem {

@@ -42,8 +42,9 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       title: 'SelarasHome App',
       theme: ThemeData(
-        primarySwatch: Colors.blue, // Tema aplikasi
-      ),
+          primarySwatch: Colors.blue, // Tema aplikasi
+          expansionTileTheme: ExpansionTileThemeData(
+              tilePadding: EdgeInsets.symmetric(horizontal: 8))),
       initialRoute: '/',
       routes: {
         '/': (context) => FutureBuilder<Map<String, dynamic>>(
