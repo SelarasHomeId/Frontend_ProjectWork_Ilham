@@ -21,6 +21,7 @@ class WorkspaceWidget extends StatefulWidget {
 class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   List<Map<String, dynamic>> _boards = [];
   bool _isLoading = true;
+  String currentWorkspace = "";
 
   late AppFlowyBoardController controller;
 
@@ -30,6 +31,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   void initState() {
     super.initState();
     _fetchBoards();
+    currentWorkspace = widget.workspace;
   }
 
   Future<void> onLoadListBoard() async {
@@ -87,9 +89,6 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
           debugPrint('Move $fromGroupId:$fromIndex to $toGroupId:$toIndex');
         },
       );
-      print("ini menu yang di klik");
-      print(widget.workspace);
-      print(widget.workspaceId);
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
@@ -101,8 +100,6 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       setState(() {
         _isLoading = false;
       });
-      print("ini data boards nya ya");
-      print(_boards);
     } catch (e) {
       setState(() {
         _isLoading = false;
@@ -262,6 +259,10 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
 
   @override
   Widget build(BuildContext context) {
+    if (currentWorkspace != widget.workspace) {
+      _fetchBoards();
+      currentWorkspace = widget.workspace;
+    }
     return Scaffold(
         appBar: AppBar(
           title: Text(

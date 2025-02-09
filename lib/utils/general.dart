@@ -56,6 +56,7 @@ class General {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('name') ?? 'User Name';
     final email = prefs.getString('email') ?? 'user@example.com';
+    final roleName = prefs.getString('roleName') ?? ' - ';
     final initials = name.isNotEmpty
         ? name.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
         : 'U';
@@ -64,6 +65,7 @@ class General {
       'name': name,
       'email': email,
       'initials': initials,
+      'roleName': roleName,
     };
   }
 

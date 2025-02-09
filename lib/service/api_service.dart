@@ -14,6 +14,7 @@ class ApiService {
     required String method,
     required String endpoint,
     Map<String, dynamic>? body,
+    List<http.MultipartFile> listFile = const [],
     String? token,
     String contentType = 'application/json',
   }) async {
@@ -38,7 +39,7 @@ class ApiService {
                 body: jsonEncode(body),
               );
             }
-            return _handleMultipartRequest(method, url, header, body);
+            return _handleMultipartRequest(method, url, header, listFile, body);
           case 'GET':
             return http.get(Uri.parse(url), headers: header);
           case 'PUT':
@@ -49,7 +50,7 @@ class ApiService {
                 body: jsonEncode(body),
               );
             }
-            return _handleMultipartRequest(method, url, header, body);
+            return _handleMultipartRequest(method, url, header, listFile, body);
           // return contentType == 'application/json'
           //     ? http.put(Uri.parse(url),
           //         headers: header, body: jsonEncode(body))
@@ -60,7 +61,8 @@ class ApiService {
             return contentType == 'application/json'
                 ? http.patch(Uri.parse(url),
                     headers: header, body: jsonEncode(body))
-                : await _handleMultipartRequest(method, url, header, body);
+                : await _handleMultipartRequest(
+                    method, url, header, listFile, body);
           default:
             throw Exception('Unsupported HTTP method: $method');
         }
@@ -94,12 +96,15 @@ class ApiService {
       String method,
       String url,
       Map<String, String> header,
+      List<http.MultipartFile> listFile,
       Map<String, dynamic>? body) async {
     var request = http.MultipartRequest(method, Uri.parse(url))
       ..headers.addAll(header);
     body?.forEach((key, value) {
       request.fields[key] = value;
     });
+
+    request.files.addAll(listFile);
     return await http.Response.fromStream(await request.send());
   }
 
@@ -157,6 +162,18 @@ class ApiService {
           MaterialPageRoute(builder: (context) => LoginScreen()),
           (route) => false);
     }
+  }
+
+  //dashboard
+  static Future<Map<String, dynamic>?> fetchDashboard(String token) async {
+    final response = await apiRequest(
+      method: 'GET',
+      endpoint: '/crm/access/count', // Endpoint yang benar
+      body: null,
+      token: token,
+      contentType: 'application/json',
+    );
+    return response;
   }
 
   // workspace
@@ -275,6 +292,58 @@ class ApiService {
       body: data,
       token: token,
       contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
+    );
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      if (method == 'GET') {
+        final currentData = response['data']['data'] ?? [];
+        return List<Map<String, dynamic>>.from(currentData);
+      } else {
+        return response['data']; // Return hasil operasi selain GET
+      }
+    } else {
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
+  static Future<dynamic> handleTaskFile({
+    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
+    required int taskId, // Tidak boleh null dan wajib diisi
+    int? fileId,
+    Map<String, dynamic>? data, // Body data untuk Create atau Update
+    List<http.MultipartFile> listFile = const [],
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint = '/task/file/$taskId';
+    } else if (method == 'POST') {
+      endpoint = '/task/file'; // Endpoint untuk create board
+    } else if (method == 'PUT' && fileId != null) {
+      endpoint = '/task/file/$fileId'; // Endpoint untuk update board
+    } else if (method == 'DELETE' && fileId != null) {
+      endpoint = '/task/file/$taskId'; // Endpoint untuk delete board
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: data,
+      token: token,
+      listFile: listFile,
+      contentType:
+          method == 'POST' ? 'multipart/form-data' : 'application/json',
     );
     try {
       final encodeValue = json.encode(response);

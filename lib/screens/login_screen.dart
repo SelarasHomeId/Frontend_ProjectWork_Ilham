@@ -17,6 +17,8 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isDialogLoading = false;
+  bool _isIconClicked = false;
+  bool _isHovered = false;
 
   void _login() async {
     final prefs = await SharedPreferences.getInstance();
@@ -101,14 +103,65 @@ class _LoginScreenState extends State<LoginScreen> {
       showDialog(
         context: context,
         builder: (context) {
-          print(message);
           return AlertDialog(
-            title: Text('Login Error'),
-            content: Text(message),
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius:
+                  BorderRadius.circular(12), // Mengurangi kelengkungan radius
+            ),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.red,
+                  ),
+                  child: Icon(
+                    Icons.error,
+                    color: Colors.white,
+                    size: 30,
+                  ),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Login Error',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              message,
+              style: TextStyle(
+                fontSize: 17,
+              ),
+            ),
             actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text('OK'),
+              Center(
+                // Memusatkan tombol OK
+                child: TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.red[900], // Latar belakang merah
+                    padding: EdgeInsets.symmetric(
+                        horizontal: 15, vertical: 10), // Memperbesar tombol
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(8), // Sudut tombol lebih bulat
+                    ),
+                  ),
+                  child: Text(
+                    'OK',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
               ),
             ],
           );
@@ -146,6 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15.0),
           ),
+          backgroundColor: Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Column(
@@ -158,14 +212,42 @@ class _LoginScreenState extends State<LoginScreen> {
                       top: -15,
                       right: -15,
                       child: GestureDetector(
-                        onTap: () => Navigator.of(context).pop(),
-                        child: CircleAvatar(
-                          radius: 18,
-                          backgroundColor: Colors.black,
-                          child: Icon(
-                            Icons.close,
-                            color: Colors.white,
-                            size: 20,
+                        onTap: () {
+                          setState(() {
+                            // Animasi zoom-out ketika ikon ditekan
+                            _isIconClicked = !_isIconClicked;
+                          });
+                          Future.delayed(Duration(milliseconds: 200), () {
+                            Navigator.of(context)
+                                .pop(); // Tutup dialog setelah animasi
+                          });
+                        },
+                        child: MouseRegion(
+                          onEnter: (_) {
+                            setState(() {
+                              _isHovered = true; // Efek hover aktif
+                            });
+                          },
+                          onExit: (_) {
+                            setState(() {
+                              _isHovered = false; // Efek hover tidak aktif
+                            });
+                          },
+                          child: AnimatedScale(
+                            scale: _isIconClicked ? 0.7 : 1.0, // Efek zoom out
+                            duration: Duration(milliseconds: 150),
+                            curve: Curves.easeInOut,
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.white,
+                              child: Icon(
+                                Icons.close,
+                                color: _isHovered
+                                    ? Colors.red
+                                    : Colors.black, // Ubah warna saat hover
+                                size: 20,
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -193,15 +275,26 @@ class _LoginScreenState extends State<LoginScreen> {
                 Text(
                   'Masukkan email Anda untuk menerima tautan reset password:',
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 16),
+                  style: TextStyle(fontSize: 15),
                 ),
                 SizedBox(height: 20),
-                TextField(
+                TextFormField(
                   controller: _resetEmailController,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
+                    border: UnderlineInputBorder(), // Menghapus border kotak
+                    isDense:
+                        true, // Mengurangi tinggi padding di dalam textfield
+                    contentPadding: EdgeInsets.symmetric(
+                        horizontal: 5,
+                        vertical: 10), // Mengurangi padding kiri kanan
+                    prefixIcon: Padding(
+                      padding: EdgeInsets.only(left: 0),
+                      child: Icon(
+                        Icons.mail_outline, // Ikon Mail di kiri
+                        color: Colors.grey,
+                        size: 24,
+                      ),
                     ),
                   ),
                 ),
@@ -256,7 +349,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   child: Text('Submit'),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
-                    backgroundColor: Colors.green,
+                    backgroundColor: Colors.red[900],
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -353,11 +446,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  child: Text('OK'),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.red,
                   ),
+                  child: Text('OK'),
                 ),
               ],
             ),
@@ -369,10 +462,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
+    // Menambahkan dispose untuk controller baru
     _usernameController.dispose();
     _passwordController.dispose();
-    _resetEmailController
-        .dispose(); // Menambahkan dispose untuk controller baru
+    _resetEmailController.dispose();
     super.dispose();
   }
 

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:intl/intl.dart';
+import 'package:mime/mime.dart';
 import 'package:selarashomeid/screens/label_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/file_picker.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:selarashomeid/widgets/loading_screen_widget.dart';
 
@@ -26,9 +31,13 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late FocusNode focusNode;
 
   late ValueNotifier<bool> onLoadingNotifier;
+  late ValueNotifier<List<Map<String, dynamic>>> onFileNotifier;
+  late ValueNotifier<bool> onLoadingFileNotifier;
+
   late ValueNotifier<(String labelName, Color color)?> notifierLabelColor;
 
   String? currentDesc;
+  late ValueNotifier<DateTime?> onEndDateNotifier;
 
   @override
   void initState() {
@@ -38,11 +47,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onLoadingNotifier = ValueNotifier<bool>(false);
 
     notifierLabelColor = ValueNotifier<(String labelName, Color color)?>(null);
+    onEndDateNotifier = ValueNotifier<DateTime?>(null);
+    onFileNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
+    onLoadingFileNotifier = ValueNotifier<bool>(false);
 
     textDescController = TextEditingController();
     focusNode = FocusNode();
 
-    onLoadValue();
+    Future.wait(
+      [onLoadValue(), loadFile()],
+    );
     super.initState();
   }
 
@@ -173,12 +187,35 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                 // Add Comments
                 _buildAddCommentSection(),
+                SizedBox(height: 20),
+
+                listFileWidget(),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> loadFile() async {
+    onLoadingFileNotifier.value = true;
+    final getFileList = await ApiService.handleTaskFile(
+      method: "GET",
+      taskId: widget.taskId,
+    );
+
+    onFileNotifier.value = (getFileList is List
+        ? getFileList.map((e) {
+            return {
+              "id": e["id"],
+              "fileName": e["file"]["name"],
+              "filePath": e["file"]["view"],
+            };
+          }).toList()
+        : <Map<String, dynamic>>[]);
+
+    onLoadingFileNotifier.value = false;
   }
 
   Widget _buildUserInfo(Future<Map<String, String>> userProfileFuture) {
@@ -243,7 +280,61 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           onPressed: () {}, child: Text('Add Checklist')),
                       SizedBox(width: 10),
                       ElevatedButton(
-                          onPressed: () {}, child: Text('Add Attachment')),
+                          onPressed: () async {
+                            onLoadingNotifier.value = true;
+                            onLoadingFileNotifier.value = true;
+
+                            AsPathResponse? croppedValue;
+                            await uploadPhotoFromFile(
+                              context,
+                              filePicked: (onFilePicker, type) {
+                                final path = onFilePicker.path;
+                                final mimeType = lookupMimeType(path!);
+                                MediaType fileType = MediaType.parse(mimeType!);
+
+                                croppedValue = AsPathResponse(
+                                  path: path,
+                                  fileName: onFilePicker.name
+                                      .toString()
+                                      .replaceAll(" ", "_"),
+                                  fileExtension:
+                                      type.toString().replaceAll("jpeg", "jpg"),
+                                  fileType: fileType,
+                                );
+                              },
+                              cropImages: (onSelectedPhoto) async {
+                                croppedValue = await cropImages(
+                                  context: context,
+                                  path: onSelectedPhoto,
+                                );
+                              },
+                            );
+
+                            final currentCropped = croppedValue;
+                            if (currentCropped != null) {
+                              final listFile = await Future.wait([
+                                MultipartFile.fromPath(
+                                  'file',
+                                  currentCropped.path!,
+                                  contentType: currentCropped.fileType,
+                                )
+                              ]);
+
+                              await ApiService.handleTaskFile(
+                                method: 'POST',
+                                // workspaceId: widget.workspaceId,
+                                taskId: widget.taskId,
+                                listFile: listFile,
+                                data: {
+                                  "task_id": widget.taskId.toString(),
+                                },
+                              );
+                            }
+
+                            onLoadingNotifier.value = false;
+                            onLoadingFileNotifier.value = false;
+                          },
+                          child: Text('Add Attachment')),
                       SizedBox(width: 10),
                       ElevatedButton(onPressed: () {}, child: Text('Members')),
                     ],
@@ -348,7 +439,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Widget _buildDatePickers() {
     return Row(
       children: [
-        _buildDateField('Start date'),
+        // _buildDateField('Start date'),
         SizedBox(width: 20),
         _buildDateField('Due date'),
       ],
@@ -356,20 +447,66 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Widget _buildDateField(String label) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label),
-        SizedBox(
-          width: 150,
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Select $label',
-              border: OutlineInputBorder(),
-            ),
-          ),
-        ),
-      ],
+    return InkWell(
+      onTap: () async {
+        var datePicker = await showDatePicker(
+          context: context,
+          firstDate: DateTime.now(),
+          lastDate: DateTime(2500),
+          fieldLabelText: "Waktu Akhir Task",
+        );
+
+        if (datePicker != null && mounted) {
+          final currentTime = await showTimePicker(
+            context: context,
+            initialTime: TimeOfDay.now(),
+          );
+
+          if (currentTime != null) {
+            onLoadingNotifier.value = true;
+
+            datePicker = datePicker.copyWith(
+              hour: currentTime.hour,
+              minute: currentTime.minute,
+            );
+
+            final timeToUtc = datePicker.toUtc();
+            final dueDate = DateFormat("yyyy-MM-dd HH:mm:ss").format(timeToUtc);
+
+            final getUpdatedData = await ApiService.handleTask(
+              method: 'PUT',
+              // workspaceId: widget.workspaceId,
+              taskId: widget.taskId,
+              boardId: widget.boardId,
+              data: {'due_date': dueDate},
+            );
+
+            if (getUpdatedData != null) {
+              onEndDateNotifier.value = datePicker;
+            }
+
+            onLoadingNotifier.value = false;
+          }
+        }
+      },
+      child: ValueListenableBuilder(
+        valueListenable: onEndDateNotifier,
+        builder: (context, value, child) {
+          final currentDateTime = value != null
+              ? DateFormat('EEEE,\ndd MMMM yyyy').format(value)
+              : null;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(label),
+              SizedBox(
+                width: 150,
+                child: Text(currentDateTime ?? 'Select $label'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 
@@ -396,5 +533,66 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         ),
       ],
     );
+  }
+
+  Widget listFileWidget() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Attachment",
+          style: TextStyle(fontSize: 14, color: Colors.grey),
+        ),
+        ValueListenableBuilder(
+          valueListenable: onFileNotifier,
+          builder: (context, listFile, child) {
+            return SizedBox(
+              height: 150,
+              child: ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: listFile.length,
+                itemBuilder: (context, index) {
+                  final fileType =
+                      (listFile[index]["name"] ?? "").toString().split(".");
+                  final filePath =
+                      (listFile[index]["filePath"] ?? "").toString();
+
+                  return Container(
+                    width: 150,
+                    height: 150,
+                    margin: EdgeInsets.only(right: 10),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFC4C4C4),
+                      border: Border.all(
+                        color: Colors.transparent,
+                        width: 5,
+                      ),
+                      borderRadius: BorderRadius.circular(5),
+                      image: DecorationImage(
+                        // image: NetworkImage(fileDoc.file_url),
+                        image: getImage(fileType.last, filePath),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+ImageProvider getImage(String fileFormat, String path) {
+  switch (fileFormat) {
+    case "pdf":
+      return AssetImage("assets/images/pdf.png");
+    case "doc":
+    case "docx":
+      return AssetImage("assets/images/doc.png");
+    default:
+      return NetworkImage(path);
   }
 }

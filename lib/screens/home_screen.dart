@@ -25,6 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchMenuItems();
+    _currentWidget =
+        DashboardWidget(roleId: widget.roleId, token: widget.token);
   }
 
   /// Fetch data workspace dari API
@@ -67,7 +69,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBarWidget(), // AppBar custom
-      backgroundColor: Colors.white,
+      backgroundColor: const Color.fromARGB(255, 229, 229, 229),
       drawer: Drawer(
         child: Sidebar(
           menuItems: _menuItems, // Kirim daftar menu

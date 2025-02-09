@@ -44,7 +44,7 @@ class _SidebarState extends State<Sidebar> {
             : Column(
                 children: [
                   // Header User dengan FutureBuilder
-                  FutureBuilder<Map<String, String>>(
+                  FutureBuilder<Map<String, dynamic>>(
                     future: General.getUserProfile(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
@@ -53,6 +53,8 @@ class _SidebarState extends State<Sidebar> {
                         return Center(child: Text('Error loading profile'));
                       } else if (snapshot.hasData) {
                         final user = snapshot.data!;
+                        print("R : ${user}");
+                        final roleName = user['roleName'];
                         return Container(
                           decoration: BoxDecoration(
                             image: DecorationImage(
@@ -95,7 +97,7 @@ class _SidebarState extends State<Sidebar> {
                                   ),
                                   SizedBox(height: screenHeight * 0.01),
                                   Text(
-                                    user['email']!,
+                                    roleName,
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: screenWidth * 0.045,
