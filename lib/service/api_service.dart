@@ -438,5 +438,77 @@ class ApiService {
     }
   }
 
+  //handle user
+  static Future<dynamic> handleUser({
+    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
+    int? userId,
+    Map<String, dynamic>? data,
+    required Map<String, String> params, // Body data untuk Create atau Update
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint = '/user${userId != null ? "/$userId" : ""}';
+    } else if (method == 'POST') {
+      endpoint = '/user'; // Endpoint untuk create user
+    } else if (method == 'PUT' && userId != null) {
+      endpoint = '/user/$userId'; // Endpoint untuk update user
+    } else if (method == 'DELETE' && userId != null) {
+      endpoint = '/user/$userId'; // Endpoint untuk delete user
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: data,
+      token: token,
+      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
+    );
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      if (method == 'GET') {
+        final currentData = response['data']['data'] ?? [];
+        return List<Map<String, dynamic>>.from(currentData);
+      } else {
+        return response['data']; // Return hasil operasi selain GET
+      }
+    } else {
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
+  //get ROLE
+  static Future<Map<String, dynamic>?> getRoles() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    final response = await apiRequest(
+      method: 'GET',
+      endpoint: '/role',
+      body: {},
+      token: token,
+      contentType: 'application/json',
+    );
+
+    if (response != null && response['success'] == true) {
+      return response['data'];
+    } else {
+      return {
+        'message': 'Failed to fetch data role',
+        'data': null,
+      };
+    }
+  }
+
   // ==================================================================================================== //
 }

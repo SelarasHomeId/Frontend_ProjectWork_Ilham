@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:selarashomeid/widgets/role_widget.dart';
 import 'package:selarashomeid/widgets/sidebar_widget.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/widgets/appbar_widget.dart';
 import 'package:selarashomeid/widgets/dashboard_widget.dart';
+import 'package:selarashomeid/widgets/user_widget.dart';
 import 'package:selarashomeid/widgets/workspace_widget.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -58,6 +60,10 @@ class _HomeScreenState extends State<HomeScreen> {
       if (menuName == 'Dashboard') {
         _currentWidget =
             DashboardWidget(roleId: widget.roleId, token: widget.token);
+      } else if (menuName == 'User') {
+        _currentWidget = UserWidget();
+      } else if (menuName == 'Role') {
+        _currentWidget = RoleWidget();
       } else {
         _currentWidget =
             WorkspaceWidget(workspace: menuName, workspaceId: menuId);

@@ -169,48 +169,50 @@ class _SidebarState extends State<Sidebar> {
                               );
                             },
                           ),
-                          ValueListenableBuilder<bool>(
-                            // Master Data
-                            valueListenable: _isMasterDataExpanded,
-                            builder: (context, isExpanded, child) {
-                              return ExpansionTile(
-                                leading: Icon(Icons.settings),
-                                title: Text('Master Data'),
-                                initiallyExpanded: isExpanded,
-                                onExpansionChanged: (isExpanded) {
-                                  _isMasterDataExpanded.value = isExpanded;
-                                },
-                                children: [
-                                  ListTile(
-                                    leading: Icon(Icons.person),
-                                    title: Text('User'),
-                                    onTap: () {
-                                      widget.onMenuItemSelected('User', 0);
-                                      Navigator.pop(context);
-                                    },
-                                  ),
-                                  if (widget.roleId == 1)
-                                    ListTile(
-                                      leading: Icon(Icons.account_tree),
-                                      title: Text('Role'),
-                                      onTap: () {
-                                        widget.onMenuItemSelected('role', 0);
-                                        Navigator.pop(context);
-                                      },
-                                    ),
-                                  if (widget.roleId == 1)
-                                    ListTile(
-                                      leading: Icon(Icons.business),
-                                      title: Text('Divisi'),
-                                      onTap: () {
-                                        widget.onMenuItemSelected('Divisi', 0);
-                                        Navigator.pop(context);
-                                      },
-                                    ),
-                                ],
-                              );
-                            },
-                          ),
+                          if (widget.roleId == 1)
+                            ValueListenableBuilder<bool>(
+                              valueListenable: _isMasterDataExpanded,
+                              builder: (context, isExpanded, child) {
+                                return ExpansionTile(
+                                  leading: Icon(Icons.settings),
+                                  title: Text('Master Data'),
+                                  initiallyExpanded: isExpanded,
+                                  onExpansionChanged: (isExpanded) {
+                                    _isMasterDataExpanded.value = isExpanded;
+                                  },
+                                  children: [
+                                    if (widget.roleId == 1)
+                                      ListTile(
+                                        leading: Icon(Icons.person),
+                                        title: Text('User'),
+                                        onTap: () {
+                                          widget.onMenuItemSelected('User', 0);
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                    if (widget.roleId == 1)
+                                      ListTile(
+                                        leading: Icon(Icons.account_tree),
+                                        title: Text('Role'),
+                                        onTap: () {
+                                          widget.onMenuItemSelected('Role', 0);
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                    if (widget.roleId == 1)
+                                      ListTile(
+                                        leading: Icon(Icons.business),
+                                        title: Text('Divisi'),
+                                        onTap: () {
+                                          widget.onMenuItemSelected(
+                                              'Divisi', 0);
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
                         ],
                       ),
                     ),
