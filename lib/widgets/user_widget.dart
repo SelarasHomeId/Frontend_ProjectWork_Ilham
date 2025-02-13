@@ -11,32 +11,34 @@ class _UserWidgetState extends State<UserWidget> {
   bool _isLoading = true;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
-  int _rowsPerPage = 10; // Jumlah data yang ingin ditampilkan per halaman
+  int _rowsPerPage = 5; // Jumlah data yang ingin ditampilkan per halaman
   int _pageIndex = 0; // Halaman yang sedang aktif
   int _totalItems = 0; // Total data yang ada di server
 
   // Memanggil API untuk mendapatkan data user dengan pagination
+  // Di user_widget.dart
   Future<void> fetchUsers() async {
     try {
       final params = {
-        'limit': '$_rowsPerPage', // Menentukan jumlah data per halaman
-        'offset': (_pageIndex * _rowsPerPage)
-            .toString(), // Menghitung offset berdasarkan halaman
+        'limit': '$_rowsPerPage',
+        'offset': (_pageIndex * _rowsPerPage).toString(),
+        'is_delete': 'false', // Filter data yang tidak di-delete
       };
 
       final result = await ApiService.handleUser(
         method: 'GET',
-        params: params, // Mengirimkan params dengan limit dan offset
+        params: params,
       );
 
       if (result != null) {
         setState(() {
-          users = result; // Menyimpan data ke dalam list 'users'
-          _totalItems = result.length; // Menyimpan total data yang diterima
+          users = result['data'];
+          _totalItems = result['count']; // Total data aktif dari API
         });
       }
     } catch (e) {
       print("Error fetching users: $e");
+    } finally {
       setState(() {
         _isLoading = false;
       });
@@ -124,7 +126,9 @@ class _UserWidgetState extends State<UserWidget> {
                           DataColumn(label: Text('Role')),
                           DataColumn(label: Text('Actions')),
                         ],
-                        source: MyDataSource(users),
+                        header: Text('Total Users: $_totalItems'),
+                        source: MyDataSource(
+                            users, _totalItems, _pageIndex, _rowsPerPage),
                       ),
                     ),
                   ),
@@ -136,14 +140,23 @@ class _UserWidgetState extends State<UserWidget> {
 // Define MyDataSource class for paginated data table
 class MyDataSource extends DataTableSource {
   final List<dynamic> users;
+  final int totalItems;
+  final int pageIndex;
+  final int rowsPerPage;
 
-  MyDataSource(this.users);
+  MyDataSource(this.users, this.totalItems, this.pageIndex, this.rowsPerPage);
 
   @override
   DataRow? getRow(int index) {
-    final user = users[index];
+    // Hitung indeks data yang sesuai dengan halaman saat ini
+    final localIndex = index - (pageIndex * rowsPerPage);
+    if (localIndex < 0 || localIndex >= users.length) {
+      return null; // Tidak tampilkan apa-apa jika data belum terload
+    }
+
+    final user = users[localIndex];
     return DataRow(cells: [
-      DataCell(Text('${index + 1}')), // Nomor urut
+      DataCell(Text('${index + 1}')),
       DataCell(Text(user['name'] ?? '')),
       DataCell(Text(user['email'] ?? '')),
       DataCell(Text(user['divisi']['name'] ?? '')),
@@ -153,15 +166,11 @@ class MyDataSource extends DataTableSource {
           children: [
             IconButton(
               icon: Icon(Icons.edit),
-              onPressed: () {
-                // Logika edit
-              },
+              onPressed: () {},
             ),
             IconButton(
               icon: Icon(Icons.delete),
-              onPressed: () {
-                // Logika delete
-              },
+              onPressed: () {},
             ),
           ],
         ),
@@ -170,7 +179,7 @@ class MyDataSource extends DataTableSource {
   }
 
   @override
-  int get rowCount => users.length;
+  int get rowCount => totalItems; // Gunakan total data dari API
 
   @override
   bool get isRowCountApproximate => false;

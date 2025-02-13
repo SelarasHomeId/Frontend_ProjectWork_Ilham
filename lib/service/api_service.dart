@@ -476,13 +476,13 @@ class ApiService {
     } catch (e) {}
 
     // Validasi response
-    if (response != null && response['success'] == true) {
-      if (method == 'GET') {
-        final currentData = response['data']['data'] ?? [];
-        return List<Map<String, dynamic>>.from(currentData);
-      } else {
-        return response['data']; // Return hasil operasi selain GET
-      }
+    if (method == 'GET') {
+      final currentData = response?['data']['data'] ?? [];
+      final count = response?['data']['count'] ?? 0;
+      return {
+        'data': List<Map<String, dynamic>>.from(currentData),
+        'count': count,
+      };
     } else {
       throw Exception('Operasi $method gagal pada endpoint $endpoint');
     }
