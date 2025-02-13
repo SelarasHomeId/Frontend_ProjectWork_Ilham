@@ -11,18 +11,21 @@ class _UserWidgetState extends State<UserWidget> {
   bool _isLoading = true;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
-  int _rowsPerPage = 5; // Jumlah data yang ingin ditampilkan per halaman
+  int _rowsPerPage = 10; // Jumlah data yang ingin ditampilkan per halaman
   int _pageIndex = 0; // Halaman yang sedang aktif
   int _totalItems = 0; // Total data yang ada di server
 
   // Memanggil API untuk mendapatkan data user dengan pagination
   // Di user_widget.dart
   Future<void> fetchUsers() async {
+    setState(() {
+      _isLoading = true; // Pastikan indikator loading muncul saat fetch data baru
+    });
+
     try {
       final params = {
         'limit': '$_rowsPerPage',
         'offset': (_pageIndex * _rowsPerPage).toString(),
-        'is_delete': 'false', // Filter data yang tidak di-delete
       };
 
       final result = await ApiService.handleUser(
@@ -33,14 +36,14 @@ class _UserWidgetState extends State<UserWidget> {
       if (result != null) {
         setState(() {
           users = result['data'];
-          _totalItems = result['count']; // Total data aktif dari API
+          _totalItems = result['count']; // Pastikan total data diperbarui
         });
       }
     } catch (e) {
       print("Error fetching users: $e");
     } finally {
       setState(() {
-        _isLoading = false;
+        _isLoading = false; // Loading selesai
       });
     }
   }
@@ -74,8 +77,15 @@ class _UserWidgetState extends State<UserWidget> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("User Management"),
-        backgroundColor: Colors.blueAccent,
+        title: Text(
+          "User Management",
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
@@ -92,17 +102,15 @@ class _UserWidgetState extends State<UserWidget> {
                       child: PaginatedDataTable(
                         rowsPerPage:
                             _rowsPerPage, // Menampilkan 5 data per halaman
-                        availableRowsPerPage: [
-                          5,
-                          10,
-                          15
-                        ], // Opsi jumlah baris per halaman
-                        onPageChanged: (pageIndex) {
-                          setState(() {
-                            _pageIndex =
-                                pageIndex; // Menyimpan indeks halaman yang dipilih
-                          });
-                          fetchUsers(); // Ambil data berdasarkan halaman yang dipilih
+                        availableRowsPerPage: [1,2,3,4,5,6,7,8,9,10], // Opsi jumlah baris per halaman
+                        onPageChanged: (offset) {
+                          int newPageIndex = (offset / _rowsPerPage).floor();
+                          if (newPageIndex != _pageIndex) { // Cegah pemanggilan fetchUsers() berulang
+                            setState(() {
+                              _pageIndex = newPageIndex;
+                            });
+                            fetchUsers();
+                          } // Ambil data berdasarkan halaman yang dipilih
                         },
                         sortColumnIndex: _sortColumnIndex,
                         sortAscending: _sortAscending,
@@ -126,7 +134,6 @@ class _UserWidgetState extends State<UserWidget> {
                           DataColumn(label: Text('Role')),
                           DataColumn(label: Text('Actions')),
                         ],
-                        header: Text('Total Users: $_totalItems'),
                         source: MyDataSource(
                             users, _totalItems, _pageIndex, _rowsPerPage),
                       ),
@@ -148,15 +155,11 @@ class MyDataSource extends DataTableSource {
 
   @override
   DataRow? getRow(int index) {
-    // Hitung indeks data yang sesuai dengan halaman saat ini
-    final localIndex = index - (pageIndex * rowsPerPage);
-    if (localIndex < 0 || localIndex >= users.length) {
-      return null; // Tidak tampilkan apa-apa jika data belum terload
-    }
-
-    final user = users[localIndex];
+    int realIndex = (pageIndex * rowsPerPage) + index + 1; // Hitung index absolut
+    if (realIndex > totalItems || index >= users.length) return null;
+    final user = users[index];
     return DataRow(cells: [
-      DataCell(Text('${index + 1}')),
+      DataCell(Text('${realIndex}')),
       DataCell(Text(user['name'] ?? '')),
       DataCell(Text(user['email'] ?? '')),
       DataCell(Text(user['divisi']['name'] ?? '')),

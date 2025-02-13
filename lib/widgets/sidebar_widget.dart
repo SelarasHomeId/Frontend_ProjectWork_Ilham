@@ -55,6 +55,7 @@ class _SidebarState extends State<Sidebar> {
                         final user = snapshot.data!;
                         print("R : ${user}");
                         final roleName = user['roleName'];
+                        final divisiName = user['divisiName'];
                         return Container(
                           decoration: BoxDecoration(
                             image: DecorationImage(
@@ -97,7 +98,7 @@ class _SidebarState extends State<Sidebar> {
                                   ),
                                   SizedBox(height: screenHeight * 0.01),
                                   Text(
-                                    roleName,
+                                    roleName + ' - ' + divisiName,
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: screenWidth * 0.045,
@@ -181,16 +182,22 @@ class _SidebarState extends State<Sidebar> {
                                     _isMasterDataExpanded.value = isExpanded;
                                   },
                                   children: [
-                                    if (widget.roleId == 1)
                                       ListTile(
-                                        leading: Icon(Icons.person),
+                                        leading: Icon(Icons.work),
+                                        title: Text('Project'),
+                                        onTap: () {
+                                          widget.onMenuItemSelected('Project', 0);
+                                          Navigator.pop(context);
+                                        },
+                                      ),
+                                      ListTile(
+                                        leading: Icon(Icons.group),
                                         title: Text('User'),
                                         onTap: () {
                                           widget.onMenuItemSelected('User', 0);
                                           Navigator.pop(context);
                                         },
                                       ),
-                                    if (widget.roleId == 1)
                                       ListTile(
                                         leading: Icon(Icons.account_tree),
                                         title: Text('Role'),
@@ -199,13 +206,12 @@ class _SidebarState extends State<Sidebar> {
                                           Navigator.pop(context);
                                         },
                                       ),
-                                    if (widget.roleId == 1)
                                       ListTile(
                                         leading: Icon(Icons.business),
-                                        title: Text('Divisi'),
+                                        title: Text('Division'),
                                         onTap: () {
                                           widget.onMenuItemSelected(
-                                              'Divisi', 0);
+                                              'Division', 0);
                                           Navigator.pop(context);
                                         },
                                       ),

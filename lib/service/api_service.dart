@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:selarashomeid/screens/login_screen.dart';
 import 'package:selarashomeid/utils/constant.dart';
+import 'package:selarashomeid/utils/general.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
@@ -443,7 +444,7 @@ class ApiService {
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? userId,
     Map<String, dynamic>? data,
-    required Map<String, String> params, // Body data untuk Create atau Update
+    Map<String, String>? params, // Body data untuk Create atau Update
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -451,7 +452,7 @@ class ApiService {
     // Tentukan endpoint berdasarkan metode
     String endpoint;
     if (method == 'GET') {
-      endpoint = '/user${userId != null ? "/$userId" : ""}';
+      endpoint = '/user${userId != null ? "/$userId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
     } else if (method == 'POST') {
       endpoint = '/user'; // Endpoint untuk create user
     } else if (method == 'PUT' && userId != null) {

@@ -57,6 +57,7 @@ class General {
     final name = prefs.getString('name') ?? 'User Name';
     final email = prefs.getString('email') ?? 'user@example.com';
     final roleName = prefs.getString('roleName') ?? ' - ';
+    final divisiName = prefs.getString('divisiName') ?? ' - ';
     final initials = name.isNotEmpty
         ? name.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
         : 'U';
@@ -66,6 +67,7 @@ class General {
       'email': email,
       'initials': initials,
       'roleName': roleName,
+      'divisiName':divisiName,
     };
   }
 
@@ -78,5 +80,11 @@ class General {
     int colorInt = int.parse(colorString); // Mengonversi string ke integer
     Color color = Color(colorInt); // Mengubah integer menjadi Color
     return color;
+  }
+
+  static String buildQueryParams(Map<String, String>? params) {
+    if (params == null || params.isEmpty) return '';
+    print('?${Uri(queryParameters: params).query}');
+    return '?${Uri(queryParameters: params).query}';
   }
 }
