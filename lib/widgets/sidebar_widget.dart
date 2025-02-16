@@ -30,6 +30,112 @@ class _SidebarState extends State<Sidebar> {
     super.dispose();
   }
 
+  // Fungsi untuk menampilkan dialog konfirmasi logout
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15.0), // Sudut melengkung
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(0.0), // Padding dialog lebih besar
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Ikon error besar (mirip desain error login)
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.red, // Background merah untuk error
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(15),
+                      topRight: Radius.circular(15),
+                    ),
+                  ),
+                  child: Center(
+                    child: Icon(
+                      Icons.error,
+                      color: Colors.white,
+                      size: 80, // Ukuran ikon besar
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                // Teks konfirmasi logout
+                Text(
+                  'Konfirmasi Logout',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 18.0,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Apakah Anda yakin ingin logout?',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15.0, color: Colors.black54),
+                  ),
+                ),
+                SizedBox(height: 20),
+                // Tombol untuk konfirmasi logout
+                Align(
+                  alignment: Alignment
+                      .bottomRight, // Posisikan tombol di pojok kanan bawah
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                        right: 16,
+                        bottom: 16), // Menambah margin bawah dan kanan
+                    child: Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.end, // Tombol di ujung kanan
+                      children: <Widget>[
+                        TextButton(
+                          child: Text('Ya'),
+                          onPressed: () {
+                            ApiService.authLogout(context); // Logout
+                            Navigator.of(context).pop(); // Tutup dialog
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor:
+                                Colors.red[900], // Warna merah gelap
+                            foregroundColor: Colors.white, // Warna teks putih
+                            shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(8), // Sudut tombol
+                            ),
+                          ),
+                        ),
+                        SizedBox(
+                            width: 10), // Jarak antara tombol "Ya" dan "Tidak"
+                        TextButton(
+                          child: Text(
+                            'Tidak',
+                            style: TextStyle(color: Colors.red[900]),
+                          ),
+                          onPressed: () {
+                            Navigator.of(context).pop(); // Tutup dialog
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
@@ -118,7 +224,8 @@ class _SidebarState extends State<Sidebar> {
                                     size: screenWidth * 0.07,
                                   ),
                                   onPressed: () {
-                                    ApiService.authLogout(context);
+                                    Navigator.pop(context);
+                                    _showLogoutDialog(context);
                                   },
                                 ),
                               ),
@@ -182,39 +289,39 @@ class _SidebarState extends State<Sidebar> {
                                     _isMasterDataExpanded.value = isExpanded;
                                   },
                                   children: [
-                                      ListTile(
-                                        leading: Icon(Icons.work),
-                                        title: Text('Project'),
-                                        onTap: () {
-                                          widget.onMenuItemSelected('Project', 0);
-                                          Navigator.pop(context);
-                                        },
-                                      ),
-                                      ListTile(
-                                        leading: Icon(Icons.group),
-                                        title: Text('User'),
-                                        onTap: () {
-                                          widget.onMenuItemSelected('User', 0);
-                                          Navigator.pop(context);
-                                        },
-                                      ),
-                                      ListTile(
-                                        leading: Icon(Icons.account_tree),
-                                        title: Text('Role'),
-                                        onTap: () {
-                                          widget.onMenuItemSelected('Role', 0);
-                                          Navigator.pop(context);
-                                        },
-                                      ),
-                                      ListTile(
-                                        leading: Icon(Icons.business),
-                                        title: Text('Division'),
-                                        onTap: () {
-                                          widget.onMenuItemSelected(
-                                              'Division', 0);
-                                          Navigator.pop(context);
-                                        },
-                                      ),
+                                    ListTile(
+                                      leading: Icon(Icons.work),
+                                      title: Text('Project'),
+                                      onTap: () {
+                                        widget.onMenuItemSelected('Project', 0);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: Icon(Icons.group),
+                                      title: Text('User'),
+                                      onTap: () {
+                                        widget.onMenuItemSelected('User', 0);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: Icon(Icons.account_tree),
+                                      title: Text('Role'),
+                                      onTap: () {
+                                        widget.onMenuItemSelected('Role', 0);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
+                                    ListTile(
+                                      leading: Icon(Icons.business),
+                                      title: Text('Division'),
+                                      onTap: () {
+                                        widget.onMenuItemSelected(
+                                            'Division', 0);
+                                        Navigator.pop(context);
+                                      },
+                                    ),
                                   ],
                                 );
                               },

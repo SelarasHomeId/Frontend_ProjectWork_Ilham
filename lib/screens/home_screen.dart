@@ -75,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBarWidget(), // AppBar custom
-      backgroundColor: const Color.fromARGB(255, 229, 229, 229),
+      backgroundColor: const Color.fromARGB(255, 248, 248, 248),
       drawer: Drawer(
         child: Sidebar(
           menuItems: _menuItems, // Kirim daftar menu

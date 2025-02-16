@@ -166,6 +166,7 @@ class ApiService {
   }
 
   //dashboard
+  //START DASHBOARD......................................................................
   static Future<Map<String, dynamic>?> fetchDashboard(String token) async {
     final response = await apiRequest(
       method: 'GET',
@@ -177,7 +178,21 @@ class ApiService {
     return response;
   }
 
-  // workspace
+  static Future<Map<String, dynamic>?> fetchContacts(
+      String token, int rowsPerPage) async {
+    final response = await apiRequest(
+      method: 'GET',
+      endpoint: '/crm/contact', // Endpoint to get contact data
+      body: null,
+      token: token,
+      contentType: 'application/json',
+    );
+    return response;
+  }
+
+  //END DASHBOARD
+
+  // START WORKSPACE------------------------------
   static Future<List<Map<String, dynamic>>> workspaceFind() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -192,6 +207,7 @@ class ApiService {
 
     return List<Map<String, dynamic>>.from(response?['data']['data']);
   }
+  //END WORKSPACE-----------------------
 
   // Send email forgot password
   static Future<Map<String, dynamic>?> sendForgotPasswordEmail(
@@ -439,6 +455,7 @@ class ApiService {
     }
   }
 
+//START MASTER DATA
   //handle user
   static Future<dynamic> handleUser({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
@@ -452,7 +469,8 @@ class ApiService {
     // Tentukan endpoint berdasarkan metode
     String endpoint;
     if (method == 'GET') {
-      endpoint = '/user${userId != null ? "/$userId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
+      endpoint =
+          '/user${userId != null ? "/$userId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
     } else if (method == 'POST') {
       endpoint = '/user'; // Endpoint untuk create user
     } else if (method == 'PUT' && userId != null) {
@@ -510,6 +528,7 @@ class ApiService {
       };
     }
   }
+  //END MASTER DATA
 
   // ==================================================================================================== //
 }

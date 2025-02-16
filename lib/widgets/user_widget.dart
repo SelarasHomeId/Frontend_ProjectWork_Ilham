@@ -16,11 +16,8 @@ class _UserWidgetState extends State<UserWidget> {
   int _totalItems = 0; // Total data yang ada di server
 
   // Memanggil API untuk mendapatkan data user dengan pagination
-  // Di user_widget.dart
   Future<void> fetchUsers() async {
-    setState(() {
-      _isLoading = true; // Pastikan indikator loading muncul saat fetch data baru
-    });
+    setState(() => _isLoading = true);
 
     try {
       final params = {
@@ -36,15 +33,17 @@ class _UserWidgetState extends State<UserWidget> {
       if (result != null) {
         setState(() {
           users = result['data'];
-          _totalItems = result['count']; // Pastikan total data diperbarui
+          _totalItems = result['count'];
         });
       }
     } catch (e) {
       print("Error fetching users: $e");
+      // Tambahkan SnackBar atau notifikasi error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat data: $e')),
+      );
     } finally {
-      setState(() {
-        _isLoading = false; // Loading selesai
-      });
+      setState(() => _isLoading = false);
     }
   }
 
@@ -100,17 +99,64 @@ class _UserWidgetState extends State<UserWidget> {
                           .size
                           .width, // Menentukan ukuran
                       child: PaginatedDataTable(
-                        rowsPerPage:
-                            _rowsPerPage, // Menampilkan 5 data per halaman
-                        availableRowsPerPage: [1,2,3,4,5,6,7,8,9,10], // Opsi jumlah baris per halaman
-                        onPageChanged: (offset) {
-                          int newPageIndex = (offset / _rowsPerPage).floor();
-                          if (newPageIndex != _pageIndex) { // Cegah pemanggilan fetchUsers() berulang
+                        rowsPerPage: _rowsPerPage,
+                        availableRowsPerPage: [5, 10],
+                        onRowsPerPageChanged: (value) {
+                          if (value != null) {
                             setState(() {
-                              _pageIndex = newPageIndex;
+                              _rowsPerPage = value;
+                              _pageIndex =
+                                  0; // Reset ke halaman pertama saat ganti rowsPerPage
                             });
-                            fetchUsers();
-                          } // Ambil data berdasarkan halaman yang dipilih
+                            fetchUsers(); // Ambil data setelah mengubah rowsPerPage
+                          }
+                        },
+                        onPageChanged: (pageIndex) {
+                          print(
+                              'Page Changed: $pageIndex'); // Print untuk melihat pageIndex yang baru
+
+                          if (pageIndex < 0) return; // Cegah nilai negatif
+
+                          final offset = pageIndex * _rowsPerPage;
+                          print(
+                              'Calculated Offset: $offset'); // Print untuk melihat offset yang dihitung
+
+                          final maxPageIndex =
+                              (_totalItems / _rowsPerPage).ceil() - 1;
+                          print(
+                              'Max Page Index: $maxPageIndex'); // Print untuk melihat maxPageIndex
+
+                          // Cegah melebihi halaman terakhir
+                          if (pageIndex > maxPageIndex) {
+                            print(
+                                'Page index exceeds max page index, setting to maxPageIndex: $maxPageIndex');
+
+                            setState(() {
+                              _pageIndex =
+                                  maxPageIndex; // Kembali ke halaman terakhir yang valid
+                            });
+
+                            fetchUsers(); // Ambil data untuk halaman baru
+                            return;
+                          }
+
+                          // Pastikan offset tidak melebihi totalItems
+                          if (offset >= _totalItems) {
+                            print(
+                                'Offset exceeds total items, setting pageIndex to last valid page');
+                            setState(() {
+                              _pageIndex =
+                                  maxPageIndex; // Kembali ke halaman terakhir yang valid jika offset melebihi total items
+                            });
+                          } else {
+                            setState(() {
+                              _pageIndex =
+                                  pageIndex; // Set pageIndex ke pageIndex yang baru
+                            });
+                          }
+
+                          fetchUsers(); // Ambil data untuk halaman baru
+                          print('Fetching users for page index: $_pageIndex');
                         },
                         sortColumnIndex: _sortColumnIndex,
                         sortAscending: _sortAscending,
@@ -155,11 +201,13 @@ class MyDataSource extends DataTableSource {
 
   @override
   DataRow? getRow(int index) {
-    int realIndex = (pageIndex * rowsPerPage) + index + 1; // Hitung index absolut
-    if (realIndex > totalItems || index >= users.length) return null;
+    final globalRowIndex = pageIndex * rowsPerPage + index;
+    if (globalRowIndex >= totalItems) {
+      return null;
+    }
     final user = users[index];
     return DataRow(cells: [
-      DataCell(Text('${realIndex}')),
+      DataCell(Text('${globalRowIndex + 1}')),
       DataCell(Text(user['name'] ?? '')),
       DataCell(Text(user['email'] ?? '')),
       DataCell(Text(user['divisi']['name'] ?? '')),
@@ -182,7 +230,7 @@ class MyDataSource extends DataTableSource {
   }
 
   @override
-  int get rowCount => totalItems; // Gunakan total data dari API
+  int get rowCount => totalItems;
 
   @override
   bool get isRowCountApproximate => false;

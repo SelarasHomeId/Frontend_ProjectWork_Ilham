@@ -42,37 +42,61 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       child: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(0.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Selamat Datang,',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.black,
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(0.0),
+              decoration: BoxDecoration(
+                color: Colors.white, // Warna putih
+                border: Border.all(color: Colors.grey.shade200),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black
+                        .withOpacity(0.2), // Warna shadow dengan transparansi
+                    blurRadius: 8, // Efek blur untuk shadow
+                    spreadRadius: 2, // Lebar shadow
+                    offset: Offset(2, 4), // Posisi shadow (x, y)
+                  ),
+                ],
+              ),
+              child: Padding(
+                padding: EdgeInsets.only(left: 16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Selamat Datang,',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
+                    Text(
+                      _userName,
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.normal,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            Text(
-              _userName,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.normal,
-                color: Colors.black,
-              ),
-            ),
-            SizedBox(height: 10.0),
+            SizedBox(height: 2.0),
 
             // Social Media Engagement Box
             if (_chartData != null) ...[
               Container(
                 padding: EdgeInsets.all(12),
-                margin: EdgeInsets.symmetric(vertical: 10),
+                margin: EdgeInsets.symmetric(vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white, // Warna putih
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.blue.shade200),
+                  border: Border.all(color: Colors.grey.shade200),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black
@@ -91,8 +115,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                       style:
                           TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 10),
-                    SizedBox(height: 20),
+                    SizedBox(
+                        height: 10), // Jarak antar elemen di dalam kontainer
                     PieChart(
                       dataMap: {
                         'Instagram': _chartData!['count_instagram'].toDouble(),
@@ -136,16 +160,16 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                   ],
                 ),
               ),
-              SizedBox(height: 30),
+              // Celah antar elemen
+              SizedBox(height: 2),
 
               // Affiliate and Contact Box
               Container(
                 padding: EdgeInsets.all(12),
-                margin: EdgeInsets.symmetric(vertical: 10),
+                margin: EdgeInsets.symmetric(vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.white, // Warna putih
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.green.shade200),
+                  border: Border.all(color: Colors.grey.shade200),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black
@@ -206,6 +230,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
             ] else ...[
               Center(child: CircularProgressIndicator()),
             ],
+            SizedBox(),
           ],
         ),
       ),

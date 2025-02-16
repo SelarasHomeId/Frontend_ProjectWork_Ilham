@@ -3,6 +3,7 @@ import 'package:selarashomeid/screens/home_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+// import 'package:awesome_dialog/awesome_dialog.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -68,6 +69,7 @@ class _LoginScreenState extends State<LoginScreen> {
             'roleName': roleName,
             'divisiName': divisiName,
           });
+          _showSuccessDialog();
           _navigateToDashboard(roleId, token);
         } else {
           _showErrorDialog(
@@ -100,70 +102,86 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isDialogLoading = false;
       });
+
+      // Menampilkan dialog
       showDialog(
         context: context,
-        builder: (context) {
-          return AlertDialog(
-            backgroundColor: Colors.white,
+        builder: (BuildContext context) {
+          return Dialog(
             shape: RoundedRectangleBorder(
-              borderRadius:
-                  BorderRadius.circular(12), // Mengurangi kelengkungan radius
+              borderRadius: BorderRadius.circular(16),
             ),
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.start,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                // Container untuk background merah dan ikon
                 Container(
-                  padding: EdgeInsets.all(12),
+                  width:
+                      double.infinity, // Agar container memenuhi lebar dialog
+                  padding: EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Colors.red,
+                    color: Colors.red, // Background merah
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
                   ),
-                  child: Icon(
-                    Icons.error,
-                    color: Colors.white,
-                    size: 30,
+                  child: Center(
+                    child: AnimatedScale(
+                      duration: Duration(seconds: 1),
+                      scale: 1.2, // Memberikan efek animasi pada ikon
+                      child: Icon(
+                        Icons.error,
+                        color: Colors.white,
+                        size: 80, // Ukuran ikon yang besar
+                      ),
+                    ),
                   ),
                 ),
-                SizedBox(width: 10),
+                SizedBox(height: 20),
+                // Judul dan pesan
                 Text(
                   'Login Error',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 22,
                     fontWeight: FontWeight.bold,
+                    color: Colors.black,
                   ),
                 ),
-              ],
-            ),
-            content: Text(
-              message,
-              style: TextStyle(
-                fontSize: 17,
-              ),
-            ),
-            actions: [
-              Center(
-                // Memusatkan tombol OK
-                child: TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
+                SizedBox(height: 10),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                // Tombol OK
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.red[900], // Latar belakang merah
-                    padding: EdgeInsets.symmetric(
-                        horizontal: 15, vertical: 10), // Memperbesar tombol
+                    backgroundColor: Colors.red[900],
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(8), // Sudut tombol lebih bulat
+                      borderRadius: BorderRadius.circular(8),
                     ),
                   ),
                   child: Text(
                     'OK',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.white,
-                    ),
+                    style: TextStyle(color: Colors.white),
                   ),
                 ),
-              ),
-            ],
+                SizedBox(height: 20),
+              ],
+            ),
           );
         },
       );
@@ -179,13 +197,97 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() {
         _isDialogLoading = false;
       });
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => HomeScreen(
-                  roleId: 1,
-                  token: '',
-                )),
+
+      // Menampilkan dialog sukses
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Container untuk background hijau dan ikon check
+                Container(
+                  width:
+                      double.infinity, // Agar container memenuhi lebar dialog
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.green, // Background hijau untuk sukses
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Center(
+                    child: AnimatedScale(
+                      duration: Duration(seconds: 1),
+                      scale: 1.2, // Memberikan animasi pada ikon
+                      child: Icon(
+                        Icons.check_circle,
+                        color: Colors.white,
+                        size: 80, // Ukuran ikon yang besar
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Login Sukses',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    "You have successfully logged in!",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                // Tombol OK
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Menutup dialog
+                    // Setelah dialog sukses, navigasi ke Home Screen
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HomeScreen(
+                          roleId: 1,
+                          token: '', // Gantilah dengan token yang sesuai
+                        ),
+                      ),
+                    );
+                  },
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.green[900],
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'OK',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                SizedBox(height: 20),
+              ],
+            ),
+          );
+        },
       );
     });
   }
