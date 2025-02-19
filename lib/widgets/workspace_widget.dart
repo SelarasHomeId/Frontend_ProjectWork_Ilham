@@ -194,17 +194,48 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Tambahkan Board'),
-          content: TextField(
-            controller: _controller,
-            decoration: InputDecoration(hintText: 'Masukkan nama board'),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Tambahkan Board',
+            style: TextStyle(
+              fontSize: MediaQuery.of(context).size.width * 0.05,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: 'Masukkan nama board',
+                  border: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey[400]!),
+                  ),
+                  contentPadding:
+                      EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('Batal'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey[700],
+              ),
+              child: Text(
+                'Batal',
+                style: TextStyle(
+                    fontSize: MediaQuery.of(context).size.width * 0.04),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -214,7 +245,19 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                   Navigator.of(context).pop();
                 }
               },
-              child: Text('Tambah'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF4C6A92),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Tambah',
+                style: TextStyle(
+                    fontSize: MediaQuery.of(context).size.width * 0.04,
+                    color: Colors.white),
+              ),
             ),
           ],
         );
@@ -229,17 +272,48 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Tambahkan Task'),
-          content: TextField(
-            controller: _controller,
-            decoration: InputDecoration(hintText: 'Masukkan nama Task'),
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Text(
+            'Tambahkan Task',
+            style: TextStyle(
+              fontSize: MediaQuery.of(context).size.width * 0.05,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _controller,
+                decoration: InputDecoration(
+                  hintText: 'Masukkan nama Task',
+                  border: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.grey[400]!),
+                  ),
+                  contentPadding:
+                      EdgeInsets.symmetric(vertical: 12, horizontal: 0),
+                ),
+              ),
+              SizedBox(height: 16),
+            ],
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('Batal'),
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.grey[700],
+              ),
+              child: Text(
+                'Batal',
+                style: TextStyle(
+                    fontSize: MediaQuery.of(context).size.width * 0.04),
+              ),
             ),
             ElevatedButton(
               onPressed: () {
@@ -249,7 +323,19 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                   Navigator.of(context).pop();
                 }
               },
-              child: Text('Tambah'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xFF4C6A92),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Tambah',
+                style: TextStyle(
+                    fontSize: MediaQuery.of(context).size.width * 0.04,
+                    color: Colors.white),
+              ),
             ),
           ],
         );
@@ -275,14 +361,30 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           actions: [
-            OutlinedButton(
-              onPressed: () {
-                _showCreateBoardDialog();
-              },
-              child: Text(
-                "Tambah Board",
+            Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: OutlinedButton(
+                onPressed: () {
+                  _showCreateBoardDialog();
+                },
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Color(0xFF4C6A92),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: MediaQuery.of(context).size.width * 0.04,
+                    vertical: MediaQuery.of(context).size.height * 0.01,
+                  ),
+                ),
+                child: Text(
+                  "+ add Board",
+                  style: TextStyle(
+                      fontSize: MediaQuery.of(context).size.width * 0.04),
+                ),
               ),
-            )
+            ),
           ],
         ),
         body: _isLoading
