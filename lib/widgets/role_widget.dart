@@ -13,11 +13,10 @@ class _RoleWidgetState extends State<RoleWidget> {
   // Memanggil API untuk mendapatkan data role
   Future<void> fetchRoles() async {
     try {
-      final result = await ApiService
-          .getRoles(); // Memanggil fungsi getRoles() dari ApiService
+      final result = await ApiService.getRoles();
       if (result != null) {
         setState(() {
-          roles = result['data']; // Menyimpan data ke dalam list 'roles'
+          roles = result['data'];
           _isLoading = false;
         });
       }
@@ -32,7 +31,7 @@ class _RoleWidgetState extends State<RoleWidget> {
   @override
   void initState() {
     super.initState();
-    fetchRoles(); // Ambil data roles saat widget pertama kali dibangun
+    fetchRoles();
   }
 
   @override
@@ -50,17 +49,14 @@ class _RoleWidgetState extends State<RoleWidget> {
         elevation: 0,
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator()) // Loading indicator
+          ? Center(child: CircularProgressIndicator())
           : roles.isEmpty
-              ? Center(
-                  child: Text(
-                      'Tidak ada roles untuk ditampilkan')) // Jika tidak ada role
+              ? Center(child: Text('Tidak ada roles untuk ditampilkan'))
               : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: SingleChildScrollView(
                     child: Column(
                       children: [
-                        // Tabel dengan style yang lebih bagus
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -75,25 +71,34 @@ class _RoleWidgetState extends State<RoleWidget> {
                           ),
                           child: Table(
                             border: TableBorder.symmetric(
-                              inside:
-                                  BorderSide(color: Colors.grey, width: 0.5),
+                              inside: BorderSide(color: Colors.grey, width: 0.5),
                               outside: BorderSide.none,
                             ),
                             columnWidths: const <int, TableColumnWidth>{
-                              0: FlexColumnWidth(2), // Nama role
-                              1: FlexColumnWidth(3), // Deskripsi
+                              0: FixedColumnWidth(50), // No
+                              1: FlexColumnWidth(2), // Role Name
+                              2: FlexColumnWidth(3), // Deskripsi
                             },
-                            defaultVerticalAlignment:
-                                TableCellVerticalAlignment.middle,
+                            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
                             children: [
                               TableRow(
                                 decoration: BoxDecoration(
-                                  color: Colors
-                                      .blueAccent, // Background header yang lebih modern
-                                  borderRadius: BorderRadius.vertical(
-                                      top: Radius.circular(12)),
+                                  color: Colors.blueAccent,
+                                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
                                 ),
                                 children: [
+                                  Padding(
+                                    padding: const EdgeInsets.all(12.0),
+                                    child: Text(
+                                      'No.',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
                                   Padding(
                                     padding: const EdgeInsets.all(12.0),
                                     child: Text(
@@ -118,14 +123,23 @@ class _RoleWidgetState extends State<RoleWidget> {
                                   ),
                                 ],
                               ),
-                              // Tampilkan data role
-                              ...roles.map(
-                                (role) {
+                              // Tampilkan data role dengan nomor
+                              ...roles.asMap().entries.map(
+                                (entry) {
+                                  int index = entry.key;
+                                  var role = entry.value;
                                   return TableRow(
                                     children: [
                                       Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12.0, vertical: 8.0),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
+                                        child: Text(
+                                          "${index + 1}",
+                                          style: TextStyle(fontSize: 14),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
                                         child: Text(
                                           role['name'],
                                           style: TextStyle(fontSize: 14),
@@ -147,8 +161,6 @@ class _RoleWidgetState extends State<RoleWidget> {
                           ),
                         ),
                         SizedBox(height: 20),
-                        // Tambahkan jika perlu informasi tambahan
-                        // Padding, tombol, atau lainnya sesuai kebutuhan
                       ],
                     ),
                   ),

@@ -159,7 +159,6 @@ class _SidebarState extends State<Sidebar> {
                         return Center(child: Text('Error loading profile'));
                       } else if (snapshot.hasData) {
                         final user = snapshot.data!;
-                        print("R : ${user}");
                         final roleName = user['roleName'];
                         final divisiName = user['divisiName'];
                         return Container(

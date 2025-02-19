@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
 
-class UserWidget extends StatefulWidget {
+class DivisionWidget extends StatefulWidget {
   @override
-  _UserWidgetState createState() => _UserWidgetState();
+  _DivisionWidgetState createState() => _DivisionWidgetState();
 }
 
-class _UserWidgetState extends State<UserWidget> {
-  List<dynamic> users = [];
+class _DivisionWidgetState extends State<DivisionWidget> {
+  List<dynamic> divisions = [];
   bool _isLoading = true;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
@@ -15,11 +15,11 @@ class _UserWidgetState extends State<UserWidget> {
   int _pageIndex = 0;
   int _totalItems = 0;
 
-  Future<void> fetchUsers() async {
+  Future<void> fetchDivisions() async {
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.handleUser(
+      final result = await ApiService.handleDivision(
         method: 'GET',
       );
 
@@ -29,13 +29,13 @@ class _UserWidgetState extends State<UserWidget> {
           'offset': _pageIndex.toString(),
         };
 
-        final resultUser = await ApiService.handleUser(
+        final resultDivision = await ApiService.handleDivision(
           method: 'GET',
           params: params,
         );  
         setState(() {
-          users = resultUser['data'];
-          _totalItems = resultUser['count'];
+          divisions = resultDivision['data'];
+          _totalItems = resultDivision['count'];
         });
       }
     } catch (e) {
@@ -50,13 +50,13 @@ class _UserWidgetState extends State<UserWidget> {
   @override
   void initState() {
     super.initState();
-    fetchUsers(); // Ambil data users saat widget pertama kali dibangun
+    fetchDivisions(); // Ambil data divisions saat widget pertama kali dibangun
   }
 
   // Fungsi untuk mengurutkan data
   void _sort<T>(Comparable<T> Function(dynamic d) getField, int columnIndex,
       bool ascending) {
-    users.sort((a, b) {
+    divisions.sort((a, b) {
       if (!ascending) {
         final temp = a;
         a = b;
@@ -77,7 +77,7 @@ class _UserWidgetState extends State<UserWidget> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "User Management",
+          "Division Management",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -88,8 +88,8 @@ class _UserWidgetState extends State<UserWidget> {
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : users.isEmpty
-              ? Center(child: Text('Tidak ada pengguna untuk ditampilkan'))
+          : divisions.isEmpty
+              ? Center(child: Text('Tidak ada divisi untuk ditampilkan'))
               : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: SingleChildScrollView(
@@ -105,28 +105,17 @@ class _UserWidgetState extends State<UserWidget> {
                         columns: [
                           DataColumn(label: Text('No')),
                           DataColumn(
-                            label: Text('Name'),
+                            label: Text('Division Name'),
                             onSort: (columnIndex, ascending) {
-                              _sort<String>((user) => user['name'], columnIndex,
+                              _sort<String>((division) => division['name'], columnIndex,
                                   ascending);
                             },
                           ),
-                          DataColumn(
-                            label: Text('Email'),
-                            onSort: (columnIndex, ascending) {
-                              _sort<String>((user) => user['email'],
-                                  columnIndex, ascending);
-                            },
-                          ),
-                          DataColumn(label: Text('Role')),
-                          DataColumn(label: Text('Divisi')),
-                          DataColumn(label: Text('Login From')),
-                          DataColumn(label: Text('Locked Status')),
                           DataColumn(label: Text('Date Created')),
                           DataColumn(label: Text('Actions')),
                         ],
                         source: MyDataSource(
-                            users, _totalItems, _pageIndex, _rowsPerPage),
+                            divisions, _totalItems, _pageIndex, _rowsPerPage),
                       ),
                     ),
                   ),
@@ -136,12 +125,12 @@ class _UserWidgetState extends State<UserWidget> {
 }
 
 class MyDataSource extends DataTableSource {
-  final List<dynamic> users;
+  final List<dynamic> divisions;
   final int totalItems;
   final int pageIndex;
   final int rowsPerPage;
 
-  MyDataSource(this.users, this.totalItems, this.pageIndex, this.rowsPerPage);
+  MyDataSource(this.divisions, this.totalItems, this.pageIndex, this.rowsPerPage);
 
   @override
   DataRow? getRow(int index) {
@@ -149,16 +138,11 @@ class MyDataSource extends DataTableSource {
     if (globalRowIndex >= totalItems) {
       return null;
     }
-    final user = users[index];
+    final division = divisions[index];
     return DataRow(cells: [
       DataCell(Text('${globalRowIndex + 1}')),
-      DataCell(Text(user['name'] ?? '')),
-      DataCell(Text(user['email'] ?? '')),
-      DataCell(Text(user['role']['name'] ?? '')),
-      DataCell(Text(user['divisi']['name'] ?? '')),
-      DataCell(Text(user['login_from'] == '' ? '-' : user['login_from'])),
-      DataCell(Text(user['is_locked'] ? 'Locked' : 'Unlocked')),
-      DataCell(Text((user['created_at'] ?? '').replaceAll('T', ' ').replaceAll('Z', ''))),
+      DataCell(Text(division['name'] ?? '')),
+      DataCell(Text((division['created_at'] ?? '').replaceAll('T', ' ').replaceAll('Z', ''))),
       DataCell(
         Row(
           children: [

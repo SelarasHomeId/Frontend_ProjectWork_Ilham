@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-class UserWidget extends StatefulWidget {
+class ProjectWidget extends StatefulWidget {
   @override
-  _UserWidgetState createState() => _UserWidgetState();
+  _ProjectWidgetState createState() => _ProjectWidgetState();
 }
 
-class _UserWidgetState extends State<UserWidget> {
-  List<dynamic> users = [];
+class _ProjectWidgetState extends State<ProjectWidget> {
+  List<dynamic> projects = [];
   bool _isLoading = true;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
@@ -15,11 +16,11 @@ class _UserWidgetState extends State<UserWidget> {
   int _pageIndex = 0;
   int _totalItems = 0;
 
-  Future<void> fetchUsers() async {
+  Future<void> fetchProjects() async {
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.handleUser(
+      final result = await ApiService.handleProject(
         method: 'GET',
       );
 
@@ -29,13 +30,13 @@ class _UserWidgetState extends State<UserWidget> {
           'offset': _pageIndex.toString(),
         };
 
-        final resultUser = await ApiService.handleUser(
+        final resultProject = await ApiService.handleProject(
           method: 'GET',
           params: params,
         );  
         setState(() {
-          users = resultUser['data'];
-          _totalItems = resultUser['count'];
+          projects = resultProject['data'];
+          _totalItems = resultProject['count'];
         });
       }
     } catch (e) {
@@ -50,13 +51,13 @@ class _UserWidgetState extends State<UserWidget> {
   @override
   void initState() {
     super.initState();
-    fetchUsers(); // Ambil data users saat widget pertama kali dibangun
+    fetchProjects(); // Ambil data projects saat widget pertama kali dibangun
   }
 
   // Fungsi untuk mengurutkan data
   void _sort<T>(Comparable<T> Function(dynamic d) getField, int columnIndex,
       bool ascending) {
-    users.sort((a, b) {
+    projects.sort((a, b) {
       if (!ascending) {
         final temp = a;
         a = b;
@@ -77,7 +78,7 @@ class _UserWidgetState extends State<UserWidget> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          "User Management",
+          "Project Management",
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
@@ -88,8 +89,8 @@ class _UserWidgetState extends State<UserWidget> {
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
-          : users.isEmpty
-              ? Center(child: Text('Tidak ada pengguna untuk ditampilkan'))
+          : projects.isEmpty
+              ? Center(child: Text('Tidak ada proyek untuk ditampilkan'))
               : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: SingleChildScrollView(
@@ -105,28 +106,18 @@ class _UserWidgetState extends State<UserWidget> {
                         columns: [
                           DataColumn(label: Text('No')),
                           DataColumn(
-                            label: Text('Name'),
+                            label: Text('Project Name'),
                             onSort: (columnIndex, ascending) {
-                              _sort<String>((user) => user['name'], columnIndex,
+                              _sort<String>((project) => project['name'], columnIndex,
                                   ascending);
                             },
                           ),
-                          DataColumn(
-                            label: Text('Email'),
-                            onSort: (columnIndex, ascending) {
-                              _sort<String>((user) => user['email'],
-                                  columnIndex, ascending);
-                            },
-                          ),
-                          DataColumn(label: Text('Role')),
-                          DataColumn(label: Text('Divisi')),
-                          DataColumn(label: Text('Login From')),
-                          DataColumn(label: Text('Locked Status')),
+                          DataColumn(label: Text('Location')),
                           DataColumn(label: Text('Date Created')),
                           DataColumn(label: Text('Actions')),
                         ],
                         source: MyDataSource(
-                            users, _totalItems, _pageIndex, _rowsPerPage),
+                            projects, _totalItems, _pageIndex, _rowsPerPage, context),
                       ),
                     ),
                   ),
@@ -136,29 +127,50 @@ class _UserWidgetState extends State<UserWidget> {
 }
 
 class MyDataSource extends DataTableSource {
-  final List<dynamic> users;
+  final List<dynamic> projects;
   final int totalItems;
   final int pageIndex;
   final int rowsPerPage;
+  final BuildContext context;
 
-  MyDataSource(this.users, this.totalItems, this.pageIndex, this.rowsPerPage);
+  MyDataSource(this.projects, this.totalItems, this.pageIndex, this.rowsPerPage, this.context);
 
   @override
   DataRow? getRow(int index) {
     final globalRowIndex = pageIndex * rowsPerPage + index;
-    if (globalRowIndex >= totalItems) {
+    
+    // Cegah akses di luar batas list
+    if (index >= projects.length) {
       return null;
     }
-    final user = users[index];
+
+    final project = projects[index];
     return DataRow(cells: [
       DataCell(Text('${globalRowIndex + 1}')),
-      DataCell(Text(user['name'] ?? '')),
-      DataCell(Text(user['email'] ?? '')),
-      DataCell(Text(user['role']['name'] ?? '')),
-      DataCell(Text(user['divisi']['name'] ?? '')),
-      DataCell(Text(user['login_from'] == '' ? '-' : user['login_from'])),
-      DataCell(Text(user['is_locked'] ? 'Locked' : 'Unlocked')),
-      DataCell(Text((user['created_at'] ?? '').replaceAll('T', ' ').replaceAll('Z', ''))),
+      DataCell(Text(project['name'] ?? '')),
+      DataCell(
+        IconButton(
+          icon: Icon(Icons.location_on, color: Colors.blue),
+          onPressed: () async {
+            final String? url = project['location'];
+            if (url != null && url.isNotEmpty) {
+              final Uri uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Tidak dapat membuka link: $url')),
+                );
+              }
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('URL tidak tersedia')),
+              );
+            }
+          },
+        ),
+      ),
+      DataCell(Text((project['created_at'] ?? '').replaceAll('T', ' ').replaceAll('Z', ''))),
       DataCell(
         Row(
           children: [
@@ -175,6 +187,7 @@ class MyDataSource extends DataTableSource {
       ),
     ]);
   }
+
 
   @override
   int get rowCount => totalItems;

@@ -84,7 +84,6 @@ class General {
 
   static String buildQueryParams(Map<String, String>? params) {
     if (params == null || params.isEmpty) return '';
-    print('?${Uri(queryParameters: params).query}');
     return '?${Uri(queryParameters: params).query}';
   }
 }
