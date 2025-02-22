@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selarashomeid/widgets/add_user_widget.dart';
 import 'package:selarashomeid/widgets/division_widget.dart';
 import 'package:selarashomeid/widgets/project_widget.dart';
 import 'package:selarashomeid/widgets/role_widget.dart';
@@ -70,6 +71,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _currentWidget = ProjectWidget();
       } else if (menuName == 'Division') {
         _currentWidget = DivisionWidget();
+      } else if (menuName == 'Add User') {
+        _currentWidget = AddUserWidget();
       } else {
         _currentWidget =
             WorkspaceWidget(workspace: menuName, workspaceId: menuId);
