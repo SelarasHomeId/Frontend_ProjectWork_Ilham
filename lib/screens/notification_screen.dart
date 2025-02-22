@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selarashomeid/screens/detail_task_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,22 +30,96 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final token = prefs.getString('token') ?? '';
 
     // Panggil ApiService untuk mendapatkan notifikasi
-    final response = await ApiService.getNotifications(token);
+    final response = await ApiService.getNotifications(token, selectedFilter);
 
     if (response != null && response['success'] == true) {
-      final List<dynamic> dataList = response['data']['data'];
+      final dynamic data = response['data'];
+      if (data == null || data['data'] == null || data['data'] is! List) {
+        setState(() {
+          notifications = [];
+          isLoading = false;
+        });
 
-      setState(() {
-        notifications =
-            dataList.map((item) => NotificationItem.fromJson(item)).toList();
-        isLoading = false;
-      });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ga ada notifikasi buat kamu hari ini')),
+        );
+        return;
+      }
+
+      final List<dynamic> dataList = data['data'];
+
+      if (dataList.isEmpty) {
+        setState(() {
+          notifications = [];
+          isLoading = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ga ada notifikasi buat kamu hari ini')),
+        );
+      } else {
+        setState(() {
+          notifications =
+              dataList.map((item) => NotificationItem.fromJson(item)).toList();
+          isLoading = false;
+        });
+      }
     } else {
       setState(() {
         isLoading = false;
       });
-      // Show error message if needed
-      print('Failed to load notifications');
+      String message = response?['data']['message'];
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to get notifications, cause:$message')),
+      );
+    }
+  }
+
+  Future<void> setNotificationAsRead(int id, int taskId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    // Panggil ApiService untuk mendapatkan notifikasi
+    final response = await ApiService.setNotificationsAsRead(token, id);
+
+    if (response != null && response['success'] == true) {
+      fetchNotifications();
+      final taskDetail = await ApiService.handleDetailTask(taskId);
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => DetailTaskScreen(
+            boardId: taskDetail["board_id"],
+            taskId: taskDetail["id"],
+          ),
+        ),
+      );
+    } else {
+      String message = response?['data']['message'];
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+                Text('Failed to set notification as read, cause:$message')),
+      );
+    }
+  }
+
+  Future<void> setNotificationAsAllRead(int id) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    // Panggil ApiService untuk mendapatkan notifikasi
+    final response = await ApiService.setNotificationsAsRead(token, id);
+
+    if (response != null && response['success'] == true) {
+      fetchNotifications();
+    } else {
+      String message = response?['data']['message'];
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content:
+                Text('Failed to set notification as read, cause:$message')),
+      );
     }
   }
 
@@ -65,8 +140,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
           IconButton(
             icon: Icon(Icons.done_all),
             onPressed: () {
-              // Mark all as read logic (to be implemented later)
-              print("Mark all as read");
+              notifications.forEach((item) {
+                setNotificationAsAllRead(item.id);
+              });
             },
           ),
         ],
@@ -90,6 +166,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                   onChanged: (value) {
                     setState(() {
                       selectedFilter = value!;
+                      fetchNotifications();
                     });
                   },
                 ),
@@ -138,8 +215,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
                                     ? Colors.green
                                     : Colors.red,
                               ),
-                              onTap: () {
-                                // Handle notification tap (mark as read, navigate, etc.)
+                              onTap: () async {
+                                setNotificationAsRead(
+                                    notification.id, notification.task_id);
                               },
                             );
                           },
@@ -153,12 +231,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
 }
 
 class NotificationItem {
+  final int id;
+  final int task_id;
   final String title;
   final String message;
   final String createdAt;
   final bool isRead;
 
   NotificationItem({
+    required this.id,
+    required this.task_id,
     required this.title,
     required this.message,
     required this.createdAt,
@@ -167,6 +249,8 @@ class NotificationItem {
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
     return NotificationItem(
+      id: json['id'],
+      task_id: json['task_id'],
       title: json['title'],
       message: json['message'],
       createdAt: json['created_at'],

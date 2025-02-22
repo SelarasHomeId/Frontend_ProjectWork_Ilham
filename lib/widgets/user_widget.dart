@@ -49,6 +49,86 @@ class _UserWidgetState extends State<UserWidget> {
     }
   }
 
+  void _deleteUser(int userId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Konfirmasi"),
+          content: Text("Apakah Anda yakin ingin menghapus user ini?"),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text("Batal"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text("Hapus"),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm != null && confirm) {
+      try {
+        // Menghapus user dengan mengirimkan permintaan DELETE
+        final response = await ApiService.handleUser(
+          method: 'DELETE',
+          userId: userId,
+        );
+
+        // Debugging: Print the entire response
+        print("Response from DELETE request: $response");
+
+        // Periksa apakah response berhasil
+        if (response != null) {
+          // Cek struktur response lebih detail
+          print("Response code: ${response['code']}");
+          print("Response success: ${response['success']}");
+          print("Response message: ${response['message']}");
+
+          if (response['code'] == 200 && response['success']) {
+            // Tampilkan notifikasi jika penghapusan berhasil
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('User berhasil dihapus!')),
+            );
+
+            // Menghapus user dari list tanpa memanggil fetchUsers
+            setState(() {
+              users.removeWhere((user) => user['id'] == userId);
+              _totalItems--;
+            });
+          } else {
+            // Jika gagal, tampilkan pesan dari response
+            print(
+                "Gagal menghapus user: ${response['message'] ?? 'No message'}");
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                  content: Text(
+                      'Gagal menghapus user: ${response['message'] ?? 'Tidak diketahui'}')),
+            );
+          }
+        } else {
+          print("Response is null");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal menghapus user: Response null')),
+          );
+        }
+      } catch (e) {
+        // Menangani error jika request DELETE gagal
+        print("Error during DELETE request: $e");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menghapus user: $e')),
+        );
+      } finally {
+        setState(() {
+          _isLoading = false; // Menyembunyikan loading setelah selesai
+        });
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -94,8 +174,10 @@ class _UserWidgetState extends State<UserWidget> {
     });
   }
 
-  void _navigateToUpdateUser() {
-    Navigator.of(context).push(_createRoute(UpdateUserWidget()));
+  void _navigateToUpdateUser(int userId) {
+    Navigator.of(context).push(_createRoute(UpdateUserWidget(
+      userId: userId,
+    )));
   }
 
   @override
@@ -191,6 +273,7 @@ class _UserWidgetState extends State<UserWidget> {
                           _rowsPerPage,
                           context,
                           _navigateToUpdateUser,
+                          _deleteUser,
                         ),
                       ),
                     ),
@@ -207,6 +290,7 @@ class MyDataSource extends DataTableSource {
   final int rowsPerPage;
   final BuildContext context;
   final Function onEditPressed;
+  final Function onDeletePressed;
 
   MyDataSource(
     this.users,
@@ -215,6 +299,7 @@ class MyDataSource extends DataTableSource {
     this.rowsPerPage,
     this.context,
     this.onEditPressed,
+    this.onDeletePressed,
   );
 
   @override
@@ -240,12 +325,19 @@ class MyDataSource extends DataTableSource {
             IconButton(
               icon: Icon(Icons.edit),
               onPressed: () {
-                onEditPressed();
+                int userId = user['id']; // Ambil userId dari data user
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => UpdateUserWidget(userId: userId),
+                  ),
+                );
               },
             ),
             IconButton(
               icon: Icon(Icons.delete),
-              onPressed: () {},
+              onPressed: () {
+                onDeletePressed(user['id']);
+              },
             ),
           ],
         ),

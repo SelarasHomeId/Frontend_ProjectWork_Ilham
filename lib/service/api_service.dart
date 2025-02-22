@@ -223,17 +223,41 @@ class ApiService {
     return response;
   }
 
+//START NOTIFICATION
   // Fungsi untuk mendapatkan notifikasi
-  static Future<Map<String, dynamic>?> getNotifications(String token) async {
+  static Future<Map<String, dynamic>?> getNotifications(
+      String token, String filter) async {
+    String dateFilter = General.getDateFilter(filter);
+
+    // Buat endpoint dengan filter created_at
+    String endpoint = '/notifikasi?order=created_at&order_by=desc';
+    if (dateFilter.isNotEmpty) {
+      endpoint += '&created_at=$dateFilter';
+    }
+
     final response = await apiRequest(
       method: 'GET',
-      endpoint: '/notifikasi?order=created_at&order_by=desc',
+      endpoint: endpoint,
+      body: null,
+      token: token,
+      contentType: 'application/json',
+    );
+
+    return response;
+  }
+
+  static Future<Map<String, dynamic>?> setNotificationsAsRead(
+      String token, int id) async {
+    final response = await apiRequest(
+      method: 'PUT',
+      endpoint: '/notifikasi/set-read/$id',
       body: null,
       token: token,
       contentType: 'application/json',
     );
     return response;
   }
+//END NOTIFICATION
 
   static Future<dynamic> handleBoard({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
@@ -283,7 +307,8 @@ class ApiService {
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     required int boardId, // Tidak boleh null dan wajib diisi
     int? taskId,
-    Map<String, dynamic>? data, // Body data untuk Create atau Update
+    Map<String, dynamic>? data,
+    String? search,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -292,6 +317,9 @@ class ApiService {
     String endpoint;
     if (method == 'GET') {
       endpoint = '/task/$boardId?order=sort_number&order_by=asc';
+      if (search != null && search.isNotEmpty) {
+        endpoint = '/task?search=$search';
+      }
     } else if (method == 'POST') {
       endpoint = '/task'; // Endpoint untuk create board
     } else if (method == 'PUT' && taskId != null) {
@@ -489,6 +517,8 @@ class ApiService {
       token: token,
       contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
     );
+    print("Raw Response: ${response?.toString()}");
+    print("Response from API: $response");
     try {
       final encodeValue = json.encode(response);
       log(encodeValue, name: endpoint);
@@ -496,13 +526,38 @@ class ApiService {
 
     // Validasi response
     if (method == 'GET') {
-      final currentData = response?['data']['data'] ?? [];
-      final count = response?['data']['count'] ?? 0;
-      return {
-        'data': List<Map<String, dynamic>>.from(currentData),
-        'count': count,
-      };
+      if (userId != null) {
+        // Handle GET untuk satu user berdasarkan ID
+        final userData =
+            response?['data']['data'] ?? {}; // Ambil data user (object/map)
+        return {
+          'data': userData, // Kembalikan sebagai map, bukan list
+          'count': 1,
+        };
+      } else {
+        // Handle GET untuk semua user (list)
+        final currentData = response?['data']['data'] ?? [];
+        final count = response?['data']['count'] ?? 0;
+        return {
+          'data': List<Map<String, dynamic>>.from(
+              currentData), // Kembalikan sebagai list
+          'count': count,
+        };
+      }
+    } else if (method == 'DELETE' || method == 'POST' || method == 'PUT') {
+      // Untuk operasi selain GET (POST, PUT, DELETE), hanya periksa success dan code
+      if (response != null &&
+          response['success'] == true &&
+          response['code'] == 200) {
+        return response; // Kembalikan response jika sukses
+      } else {
+        print(
+            'Operasi gagal: ${response?['message']}'); // Debugging pesan error
+        throw Exception(
+            'Operasi $method gagal pada endpoint $endpoint: ${response?['message']}');
+      }
     } else {
+      // Jika tidak ada response yang valid
       throw Exception('Operasi $method gagal pada endpoint $endpoint');
     }
   }
