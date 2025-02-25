@@ -24,7 +24,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   Future<Map<String, dynamic>> _checkUserLoginStatus() async {
-    await Future.delayed(Duration(seconds: 3)); // Delay 3 detik
+    await Future.delayed(Duration(seconds: 3));
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     final roleId = prefs.getInt('roleId') ?? 0;

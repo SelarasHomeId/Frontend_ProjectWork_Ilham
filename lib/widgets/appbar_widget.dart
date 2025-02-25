@@ -44,9 +44,15 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
         ),
       ),
       actions: [
-        IconButton(
-          icon: Icon(Icons.search),
-          color: Colors.white,
+        TextButton(
+          child: Text(
+            'Search Task',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           onPressed: () {
             Navigator.of(context).push(_createRoute(SearchScreen()));
           },

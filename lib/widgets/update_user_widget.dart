@@ -15,6 +15,7 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
   final TextEditingController emailController = TextEditingController();
   int? selectedRole;
   int? selectedDivision;
+  bool? isLocked;
 
   // List untuk menyimpan data role dan divisi
   List<Map<String, dynamic>> roles = [];
@@ -46,6 +47,7 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
           emailController.text = user['email'] ?? '';
           selectedRole = user['role']['id'];
           selectedDivision = user['divisi']['id'];
+          isLocked = user['is_locked'];
           _isLoading = false;
         });
       } else {
@@ -114,8 +116,9 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
       final data = {
         'name': nameController.text,
         'email': emailController.text,
-        'role_id': selectedRole.toString(), // Kirim ID role
+        'role_id': selectedRole.toString(),
         'divisi_id': selectedDivision.toString(),
+        'is_locked': isLocked.toString(),
       };
 
       print("Data yang dikirim ke API: $data");
@@ -152,70 +155,283 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
 
   @override
   Widget build(BuildContext context) {
+    double screenHeight = MediaQuery.of(context).size.height;
+    double screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Update Data User"),
+      appBar: PreferredSize(
+        preferredSize: Size.fromHeight(screenHeight * 0.09),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.red[900],
+            borderRadius: BorderRadius.only(
+              bottomLeft: Radius.circular(15),
+              bottomRight: Radius.circular(15),
+            ),
+          ),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Text(
+              "Update Data User",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: screenWidth * 0.07,
+                  fontWeight: FontWeight.w500),
+            ),
+          ),
+        ),
       ),
       body: _isLoading
-          ? Center(child: CircularProgressIndicator()) // Menampilkan loading
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  TextField(
-                    controller: nameController,
-                    decoration: InputDecoration(labelText: 'Nama'),
-                  ),
-                  TextField(
-                    controller: emailController,
-                    decoration: InputDecoration(labelText: 'Email'),
-                  ),
-                  // Dropdown untuk Role
-                  roles.isEmpty
-                      ? CircularProgressIndicator()
-                      : DropdownButton<int>(
-                          value: selectedRole,
-                          hint: Text('Pilih Role'),
-                          onChanged: (int? newValue) {
-                            setState(() {
-                              selectedRole = newValue;
-                            });
-                          },
-                          items: roles.map((role) {
-                            return DropdownMenuItem<int>(
-                              value: role['id'],
-                              child: Text(role['name']),
-                            );
-                          }).toList(),
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Text(
+                        "Nama",
+                        style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.01),
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        hintText: "Nama Lengkap",
+                        hintStyle:
+                            TextStyle(color: Colors.black.withOpacity(0.5)),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
                         ),
-                  SizedBox(height: 16),
-                  // Dropdown untuk Divisi
-                  divisions.isEmpty
-                      ? CircularProgressIndicator() // Menampilkan loading jika data divisi belum ada
-                      : DropdownButton<int>(
-                          value: selectedDivision,
-                          hint: Text('Pilih Divisi'),
-                          onChanged: (int? newValue) {
-                            setState(() {
-                              selectedDivision =
-                                  newValue; // Mengubah nilai divisi yang dipilih
-                            });
-                          },
-                          items: divisions.map((division) {
-                            return DropdownMenuItem<int>(
-                              value: division['id'], // ID divisi sebagai value
-                              child: Text(division[
-                                  'name']), // Nama divisi sebagai tampilan
-                            );
-                          }).toList(),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.02),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Text(
+                        "Email",
+                        style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.01),
+                    TextField(
+                      controller: emailController,
+                      decoration: InputDecoration(
+                        hintText: "Masukkan Email",
+                        hintStyle:
+                            TextStyle(color: Colors.black.withOpacity(0.5)),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
                         ),
-                  SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _updateUser,
-                    child: Text("Update User"),
-                  ),
-                ],
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.02),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Text(
+                                  "Role",
+                                  style: TextStyle(
+                                      fontSize: screenWidth * 0.04,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.01),
+                              FutureBuilder(
+                                future: ApiService.getRoles(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return CircularProgressIndicator();
+                                  } else if (snapshot.hasError) {
+                                    return Text('Gagal memuat data role');
+                                  } else {
+                                    roles = List<Map<String, dynamic>>.from(
+                                        snapshot.data?['data'] ?? []);
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(25),
+                                        border: Border.all(color: Colors.grey),
+                                        color: Colors.grey[100],
+                                      ),
+                                      child: DropdownButton<int>(
+                                        value: selectedRole,
+                                        hint: Align(
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            'Pilih Role',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.normal),
+                                          ),
+                                        ),
+                                        onChanged: (int? newValue) {
+                                          setState(() {
+                                            selectedRole = newValue;
+                                          });
+                                        },
+                                        isExpanded: true,
+                                        underline: SizedBox(),
+                                        items: roles.map((role) {
+                                          return DropdownMenuItem<int>(
+                                            value: role['id'],
+                                            child: Text(role['name'],
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.normal)),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: screenWidth * 0.04),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Text(
+                                  "Divisi",
+                                  style: TextStyle(
+                                      fontSize: screenWidth * 0.04,
+                                      fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.01),
+                              FutureBuilder(
+                                future:
+                                    ApiService.handleDivision(method: 'GET'),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return CircularProgressIndicator();
+                                  } else if (snapshot.hasError) {
+                                    return Text('Gagal memuat data divisi');
+                                  } else {
+                                    divisions = List<Map<String, dynamic>>.from(
+                                        snapshot.data?['data'] ?? []);
+                                    return Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(25),
+                                        border: Border.all(color: Colors.grey),
+                                        color: Colors.grey[100],
+                                      ),
+                                      child: DropdownButton<int>(
+                                        value: selectedDivision,
+                                        hint: Align(
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            'Pilih Divisi',
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.normal),
+                                          ),
+                                        ),
+                                        onChanged: (int? newValue) {
+                                          setState(() {
+                                            selectedDivision = newValue;
+                                          });
+                                        },
+                                        isExpanded: true,
+                                        underline: SizedBox(),
+                                        items: divisions.map((division) {
+                                          return DropdownMenuItem<int>(
+                                            value: division['id'],
+                                            child: Text(division['name']),
+                                          );
+                                        }).toList(),
+                                      ),
+                                    );
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: screenHeight * 0.02),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Text(
+                        "Status",
+                        style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.01),
+                    Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(color: Colors.grey),
+                        color: Colors.grey[100],
+                      ),
+                      child: DropdownButton<bool>(
+                        value: isLocked,
+                        onChanged: (bool? newValue) {
+                          setState(() {
+                            isLocked = newValue;
+                          });
+                        },
+                        isExpanded: true,
+                        underline: SizedBox(),
+                        items: [
+                          DropdownMenuItem<bool>(
+                            value: false,
+                            child: Text("Unlocked"),
+                          ),
+                          DropdownMenuItem<bool>(
+                            value: true,
+                            child: Text(
+                              "Locked",
+                              style: TextStyle(fontWeight: FontWeight.normal),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.02),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _updateUser,
+                        child: Text("Update User",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: screenWidth * 0.05)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF7EA0B7),
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(25),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
     );

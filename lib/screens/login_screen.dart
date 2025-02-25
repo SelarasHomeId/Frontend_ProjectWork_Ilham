@@ -72,8 +72,19 @@ class _LoginScreenState extends State<LoginScreen> {
           _showSuccessDialog();
           _navigateToDashboard(roleId, token);
         } else {
-          _showErrorDialog(
-              response?['message'] ?? 'Username atau password salah');
+          // Handle khusus untuk akun terkunci
+          if (response != null && response['data'] != null) {
+            if (response['data']['error'] == 'unauthorized' &&
+                response['data']['message'] == 'this account is locked') {
+              _showAccountLockedDialog(); // Tampilkan dialog jika akun terkunci
+            } else {
+              _showErrorDialog(
+                  response['message'] ?? 'Username atau password salah');
+            }
+          } else {
+            _showErrorDialog(response?['message'] ??
+                'Terjadi kesalahan yang tidak diketahui');
+          }
         }
       } catch (e) {
         setState(() {
@@ -91,6 +102,95 @@ class _LoginScreenState extends State<LoginScreen> {
         builder: (context) => HomeScreen(roleId: roleId, token: token),
       ),
     );
+  }
+
+  void _showAccountLockedDialog() {
+    setState(() {
+      _isDialogLoading = true;
+    });
+
+    Future.delayed(Duration(seconds: 1), () {
+      setState(() {
+        _isDialogLoading = false;
+      });
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return Dialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: Colors.orange, // Warna orange untuk peringatan
+                    shape: BoxShape.rectangle,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(16),
+                      topRight: Radius.circular(16),
+                    ),
+                  ),
+                  child: Center(
+                    child: AnimatedScale(
+                      duration: Duration(seconds: 1),
+                      scale: 1.2,
+                      child: Text(
+                        '😞', // Emoji sedih
+                        style: TextStyle(fontSize: 80),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                Text(
+                  'Akun Terkunci',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                SizedBox(height: 10),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    'Akun anda terkunci, anda tidak bisa melakukan Login. Silahkan hubungi admin',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ),
+                SizedBox(height: 20),
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                  style: TextButton.styleFrom(
+                    backgroundColor: Colors.orange[800],
+                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(
+                    'OK',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+                SizedBox(height: 20),
+              ],
+            ),
+          );
+        },
+      );
+    });
   }
 
   void _showErrorDialog(String message) {

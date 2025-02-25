@@ -132,7 +132,7 @@ class ApiService {
 
   // ==================================================================================================== //
 
-  // auth
+  // START AUTH================================================================
   static Future<Map<String, dynamic>?> authLogin(
       String email, String password) async {
     final response = await apiRequest(
@@ -158,15 +158,19 @@ class ApiService {
 
     if (response != null && response['success'] == true) {
       await prefs.clear();
-      Navigator.pushAndRemoveUntil(
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => LoginScreen()),
-          (route) => false);
+          (route) => false,
+        );
+      }
     }
   }
+  //END AUTH ================================================================
 
+  //START DASHBOARD================================================================
   //dashboard
-  //START DASHBOARD......................................................................
   static Future<Map<String, dynamic>?> fetchDashboard(String token) async {
     final response = await apiRequest(
       method: 'GET',
@@ -190,9 +194,9 @@ class ApiService {
     return response;
   }
 
-  //END DASHBOARD
+  //END DASHBOARD================================================================
 
-  // START WORKSPACE------------------------------
+  // START WORKSPACE================================================================
   static Future<List<Map<String, dynamic>>> workspaceFind() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -207,7 +211,7 @@ class ApiService {
 
     return List<Map<String, dynamic>>.from(response?['data']['data']);
   }
-  //END WORKSPACE-----------------------
+  //END WORKSPACE================================================================
 
   // Send email forgot password
   static Future<Map<String, dynamic>?> sendForgotPasswordEmail(
@@ -223,7 +227,7 @@ class ApiService {
     return response;
   }
 
-//START NOTIFICATION
+//START NOTIFICATION================================================================
   // Fungsi untuk mendapatkan notifikasi
   static Future<Map<String, dynamic>?> getNotifications(
       String token, String filter) async {
@@ -257,8 +261,9 @@ class ApiService {
     );
     return response;
   }
-//END NOTIFICATION
+//END NOTIFICATION================================================================
 
+//START BOARD================================================================
   static Future<dynamic> handleBoard({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     required int workspaceId, // Tidak boleh null dan wajib diisi
@@ -302,7 +307,9 @@ class ApiService {
       throw Exception('Operasi $method gagal pada endpoint $endpoint');
     }
   }
+//END BOARD================================================================
 
+//START TASK================================================================
   static Future<dynamic> handleTask({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     required int boardId, // Tidak boleh null dan wajib diisi
@@ -482,8 +489,9 @@ class ApiService {
       throw Exception('Operasi GET gagal pada endpoint $endpoint');
     }
   }
+  //END TASK================================================================
 
-  //START MASTER DATA
+  //START MASTER DATA================================================================
   //handle user
   static Future<dynamic> handleUser({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
@@ -528,10 +536,9 @@ class ApiService {
     if (method == 'GET') {
       if (userId != null) {
         // Handle GET untuk satu user berdasarkan ID
-        final userData =
-            response?['data']['data'] ?? {}; // Ambil data user (object/map)
+        final userData = response?['data']['data'] ?? {};
         return {
-          'data': userData, // Kembalikan sebagai map, bukan list
+          'data': userData,
           'count': 1,
         };
       } else {
@@ -539,8 +546,161 @@ class ApiService {
         final currentData = response?['data']['data'] ?? [];
         final count = response?['data']['count'] ?? 0;
         return {
-          'data': List<Map<String, dynamic>>.from(
-              currentData), // Kembalikan sebagai list
+          'data': List<Map<String, dynamic>>.from(currentData),
+          'count': count,
+        };
+      }
+    } else if (method == 'DELETE' || method == 'POST' || method == 'PUT') {
+      // Untuk operasi selain GET (POST, PUT, DELETE), hanya periksa success dan code
+      if (response != null &&
+          response['success'] == true &&
+          response['code'] == 200) {
+        return response; // Kembalikan response jika sukses
+      } else {
+        print(
+            'Operasi gagal: ${response?['message']}'); // Debugging pesan error
+        throw Exception(
+            'Operasi $method gagal pada endpoint $endpoint: ${response?['message']}');
+      }
+    } else {
+      // Jika tidak ada response yang valid
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
+  //handle project
+  static Future<dynamic> handleProject({
+    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
+    int? projectId,
+    Map<String, dynamic>? data,
+    Map<String, String>? params, // Body data untuk Create atau Update
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint =
+          '/project${projectId != null ? "/$projectId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
+    } else if (method == 'POST') {
+      endpoint = '/project'; // Endpoint untuk create project
+    } else if (method == 'PUT' && projectId != null) {
+      endpoint = '/project/$projectId'; // Endpoint untuk update project
+    } else if (method == 'DELETE' && projectId != null) {
+      endpoint = '/project/$projectId'; // Endpoint untuk delete project
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: data,
+      token: token,
+      contentType: method == 'PUT' || method == 'POST'
+          ? 'multipart/form-data'
+          : 'application/json',
+    );
+    print("Raw Response: ${response?.toString()}");
+    print("Response from API: $response");
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (method == 'GET') {
+      if (projectId != null) {
+        // Handle GET untuk satu project berdasarkan ID
+        final projectData = response?['data']['data'] ?? {};
+        return {
+          'data': projectData,
+          'count': 1,
+        };
+      } else {
+        // Handle GET untuk semua project (list)
+        final currentData = response?['data']['data'] ?? [];
+        final count = response?['data']['count'] ?? 0;
+        return {
+          'data': List<Map<String, dynamic>>.from(currentData),
+          'count': count,
+        };
+      }
+    } else if (method == 'DELETE' || method == 'POST' || method == 'PUT') {
+      // Untuk operasi selain GET (POST, PUT, DELETE), hanya periksa success dan code
+      if (response != null &&
+          response['success'] == true &&
+          response['code'] == 200) {
+        return response; // Kembalikan response jika sukses
+      } else {
+        print(
+            'Operasi gagal: ${response?['message']}'); // Debugging pesan error
+        throw Exception(
+            'Operasi $method gagal pada endpoint $endpoint: ${response?['message']}');
+      }
+    } else {
+      // Jika tidak ada response yang valid
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
+  //handle division
+  static Future<dynamic> handleDivision({
+    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
+    int? divisiId,
+    Map<String, dynamic>? data,
+    Map<String, String>? params, // Body data untuk Create atau Update
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint =
+          '/divisi${divisiId != null ? "/$divisiId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
+    } else if (method == 'POST') {
+      endpoint = '/divisi'; // Endpoint untuk create divisi
+    } else if (method == 'PUT' && divisiId != null) {
+      endpoint = '/divisi/$divisiId'; // Endpoint untuk update divisi
+    } else if (method == 'DELETE' && divisiId != null) {
+      endpoint = '/divisi/$divisiId'; // Endpoint untuk delete divisi
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: data,
+      token: token,
+      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
+    );
+    print("Raw Response: ${response?.toString()}");
+    print("Response from API: $response");
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (method == 'GET') {
+      if (divisiId != null) {
+        // Handle GET untuk satu divisi berdasarkan ID
+        final divisionData = response?['data']['data'] ?? {};
+        return {
+          'data': divisionData,
+          'count': 1,
+        };
+      } else {
+        // Handle GET untuk semua divisi (list)
+        final currentData = response?['data']['data'] ?? [];
+        final count = response?['data']['count'] ?? 0;
+        return {
+          'data': List<Map<String, dynamic>>.from(currentData),
           'count': count,
         };
       }
@@ -581,108 +741,6 @@ class ApiService {
         'message': 'Failed to fetch data role',
         'data': null,
       };
-    }
-  }
-
-  //handle project
-  static Future<dynamic> handleProject({
-    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
-    int? projectId,
-    Map<String, dynamic>? data,
-    Map<String, String>? params, // Body data untuk Create atau Update
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token'); // Ambil token dari local storage
-
-    // Tentukan endpoint berdasarkan metode
-    String endpoint;
-    if (method == 'GET') {
-      endpoint =
-          '/project${projectId != null ? "/$projectId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
-    } else if (method == 'POST') {
-      endpoint = '/project'; // Endpoint untuk create project
-    } else if (method == 'PUT' && projectId != null) {
-      endpoint = '/project/$projectId'; // Endpoint untuk update project
-    } else if (method == 'DELETE' && projectId != null) {
-      endpoint = '/project/$projectId'; // Endpoint untuk delete project
-    } else {
-      throw Exception('Parameter tidak lengkap untuk operasi $method');
-    }
-
-    // Panggil API sesuai metode
-    final response = await apiRequest(
-      method: method,
-      endpoint: endpoint,
-      body: data,
-      token: token,
-      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
-    );
-    try {
-      final encodeValue = json.encode(response);
-      log(encodeValue, name: endpoint);
-    } catch (e) {}
-
-    // Validasi response
-    if (method == 'GET') {
-      final currentData = response?['data']['data'] ?? [];
-      final count = response?['data']['count'] ?? 0;
-      return {
-        'data': List<Map<String, dynamic>>.from(currentData),
-        'count': count,
-      };
-    } else {
-      throw Exception('Operasi $method gagal pada endpoint $endpoint');
-    }
-  }
-
-  //handle division
-  static Future<dynamic> handleDivision({
-    required String method, // 'GET', 'POST', 'PUT', 'DELETE'
-    int? divisiId,
-    Map<String, dynamic>? data,
-    Map<String, String>? params, // Body data untuk Create atau Update
-  }) async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token'); // Ambil token dari local storage
-
-    // Tentukan endpoint berdasarkan metode
-    String endpoint;
-    if (method == 'GET') {
-      endpoint =
-          '/divisi${divisiId != null ? "/$divisiId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
-    } else if (method == 'POST') {
-      endpoint = '/divisi'; // Endpoint untuk create divisi
-    } else if (method == 'PUT' && divisiId != null) {
-      endpoint = '/divisi/$divisiId'; // Endpoint untuk update divisi
-    } else if (method == 'DELETE' && divisiId != null) {
-      endpoint = '/divisi/$divisiId'; // Endpoint untuk delete divisi
-    } else {
-      throw Exception('Parameter tidak lengkap untuk operasi $method');
-    }
-
-    // Panggil API sesuai metode
-    final response = await apiRequest(
-      method: method,
-      endpoint: endpoint,
-      body: data,
-      token: token,
-      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
-    );
-    try {
-      final encodeValue = json.encode(response);
-      log(encodeValue, name: endpoint);
-    } catch (e) {}
-
-    // Validasi response
-    if (method == 'GET') {
-      final currentData = response?['data']['data'] ?? [];
-      final count = response?['data']['count'] ?? 0;
-      return {
-        'data': List<Map<String, dynamic>>.from(currentData),
-        'count': count,
-      };
-    } else {
-      throw Exception('Operasi $method gagal pada endpoint $endpoint');
     }
   }
   //END MASTER DATA

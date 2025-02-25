@@ -98,20 +98,19 @@ class _SidebarState extends State<Sidebar> {
                           MainAxisAlignment.end, // Tombol di ujung kanan
                       children: <Widget>[
                         TextButton(
-                          child: Text('Ya'),
-                          onPressed: () {
-                            ApiService.authLogout(context); // Logout
-                            Navigator.of(context).pop(); // Tutup dialog
-                          },
                           style: TextButton.styleFrom(
-                            backgroundColor:
-                                Colors.red[900], // Warna merah gelap
-                            foregroundColor: Colors.white, // Warna teks putih
+                            backgroundColor: Colors.red[900],
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                              borderRadius:
-                                  BorderRadius.circular(8), // Sudut tombol
+                              borderRadius: BorderRadius.circular(8),
                             ),
                           ),
+                          onPressed: () async {
+                            Navigator.of(context).pop();
+                            await ApiService.authLogout(
+                                context); // Panggil authLogout setelah pop dialog
+                          },
+                          child: Text('Ya'), // Pindahkan child ke akhir
                         ),
                         SizedBox(
                             width: 10), // Jarak antara tombol "Ya" dan "Tidak"
