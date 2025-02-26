@@ -16,6 +16,8 @@ class DashboardWidget extends StatefulWidget {
 class _DashboardWidgetState extends State<DashboardWidget> {
   String _userName = '';
   Map<String, dynamic>? _chartData;
+  List<dynamic> _contacts = [];
+  bool _isLoadingContacts = false;
 
   @override
   void initState() {
@@ -38,6 +40,23 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     });
   }
 
+  Future<void> _fetchContacts() async {
+    setState(() => _isLoadingContacts = true);
+    try {
+      final result = await ApiService.fetchContacts(widget.token, 10);
+      if (result != null) {
+        setState(() {
+          _contacts = result['data'] ?? [];
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed to load contacts: $e')));
+    } finally {
+      setState(() => _isLoadingContacts = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
@@ -46,67 +65,41 @@ class _DashboardWidgetState extends State<DashboardWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Kontainer Selamat Datang
             Container(
               width: double.infinity,
-              padding: EdgeInsets.all(0.0),
-              decoration: BoxDecoration(
-                color: Colors.white, // Warna putih
-                border: Border.all(color: Colors.grey.shade200),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black
-                        .withOpacity(0.2), // Warna shadow dengan transparansi
-                    blurRadius: 8, // Efek blur untuk shadow
-                    spreadRadius: 2, // Lebar shadow
-                    offset: Offset(2, 4), // Posisi shadow (x, y)
+              padding: EdgeInsets.all(16.0),
+              decoration: _containerDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Selamat Datang,',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Text(
+                    _userName,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.normal,
+                      color: Colors.black,
+                    ),
                   ),
                 ],
               ),
-              child: Padding(
-                padding: EdgeInsets.only(left: 16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Selamat Datang,',
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                    Text(
-                      _userName,
-                      style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.normal,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
-            SizedBox(height: 2.0),
+            SizedBox(height: 10.0),
 
             // Social Media Engagement Box
             if (_chartData != null) ...[
               Container(
                 padding: EdgeInsets.all(12),
                 margin: EdgeInsets.symmetric(vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white, // Warna putih
-                  border: Border.all(color: Colors.grey.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black
-                          .withOpacity(0.2), // Warna shadow dengan transparansi
-                      blurRadius: 8, // Efek blur untuk shadow
-                      spreadRadius: 2, // Lebar shadow
-                      offset: Offset(2, 4), // Posisi shadow (x, y)
-                    ),
-                  ],
-                ),
+                decoration: _containerDecoration(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -115,8 +108,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                       style:
                           TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(
-                        height: 10), // Jarak antar elemen di dalam kontainer
+                    SizedBox(height: 10),
                     PieChart(
                       dataMap: {
                         'Instagram': _chartData!['count_instagram'].toDouble(),
@@ -150,9 +142,9 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                         showChartValues: true,
                         showChartValuesInPercentage: false,
                         showChartValuesOutside: false,
-                        decimalPlaces: 0, // Menghilangkan titik desimal
+                        decimalPlaces: 0,
                         chartValueStyle: TextStyle(
-                          fontSize: 18, // Memperbesar font angka
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -160,26 +152,12 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                   ],
                 ),
               ),
-              // Celah antar elemen
-              SizedBox(height: 2),
 
               // Affiliate and Contact Box
               Container(
                 padding: EdgeInsets.all(12),
                 margin: EdgeInsets.symmetric(vertical: 5),
-                decoration: BoxDecoration(
-                  color: Colors.white, // Warna putih
-                  border: Border.all(color: Colors.grey.shade200),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black
-                          .withOpacity(0.2), // Warna shadow dengan transparansi
-                      blurRadius: 8, // Efek blur untuk shadow
-                      spreadRadius: 2, // Lebar shadow
-                      offset: Offset(2, 4), // Posisi shadow (x, y)
-                    ),
-                  ],
-                ),
+                decoration: _containerDecoration(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -188,7 +166,6 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                       style:
                           TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                     ),
-                    SizedBox(height: 10),
                     SizedBox(height: 10),
                     PieChart(
                       dataMap: {
@@ -202,7 +179,6 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                       initialAngleInDegree: 0,
                       chartType: ChartType.disc,
                       ringStrokeWidth: 40,
-                      // centerText: "Affiliate & Contact",
                       legendOptions: LegendOptions(
                         showLegendsInRow: false,
                         legendPosition: LegendPosition.right,
@@ -217,9 +193,9 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                         showChartValues: true,
                         showChartValuesInPercentage: false,
                         showChartValuesOutside: false,
-                        decimalPlaces: 0, // Menghilangkan titik desimal
+                        decimalPlaces: 0,
                         chartValueStyle: TextStyle(
-                          fontSize: 18, // Memperbesar font angka
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -230,10 +206,115 @@ class _DashboardWidgetState extends State<DashboardWidget> {
             ] else ...[
               Center(child: CircularProgressIndicator()),
             ],
-            SizedBox(),
+            SizedBox(height: 10.0),
+
+            // Kontainer Tambahan untuk Search & Table
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16.0),
+              decoration: _containerDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Messaging',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Cari...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                  SizedBox(height: 10.0),
+                  Container(
+                    height: 200.0,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8.0),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'Tabel Kosong',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            SizedBox(height: 15.0),
+
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(16.0),
+              decoration: _containerDecoration(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Affiliate Request',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  TextField(
+                    decoration: InputDecoration(
+                      labelText: 'Cari...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8.0),
+                      ),
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                  SizedBox(height: 10.0),
+                  Container(
+                    padding: EdgeInsets.all(16.0),
+                    decoration: _containerDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 10.0),
+                        Container(
+                          height: 200.0,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade300),
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Tabel Kosong',
+                              style: TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  BoxDecoration _containerDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      border: Border.all(color: Colors.grey.shade200),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.2),
+          blurRadius: 8,
+          spreadRadius: 2,
+          offset: Offset(2, 4),
+        ),
+      ],
+      borderRadius: BorderRadius.circular(8.0),
     );
   }
 

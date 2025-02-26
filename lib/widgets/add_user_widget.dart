@@ -212,11 +212,16 @@ class _AddUserWidgetState extends State<AddUserWidget> {
                                 child: DropdownButton<int>(
                                   value: selectedRole,
                                   hint: Align(
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      'Pilih Role',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.normal),
+                                    alignment: Alignment.centerLeft,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                          left:
+                                              16.0), // Memberikan sedikit jarak dari kiri
+                                      child: Text(
+                                        'Pilih Role',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.normal),
+                                      ),
                                     ),
                                   ),
                                   onChanged: (int? newValue) {
@@ -229,9 +234,16 @@ class _AddUserWidgetState extends State<AddUserWidget> {
                                   items: roles.map((role) {
                                     return DropdownMenuItem<int>(
                                       value: role['id'],
-                                      child: Text(role['name'],
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                            left:
+                                                16.0), // Memberikan sedikit jarak dari kiri
+                                        child: Text(
+                                          role['name'],
                                           style: TextStyle(
-                                              fontWeight: FontWeight.normal)),
+                                              fontWeight: FontWeight.normal),
+                                        ),
+                                      ),
                                     );
                                   }).toList(),
                                 ),
@@ -277,11 +289,16 @@ class _AddUserWidgetState extends State<AddUserWidget> {
                                 child: DropdownButton<int>(
                                   value: selectedDivision,
                                   hint: Align(
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      'Pilih Divisi',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.normal),
+                                    alignment: Alignment.centerLeft,
+                                    child: Padding(
+                                      padding: EdgeInsets.only(
+                                          left:
+                                              16.0), // Memberikan sedikit jarak dari kiri
+                                      child: Text(
+                                        'Pilih Divisi',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.normal),
+                                      ),
                                     ),
                                   ),
                                   onChanged: (int? newValue) {
@@ -294,7 +311,16 @@ class _AddUserWidgetState extends State<AddUserWidget> {
                                   items: divisions.map((division) {
                                     return DropdownMenuItem<int>(
                                       value: division['id'],
-                                      child: Text(division['name']),
+                                      child: Padding(
+                                        padding: EdgeInsets.only(
+                                            left:
+                                                16.0), // Memberikan sedikit jarak dari kiri
+                                        child: Text(
+                                          division['name'],
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.normal),
+                                        ),
+                                      ),
                                     );
                                   }).toList(),
                                 ),

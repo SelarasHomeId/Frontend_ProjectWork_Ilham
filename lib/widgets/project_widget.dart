@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/widgets/add_project_widget.dart';
+import 'package:selarashomeid/widgets/update_project_widget.dart';
 import 'package:url_launcher/url_launcher.dart';
-//import 'package:selarashomeid/widgets/update_project_widget.dart';
 
 class ProjectWidget extends StatefulWidget {
   @override
@@ -51,6 +51,131 @@ class _ProjectWidgetState extends State<ProjectWidget>
           .showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
     } finally {
       setState(() => _isLoading = false);
+    }
+  }
+
+  void _deleteProject(int projectId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red, // Mengubah warna menjadi merah
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.delete, // Menambahkan ikon tong sampah
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Hapus Pengguna',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Apakah Anda yakin ingin menghapus user ini?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                          Colors.grey[600], // Warna abu-abu untuk Cancel
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                          Colors.red[800], // Warna merah untuk Delete
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Hapus',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirm != null && confirm) {
+      try {
+        final response = await ApiService.handleProject(
+            method: 'DELETE', projectId: projectId);
+
+        if (response != null &&
+            response['code'] == 200 &&
+            response['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('User deleted successfully!')));
+          setState(() {
+            projects.removeWhere((user) => user['id'] == projectId);
+            _totalItems--;
+          });
+        } else {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Failed to delete user')));
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error deleting user: $e')));
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -155,29 +280,54 @@ class _ProjectWidgetState extends State<ProjectWidget>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          "Project Management",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
+        title: Row(
+          children: [
+            Icon(Icons.add_business, size: 30), // Icon pengguna
+            SizedBox(width: 8), // Jarak antara ikon dan teks
+            Text(
+              "Project Management",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17),
+            ),
+          ],
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // Search button
-          IconButton(
-            icon: Icon(Icons.search),
-            onPressed:
-                _toggleSearchVisibility, // Toggle visibility of search TextField
-          ),
-          // Add project button with "+" icon only
           Padding(
             padding: EdgeInsets.only(right: 16),
-            child: IconButton(
-              icon: Icon(Icons.add), // "+" icon
-              onPressed: () {
-                Navigator.of(context).push(
-                  _createRoute(AddProjectWidget()),
-                ); // Go to add project screen
-              },
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor:
+                  Color(0xFFC0BCB5), // Set the background color of the circle
+              child: IconButton(
+                icon: Icon(Icons.search),
+                color: Colors.white, // Set the icon color
+                onPressed:
+                    _toggleSearchVisibility, // Toggle visibility of search TextField
+                padding:
+                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
+                iconSize: 28, // Adjust the size of the icon
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: CircleAvatar(
+              radius: 20, // Set the size of the CircleAvatar
+              backgroundColor:
+                  Color(0xFF4A6C6F), // Set the background color of the circle
+              child: IconButton(
+                icon: Icon(Icons.add),
+                color: Colors.white, // Set the icon color
+                onPressed: () {
+                  Navigator.of(context).push(
+                    _createRoute(AddProjectWidget()),
+                  );
+                },
+                padding:
+                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
+                iconSize: 28, // Adjust the size of the icon
+              ),
             ),
           ),
         ],
@@ -267,6 +417,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
                                     _pageIndex,
                                     _rowsPerPage,
                                     context,
+                                    _deleteProject,
                                   ),
                                 ),
                               ),
@@ -287,9 +438,10 @@ class MyDataSource extends DataTableSource {
   final int pageIndex;
   final int rowsPerPage;
   final BuildContext context;
+  final Function onDeletePressed;
 
   MyDataSource(this.projects, this.totalItems, this.pageIndex, this.rowsPerPage,
-      this.context);
+      this.context, this.onDeletePressed);
 
   @override
   DataRow? getRow(int index) {
@@ -334,14 +486,30 @@ class MyDataSource extends DataTableSource {
           .replaceAll('Z', ''))),
       DataCell(
         Row(
+          mainAxisSize: MainAxisSize.min, // Supaya hanya sebesar isi
           children: [
             IconButton(
               icon: Icon(Icons.edit),
-              onPressed: () {},
+              onPressed: () {
+                int projectId = project['id'];
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        UpdateProjectWidget(projectId: projectId),
+                  ),
+                );
+              },
+              visualDensity:
+                  VisualDensity.compact, // Memperkecil padding default
             ),
+            SizedBox(width: 4), // Mengurangi jarak antar ikon
             IconButton(
               icon: Icon(Icons.delete),
-              onPressed: () {},
+              onPressed: () {
+                onDeletePressed(project['id']);
+              },
+              visualDensity:
+                  VisualDensity.compact, // Memperkecil padding default
             ),
           ],
         ),

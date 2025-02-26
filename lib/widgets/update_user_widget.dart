@@ -274,11 +274,17 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
                                       child: DropdownButton<int>(
                                         value: selectedRole,
                                         hint: Align(
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            'Pilih Role',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.normal),
+                                          alignment: Alignment.centerLeft,
+                                          child: Padding(
+                                            padding: EdgeInsets.only(
+                                                left:
+                                                    16.0), // Memberikan sedikit jarak dari kiri
+                                            child: Text(
+                                              'Pilih Role',
+                                              style: TextStyle(
+                                                  fontWeight:
+                                                      FontWeight.normal),
+                                            ),
                                           ),
                                         ),
                                         onChanged: (int? newValue) {
@@ -291,10 +297,17 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
                                         items: roles.map((role) {
                                           return DropdownMenuItem<int>(
                                             value: role['id'],
-                                            child: Text(role['name'],
+                                            child: Padding(
+                                              padding: EdgeInsets.only(
+                                                  left:
+                                                      16.0), // Memberikan sedikit jarak dari kiri
+                                              child: Text(
+                                                role['name'],
                                                 style: TextStyle(
                                                     fontWeight:
-                                                        FontWeight.normal)),
+                                                        FontWeight.normal),
+                                              ),
+                                            ),
                                           );
                                         }).toList(),
                                       ),
@@ -341,11 +354,17 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
                                       child: DropdownButton<int>(
                                         value: selectedDivision,
                                         hint: Align(
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            'Pilih Divisi',
-                                            style: TextStyle(
-                                                fontWeight: FontWeight.normal),
+                                          alignment: Alignment.centerLeft,
+                                          child: Padding(
+                                            padding: EdgeInsets.only(
+                                                left:
+                                                    16.0), // Memberikan sedikit jarak dari kiri
+                                            child: Text(
+                                              'Pilih Divisi',
+                                              style: TextStyle(
+                                                  fontWeight:
+                                                      FontWeight.normal),
+                                            ),
                                           ),
                                         ),
                                         onChanged: (int? newValue) {
@@ -358,7 +377,17 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
                                         items: divisions.map((division) {
                                           return DropdownMenuItem<int>(
                                             value: division['id'],
-                                            child: Text(division['name']),
+                                            child: Padding(
+                                              padding: EdgeInsets.only(
+                                                  left:
+                                                      16.0), // Memberikan sedikit jarak dari kiri
+                                              child: Text(
+                                                division['name'],
+                                                style: TextStyle(
+                                                    fontWeight:
+                                                        FontWeight.normal),
+                                              ),
+                                            ),
                                           );
                                         }).toList(),
                                       ),
@@ -400,13 +429,26 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
                         items: [
                           DropdownMenuItem<bool>(
                             value: false,
-                            child: Text("Unlocked"),
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                  left:
+                                      16.0), // Memberikan sedikit jarak dari kiri
+                              child: Text(
+                                'Unlocked',
+                                style: TextStyle(fontWeight: FontWeight.normal),
+                              ),
+                            ),
                           ),
                           DropdownMenuItem<bool>(
                             value: true,
-                            child: Text(
-                              "Locked",
-                              style: TextStyle(fontWeight: FontWeight.normal),
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                  left:
+                                      16.0), // Memberikan sedikit jarak dari kiri
+                              child: Text(
+                                'Locked',
+                                style: TextStyle(fontWeight: FontWeight.normal),
+                              ),
                             ),
                           ),
                         ],

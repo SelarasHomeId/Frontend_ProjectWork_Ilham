@@ -371,7 +371,7 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
                             ),
                           ),
                         )
-                      : Container(), // When search is not visible, show an empty container
+                      : Container(),
                 ),
                 _isLoading
                     ? Center(child: CircularProgressIndicator())
