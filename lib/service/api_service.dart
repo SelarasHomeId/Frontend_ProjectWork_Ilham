@@ -182,16 +182,128 @@ class ApiService {
     return response;
   }
 
-  static Future<Map<String, dynamic>?> fetchContacts(
-      String token, int rowsPerPage) async {
+  static Future<Map<String, dynamic>?> handleContacts({
+    required String token,
+    int? contactId,
+    Map<String, String>?
+        params, // Query Parameters seperti {'page': '1', 'limit': '10'}
+  }) async {
+    // Bangun endpoint dengan optional contactId dan query params
+    String endpoint =
+        '/crm/contact${contactId != null ? "/$contactId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
+
     final response = await apiRequest(
       method: 'GET',
-      endpoint: '/crm/contact', // Endpoint to get contact data
+      endpoint: endpoint,
       body: null,
       token: token,
       contentType: 'application/json',
     );
-    return response;
+
+    if (response == null ||
+        response['success'] != true ||
+        response['code'] != 200) {
+      throw Exception(
+          "Gagal mengambil data kontak. Pesan: ${response?['message']}");
+    }
+
+    // Debugging Response
+    print("Raw Response: ${response.toString()}");
+
+    try {
+      try {
+        final encodeValue = json.encode(response);
+        log(encodeValue, name: endpoint);
+      } catch (e) {}
+
+      // Ambil bagian utama dari data response
+      final responseData = response['data'];
+
+      if (contactId != null) {
+        // Jika mengambil data satu kontak berdasarkan ID
+        final contactData = (responseData['data'] as List).isNotEmpty
+            ? responseData['data'][0]
+            : {};
+        return {
+          'data': contactData,
+          'count': contactData.isNotEmpty ? 1 : 0,
+        };
+      } else {
+        // Jika mengambil semua kontak
+        final List<Map<String, dynamic>> contactsList =
+            List<Map<String, dynamic>>.from(responseData['data']);
+        final int count = responseData['count'] ?? 0;
+
+        return {
+          'data': contactsList,
+          'count': count,
+        };
+      }
+    } catch (e, stacktace) {
+      print("stacktace : $stacktace");
+    }
+  }
+
+  static Future<Map<String, dynamic>?> handleAffiliates({
+    required String token,
+    int? affiliateId,
+    Map<String, String>?
+        params, // Query Parameters seperti {'page': '1', 'limit': '10'}
+  }) async {
+    // Bangun endpoint dengan optional contactId dan query params
+    String endpoint =
+        '/crm/affiliate${affiliateId != null ? "/$affiliateId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
+
+    final response = await apiRequest(
+      method: 'GET',
+      endpoint: endpoint,
+      body: null,
+      token: token,
+      contentType: 'application/json',
+    );
+
+    if (response == null ||
+        response['success'] != true ||
+        response['code'] != 200) {
+      throw Exception(
+          "Gagal mengambil data affiliate. Pesan: ${response?['message']}");
+    }
+
+    // Debugging Response
+    print("Raw Response: ${response.toString()}");
+
+    try {
+      try {
+        final encodeValue = json.encode(response);
+        log(encodeValue, name: endpoint);
+      } catch (e) {}
+
+      // Ambil bagian utama dari data response
+      final responseData = response['data'];
+
+      if (affiliateId != null) {
+        // Jika mengambil data satu kontak berdasarkan ID
+        final contactData = (responseData['data'] as List).isNotEmpty
+            ? responseData['data'][0]
+            : {};
+        return {
+          'data': contactData,
+          'count': contactData.isNotEmpty ? 1 : 0,
+        };
+      } else {
+        // Jika mengambil semua kontak
+        final List<Map<String, dynamic>> affiliateList =
+            List<Map<String, dynamic>>.from(responseData['data']);
+        final int count = responseData['count'] ?? 0;
+
+        return {
+          'data': affiliateList,
+          'count': count,
+        };
+      }
+    } catch (e, stacktace) {
+      print("stacktace : $stacktace");
+    }
   }
 
   //END DASHBOARD================================================================

@@ -13,12 +13,11 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
   List<dynamic> users = [];
   List<dynamic> filteredUsers = [];
   bool _isLoading = true;
-  bool _isSearchVisible = false; // Flag to toggle the visibility of search
+  bool _isSearchVisible = false;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
   int _rowsPerPage = 10;
   int _pageIndex = 0;
-  int _totalItems = 0;
 
   // Animation controller for the search TextField
   late AnimationController _animationController;
@@ -41,7 +40,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
         setState(() {
           users = resultUser['data'];
           filteredUsers = users; // Store original users
-          _totalItems = resultUser['count'];
         });
       }
     } catch (e) {
@@ -50,6 +48,11 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
     } finally {
       setState(() => _isLoading = false);
     }
+
+    _searchController.addListener(() {
+      _searchUserByName();
+      _searchUserByEmail();
+    });
   }
 
   void _deleteUser(int userId) async {
@@ -160,7 +163,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
               SnackBar(content: Text('User deleted successfully!')));
           setState(() {
             users.removeWhere((user) => user['id'] == userId);
-            _totalItems--;
           });
         } else {
           ScaffoldMessenger.of(context)
@@ -192,7 +194,23 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
       filteredUsers = users
           .where((user) => user['name'].toLowerCase().contains(keyword))
           .toList();
-      _totalItems = filteredUsers.length;
+    });
+  }
+
+  void _searchUserByEmail() {
+    String keyword = _searchController.text.toLowerCase();
+
+    if (keyword.isEmpty) {
+      setState(() {
+        filteredUsers = users; // Reset to show all users
+      });
+      return;
+    }
+
+    setState(() {
+      filteredUsers = users
+          .where((user) => user['email'].toLowerCase().contains(keyword))
+          .toList();
     });
   }
 
@@ -220,7 +238,8 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
       if (_isSearchVisible) {
         _animationController.forward(); // Start animation
       } else {
-        _animationController.reverse(); // Reverse animation
+        _animationController.reverse();
+        _searchController.text = ""; // Reverse animation
       }
     });
   }
@@ -352,20 +371,19 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
                                   child: TextField(
                                     controller: _searchController,
                                     decoration: InputDecoration(
-                                      labelText: 'Search by Name',
+                                      labelText: 'Search by Name or Email',
                                       border: OutlineInputBorder(),
                                     ),
-                                    onChanged: (text) {
-                                      _searchUserByName();
-                                    },
+                                    // onChanged: (text) {
+                                    // },
                                   ),
                                 ),
                                 // Icon button for closing search
                                 IconButton(
                                   icon: Icon(Icons.cancel,
                                       size: 20), // Small close icon
-                                  onPressed:
-                                      _toggleSearchVisibility, // Close search field
+                                  onPressed: _toggleSearchVisibility,
+                                  // Close search field
                                 ),
                               ],
                             ),
@@ -414,7 +432,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
                                   ],
                                   source: MyDataSource(
                                     filteredUsers,
-                                    _totalItems,
                                     0,
                                     _rowsPerPage,
                                     context,
@@ -435,7 +452,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
 
 class MyDataSource extends DataTableSource {
   final List<dynamic> users;
-  final int totalItems;
   final int pageIndex;
   final int rowsPerPage;
   final BuildContext context;
@@ -443,7 +459,6 @@ class MyDataSource extends DataTableSource {
 
   MyDataSource(
     this.users,
-    this.totalItems,
     this.pageIndex,
     this.rowsPerPage,
     this.context,
@@ -453,7 +468,7 @@ class MyDataSource extends DataTableSource {
   @override
   DataRow? getRow(int index) {
     final globalRowIndex = pageIndex * rowsPerPage + index;
-    if (globalRowIndex >= totalItems) {
+    if (globalRowIndex >= users.length) {
       return null;
     }
     final user = users[index];
@@ -492,7 +507,7 @@ class MyDataSource extends DataTableSource {
   }
 
   @override
-  int get rowCount => totalItems;
+  int get rowCount => users.length;
 
   @override
   bool get isRowCountApproximate => false;

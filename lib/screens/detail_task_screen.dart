@@ -28,6 +28,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late ValueNotifier<bool> onExpandableValue;
 
   late TextEditingController textDescController;
+  late TextEditingController textTitleController;
   late FocusNode focusNode;
 
   late ValueNotifier<bool> onLoadingNotifier;
@@ -37,6 +38,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late ValueNotifier<(String labelName, Color color)?> notifierLabelColor;
 
   String? currentDesc;
+  String? currentTitle;
   late ValueNotifier<DateTime?> onEndDateNotifier;
 
   @override
@@ -52,6 +54,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onLoadingFileNotifier = ValueNotifier<bool>(false);
 
     textDescController = TextEditingController();
+    textTitleController = TextEditingController();
     focusNode = FocusNode();
 
     Future.wait(
@@ -67,6 +70,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     final desc = getUpdatedData["description"];
+    final title = getUpdatedData["title"];
     final label = getUpdatedData["label"];
     final labelData = label != null ? label["data"] as List : [];
     if (labelData.isNotEmpty) {
@@ -81,7 +85,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
 
     textDescController.text = desc ?? "";
+    textTitleController.text = title ?? "";
     currentDesc = desc;
+    currentTitle = title;
     onLoadingNotifier.value = false;
   }
 
@@ -91,6 +97,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onLoadingNotifier.dispose();
 
     textDescController.dispose();
+    textTitleController.dispose();
     focusNode.dispose();
     super.dispose();
   }
@@ -111,13 +118,13 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('Project Planning'),
-          // actions: [
-          //   IconButton(
-          //     icon: Icon(Icons.more_vert),
-          //     onPressed: () {},
-          //   ),
-          // ],
+          title: Text(textTitleController.text),
+          actions: [
+            IconButton(
+              icon: Icon(Icons.more_vert),
+              onPressed: () {},
+            ),
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16.0),
