@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:pie_chart/pie_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:intl/intl.dart';
 
 class DashboardWidget extends StatefulWidget {
   final int roleId;
@@ -21,6 +22,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   List<Map<String, dynamic>> _affiliates = [];
   List<Map<String, dynamic>> _baseaffiliates = [];
 
+  bool _isLoadingData = false;
   bool _isLoadingContacts = false;
   bool _isLoadingAffiliate = false;
   int _rowsPerPage = 10;
@@ -28,8 +30,11 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   bool _sortAscending = true;
   int _contactCount = 0;
   int _affiliateCount = 0;
-  TextEditingController _searchController = TextEditingController();
-  FocusNode _searchFocusNode = FocusNode();
+  TextEditingController _searchMessageController = TextEditingController();
+  FocusNode _searchMessageFocusNode = FocusNode();
+  TextEditingController _searchAffiliateController = TextEditingController();
+  FocusNode _searchAffiliateFocusNode = FocusNode();
+  ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -42,8 +47,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
 
   @override
   void dispose() {
-    _searchController.dispose();
-    _searchFocusNode.dispose();
+    _searchMessageController.dispose();
+    _searchMessageFocusNode.dispose();
     super.dispose();
   }
 
@@ -54,7 +59,25 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     });
   }
 
+  Future<void> _refreshData() async {
+    setState(() {
+      _isLoadingContacts = true;
+      _isLoadingAffiliate = true;
+    });
+
+    await _fetchData();
+    await _fetchContacts();
+    await _fetchAffiliates();
+
+    setState(() {
+      _isLoadingData = false;
+      _isLoadingContacts = false;
+      _isLoadingAffiliate = false;
+    });
+  }
+
   Future<void> _fetchData() async {
+    setState(() => _isLoadingData = true);
     final data = await ApiService.fetchDashboard(widget.token);
     setState(() {
       _chartData = data?['data'];
@@ -67,37 +90,27 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     try {
       final result = await ApiService.handleContacts(
         token: widget.token,
-        params: {'page': '1', 'limit': '10'}, // Tambahkan parameter pagination
+        params: {'page': '1', 'limit': '10'},
       );
 
-      // Debugging: Print raw response
       print("Contacts API Response: $result");
 
       if (result != null && result['data'] != null) {
-        // Perbaikan parsing data
         final responseData = result['data'];
-
-        print("responseData ==>: ${responseData.runtimeType}");
-
-        // Cek nested structure
         final List<dynamic> contactsData =
             responseData is List ? responseData : responseData['data'] ?? [];
 
         setState(() {
-          List<Map<String, dynamic>> newListData = <Map<String, dynamic>>[];
-          for (final sData in contactsData) {
-            newListData.add(sData);
-          }
-          _contacts = newListData;
-          _basecontacts = newListData;
-          _contactCount = result['count'] ?? contactsData.length;
+          _contacts = contactsData
+              .map((data) => Map<String, dynamic>.from(data))
+              .toList();
+          _basecontacts = List.from(_contacts);
+          _contactCount = result['count'] ?? _contacts.length;
         });
 
-        // Debugging: Print parsed data
         print("Parsed Contacts: $_contacts");
       }
     } catch (e, stackTrace) {
-      // Debugging error
       print("Error fetching contacts: $e, $stackTrace");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal memuat kontak: ${e.toString()}')),
@@ -108,45 +121,35 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   }
 
   Future<void> _fetchAffiliates() async {
-    setState(() => _isLoadingContacts = true);
+    setState(() => _isLoadingAffiliate = true);
 
     try {
       final result = await ApiService.handleAffiliates(
         token: widget.token,
-        params: {'page': '1', 'limit': '10'}, // Tambahkan parameter pagination
+        params: {'page': '1', 'limit': '10'},
       );
 
-      // Debugging: Print raw response
       print("Affiliate API Response: $result");
 
       if (result != null && result['data'] != null) {
-        // Perbaikan parsing data
         final responseData = result['data'];
-
-        print("responseData ==>: ${responseData.runtimeType}");
-
-        // Cek nested structure
         final List<dynamic> affiliateData =
             responseData is List ? responseData : responseData['data'] ?? [];
 
         setState(() {
-          List<Map<String, dynamic>> newListData = <Map<String, dynamic>>[];
-          for (final sData in affiliateData) {
-            newListData.add(sData);
-          }
-          _affiliates = newListData;
-          _baseaffiliates = newListData;
-          _affiliateCount = result['count'] ?? affiliateData.length;
+          _affiliates = affiliateData
+              .map((data) => Map<String, dynamic>.from(data))
+              .toList();
+          _baseaffiliates = List.from(_affiliates);
+          _affiliateCount = result['count'] ?? _affiliates.length;
         });
 
-        // Debugging: Print parsed data
-        print("Parsed affiliate: $_affiliates");
+        print("Parsed Affiliate: $_affiliates");
       }
     } catch (e, stackTrace) {
-      // Debugging error
       print("Error fetching affiliate: $e, $stackTrace");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat kontak: ${e.toString()}')),
+        SnackBar(content: Text('Gagal memuat affiliate: ${e.toString()}')),
       );
     } finally {
       setState(() => _isLoadingAffiliate = false);
@@ -154,260 +157,391 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   }
 
   void _searchByMessage(String keyword) {
-    if (keyword.isEmpty) {
-      setState(() {
-        _contacts = _basecontacts; // Reset to show all projects
-      });
-      return;
-    }
-    print(
-        "_affiliate : ${_contacts.map((e) => e.toString().contains(keyword))} $keyword");
+    setState(() {
+      if (keyword.isEmpty) {
+        _contacts = List.from(_basecontacts);
+      } else {
+        _contacts = _basecontacts
+            .where((contact) =>
+                (contact['name'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()) ||
+                (contact['email'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()) ||
+                (contact['phone'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()) ||
+                (contact['message'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()))
+            .toList();
+      }
+    });
+  }
+
+  void _searchByInfo(String keyword) {
+    setState(() {
+      if (keyword.isEmpty) {
+        _affiliates = List.from(_baseaffiliates);
+      } else {
+        _affiliates = _baseaffiliates
+            .where((affiliate) =>
+                (affiliate['name'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()) ||
+                (affiliate['email'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()) ||
+                (affiliate['phone'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()) ||
+                (affiliate['instagram'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()) ||
+                (affiliate['tiktok'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()) ||
+                (affiliate['info'] ?? '')
+                    .toLowerCase()
+                    .contains(keyword.toLowerCase()))
+            .toList();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (_searchFocusNode.hasFocus) {
-          _searchFocusNode.unfocus(); // Tutup keyboard jika aktif
-          return false; // Cegah keluar langsung
+    return PopScope(
+      canPop: !_searchMessageFocusNode.hasFocus &&
+          !_searchAffiliateFocusNode.hasFocus,
+      onPopInvokedWithResult: (didPop, result) {
+        if (_searchMessageFocusNode.hasFocus) {
+          _searchMessageFocusNode.unfocus();
         }
-        return true; // Izinkan keluar jika tidak sedang mengetik
+        if (_searchAffiliateFocusNode.hasFocus) {
+          _searchAffiliateFocusNode.unfocus();
+        }
       },
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () {
-          _searchFocusNode
+          _searchMessageFocusNode.unfocus();
+          _searchAffiliateFocusNode
               .unfocus(); // Tutup keyboard saat tap di luar search bar
         },
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(0.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Kontainer Selamat Datang
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(16.0),
-                  decoration: _containerDecoration(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Selamat Datang,',
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Text(
-                        _userName,
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.normal,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 10.0),
-
-                // Social Media Engagement Box
-                if (_chartData != null) ...[
+        child: RefreshIndicator(
+          onRefresh: _refreshData,
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            physics: AlwaysScrollableScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            child: Padding(
+              padding: EdgeInsets.all(0.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Kontainer Selamat Datang
                   Container(
-                    padding: EdgeInsets.all(12),
-                    margin: EdgeInsets.symmetric(vertical: 5),
+                    width: double.infinity,
+                    padding: EdgeInsets.all(16.0),
                     decoration: _containerDecoration(),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Social Media Engagement',
+                          'Selamat Datang,',
                           style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
                         ),
                         Text(
-                          'Jumlah Klik Mengakses Social Media Melalui Website',
+                          _userName,
                           style: TextStyle(
-                              fontSize: 15, fontWeight: FontWeight.normal),
-                        ),
-                        SizedBox(height: 10),
-                        PieChart(
-                          dataMap: {
-                            'Instagram':
-                                _chartData!['count_instagram'].toDouble(),
-                            'Tiktok': _chartData!['count_tiktok'].toDouble(),
-                            'Facebook':
-                                _chartData!['count_facebook'].toDouble(),
-                            'Whatsapp':
-                                _chartData!['count_whatsapp'].toDouble(),
-                          },
-                          animationDuration: Duration(milliseconds: 800),
-                          chartLegendSpacing: 32,
-                          chartRadius: MediaQuery.of(context).size.width / 3.2,
-                          colorList: [
-                            Color(0xFFFD1D1D),
-                            Color(0xFF00F2EA),
-                            Color(0xff1877F2),
-                            Colors.green
-                          ],
-                          initialAngleInDegree: 0,
-                          chartType: ChartType.disc,
-                          ringStrokeWidth: 32,
-                          legendOptions: LegendOptions(
-                            showLegendsInRow: false,
-                            legendPosition: LegendPosition.right,
-                            showLegends: true,
-                            legendShape: BoxShape.circle,
-                            legendTextStyle:
-                                TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          chartValuesOptions: ChartValuesOptions(
-                            showChartValueBackground: false,
-                            showChartValues: true,
-                            showChartValuesInPercentage: false,
-                            showChartValuesOutside: false,
-                            decimalPlaces: 0,
-                            chartValueStyle: TextStyle(
-                                fontSize: 18, fontWeight: FontWeight.bold),
+                            fontSize: 22,
+                            fontWeight: FontWeight.normal,
+                            color: Colors.black,
                           ),
                         ),
                       ],
                     ),
                   ),
-                ] else ...[
-                  Center(child: CircularProgressIndicator()),
-                ],
-                SizedBox(height: 10.0),
+                  SizedBox(height: 10.0),
 
-                // Kontainer Messaging dengan Tabel Contact
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(16.0),
-                  decoration: _containerDecoration(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Messaging',
-                        style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                      SizedBox(height: 10),
-                      Text(
-                        'Data Pesan, Pertanyaan dan Kontak Melalui Website, klik untuk melihat detail pesan',
-                        style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.normal),
-                      ),
-                      SizedBox(height: 10),
-                      TextField(
-                        controller: _searchController,
-                        focusNode: _searchFocusNode,
-                        decoration: InputDecoration(
-                          labelText: 'Cari...',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8.0),
+                  // Social Media Engagement Pie Chart
+                  if (_chartData != null) ...[
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      margin: EdgeInsets.symmetric(vertical: 5),
+                      decoration: _containerDecoration(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Social Media Engagement',
+                            style: TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold),
                           ),
-                          prefixIcon: Icon(Icons.search),
-                        ),
-                        onChanged: (text) {
-                          _searchByMessage(text);
-                        },
+                          Text(
+                            'Jumlah Klik Mengakses Social Media Melalui Website',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.normal),
+                          ),
+                          SizedBox(height: 10),
+                          PieChart(
+                            dataMap: {
+                              'Instagram':
+                                  _chartData!['count_instagram'].toDouble(),
+                              'Tiktok': _chartData!['count_tiktok'].toDouble(),
+                              'Facebook':
+                                  _chartData!['count_facebook'].toDouble(),
+                              'Whatsapp':
+                                  _chartData!['count_whatsapp'].toDouble(),
+                            },
+                            animationDuration: Duration(milliseconds: 800),
+                            chartLegendSpacing: 32,
+                            chartRadius:
+                                MediaQuery.of(context).size.width / 3.2,
+                            colorList: [
+                              Color(0xFFFD1D1D),
+                              Color(0xFF00F2EA),
+                              Color(0xff1877F2),
+                              Colors.green
+                            ],
+                            initialAngleInDegree: 0,
+                            chartType: ChartType.disc,
+                            ringStrokeWidth: 32,
+                            legendOptions: LegendOptions(
+                              showLegendsInRow: false,
+                              legendPosition: LegendPosition.right,
+                              showLegends: true,
+                              legendShape: BoxShape.circle,
+                              legendTextStyle:
+                                  TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            chartValuesOptions: ChartValuesOptions(
+                              showChartValueBackground: false,
+                              showChartValues: true,
+                              showChartValuesInPercentage: false,
+                              showChartValuesOutside: false,
+                              decimalPlaces: 0,
+                              chartValueStyle: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 10.0),
-                      _isLoadingContacts
-                          ? Center(child: CircularProgressIndicator())
-                          : _contacts.isEmpty
-                              ? Center(child: Text('No contacts to display'))
-                              : Padding(
-                                  padding: const EdgeInsets.all(10.0),
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: SizedBox(
-                                      width: MediaQuery.of(context).size.width,
-                                      child: PaginatedDataTable(
-                                        columnSpacing: 20,
-                                        horizontalMargin: 12,
-                                        rowsPerPage: _rowsPerPage,
-                                        sortColumnIndex: _sortColumnIndex,
-                                        sortAscending: _sortAscending,
-                                        columns: [
-                                          DataColumn(label: Text('No')),
-                                          DataColumn(label: Text('Name')),
-                                          DataColumn(label: Text('Email')),
-                                          DataColumn(label: Text('Phone')),
-                                          DataColumn(label: Text('Message')),
-                                          DataColumn(label: Text('Created At')),
-                                        ],
-                                        source: ContactDataSource(
-                                            _contacts, context),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 10.0),
+                    ),
 
-                // Affiliate Request Table (Tetap Dipertahankan)
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.all(16.0),
-                  decoration: _containerDecoration(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Affiliate Request',
-                        style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
+                    // Affiliate & Contact Pie Chart
+                    Container(
+                      padding: EdgeInsets.all(12),
+                      margin: EdgeInsets.symmetric(vertical: 5),
+                      decoration: _containerDecoration(),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Affiliate and Contact',
+                            style: TextStyle(
+                                fontSize: 22, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'Jumlah Klik Pada Affiliate dan Kontak Melalui Website',
+                            style: TextStyle(
+                                fontSize: 15, fontWeight: FontWeight.normal),
+                          ),
+                          SizedBox(height: 10),
+                          PieChart(
+                            dataMap: {
+                              'Affiliate':
+                                  _chartData!['count_affiliate'].toDouble(),
+                              'Contact':
+                                  _chartData!['count_contact'].toDouble(),
+                            },
+                            animationDuration: Duration(milliseconds: 800),
+                            chartLegendSpacing: 32,
+                            chartRadius:
+                                MediaQuery.of(context).size.width / 3.2,
+                            colorList: [Color(0xFFC1DBE3), Color(0xFF474441)],
+                            initialAngleInDegree: 0,
+                            chartType: ChartType.disc,
+                            ringStrokeWidth: 40,
+                            legendOptions: LegendOptions(
+                              showLegendsInRow: false,
+                              legendPosition: LegendPosition.right,
+                              showLegends: true,
+                              legendShape: BoxShape.circle,
+                              legendTextStyle:
+                                  TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            chartValuesOptions: ChartValuesOptions(
+                              showChartValueBackground: false,
+                              showChartValues: true,
+                              showChartValuesInPercentage: false,
+                              showChartValuesOutside: false,
+                              decimalPlaces: 0,
+                              chartValueStyle: TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Data Permintaan Untuk Join Affiliate Marketing Selarashome.id',
-                        style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.normal),
-                      ),
-                      SizedBox(height: 10.0),
-                      _isLoadingContacts
-                          ? Center(child: CircularProgressIndicator())
-                          : _contacts.isEmpty
-                              ? Center(child: Text('No affiliates to display'))
-                              : Padding(
-                                  padding: const EdgeInsets.all(10.0),
-                                  child: SingleChildScrollView(
-                                    scrollDirection: Axis.horizontal,
-                                    child: SizedBox(
-                                      width: MediaQuery.of(context).size.width,
-                                      child: PaginatedDataTable(
-                                        columnSpacing: 20,
-                                        horizontalMargin: 12,
-                                        rowsPerPage: _rowsPerPage,
-                                        sortColumnIndex: _sortColumnIndex,
-                                        sortAscending: _sortAscending,
-                                        columns: [
-                                          DataColumn(label: Text('No')),
-                                          DataColumn(label: Text('Name')),
-                                          DataColumn(label: Text('Email')),
-                                          DataColumn(label: Text('Phone')),
-                                          DataColumn(label: Text('Instagram')),
-                                          DataColumn(label: Text('Tiktok')),
-                                          DataColumn(label: Text('Info')),
-                                          DataColumn(label: Text('Created At')),
-                                        ],
-                                        source: AffiliateDataSource(
-                                            _affiliates, context),
+                    ),
+                  ] else ...[
+                    Center(child: CircularProgressIndicator()),
+                  ],
+                  SizedBox(height: 10.0),
+
+                  // Kontainer Messaging dengan Tabel Contact
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(16.0),
+                    decoration: _containerDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Messaging',
+                          style: TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          'Data Pesan, Pertanyaan dan Kontak Melalui Website, klik untuk melihat detail pesan',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.normal),
+                        ),
+                        SizedBox(height: 10),
+                        TextField(
+                          controller: _searchMessageController,
+                          focusNode: _searchMessageFocusNode,
+                          decoration: InputDecoration(
+                            labelText: 'Cari...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          onChanged: (text) {
+                            _searchByMessage(text);
+                          },
+                        ),
+                        SizedBox(height: 10.0),
+                        _isLoadingContacts || _contacts.isEmpty
+                            ? Center(child: CircularProgressIndicator())
+                            : _contacts.isEmpty
+                                ? Center(child: Text('No contacts to display'))
+                                : Padding(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: SizedBox(
+                                        width:
+                                            MediaQuery.of(context).size.width,
+                                        child: PaginatedDataTable(
+                                          columnSpacing: 20,
+                                          horizontalMargin: 12,
+                                          rowsPerPage: _rowsPerPage,
+                                          sortColumnIndex: _sortColumnIndex,
+                                          sortAscending: _sortAscending,
+                                          columns: [
+                                            DataColumn(label: Text('No')),
+                                            DataColumn(label: Text('Name')),
+                                            DataColumn(label: Text('Email')),
+                                            DataColumn(label: Text('Phone')),
+                                            DataColumn(label: Text('Message')),
+                                            DataColumn(
+                                                label: Text('Created At')),
+                                          ],
+                                          source: ContactDataSource(
+                                              _contacts, context),
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                  SizedBox(height: 10.0),
+
+                  // Affiliate Request Table (Tetap Dipertahankan)
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(16.0),
+                    decoration: _containerDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Affiliate Request',
+                          style: TextStyle(
+                              fontSize: 22, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          'Data Permintaan Untuk Join Affiliate Marketing Selarashome.id. Klik untuk melihat detail info',
+                          style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.normal),
+                        ),
+                        SizedBox(height: 10),
+                        TextField(
+                          controller: _searchAffiliateController,
+                          focusNode: _searchAffiliateFocusNode,
+                          decoration: InputDecoration(
+                            labelText: 'Cari...',
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8.0),
+                            ),
+                            prefixIcon: Icon(Icons.search),
+                          ),
+                          onChanged: (text) {
+                            _searchByInfo(text);
+                          },
+                        ),
+                        SizedBox(height: 10.0),
+                        _isLoadingAffiliate || _affiliates.isEmpty
+                            ? Center(child: CircularProgressIndicator())
+                            : _affiliates.isEmpty
+                                ? Center(
+                                    child: Text('No affiliates to display'))
+                                : Padding(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: SizedBox(
+                                        width:
+                                            MediaQuery.of(context).size.width,
+                                        child: PaginatedDataTable(
+                                          columnSpacing: 20,
+                                          horizontalMargin: 12,
+                                          rowsPerPage: _rowsPerPage,
+                                          sortColumnIndex: _sortColumnIndex,
+                                          sortAscending: _sortAscending,
+                                          columns: [
+                                            DataColumn(label: Text('No')),
+                                            DataColumn(label: Text('Name')),
+                                            DataColumn(label: Text('Email')),
+                                            DataColumn(label: Text('Phone')),
+                                            DataColumn(
+                                                label: Text('Instagram')),
+                                            DataColumn(label: Text('Tiktok')),
+                                            DataColumn(label: Text('Info')),
+                                            DataColumn(
+                                                label: Text('Created At')),
+                                          ],
+                                          source: AffiliateDataSource(
+                                              _affiliates, context),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -472,19 +606,87 @@ class ContactDataSource extends DataTableSource {
               showDialog(
                 context: context,
                 builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: Text("Pesan Lengkap"),
-                    content: SingleChildScrollView(
-                      child: Text(contact['message']?.toString() ?? '-'),
+                  return Dialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: Text("Tutup"),
-                      ),
-                    ],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Container untuk header dengan background abu-abu dan ikon amplop
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[700], // Warna abu-abu
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(16),
+                              topRight: Radius.circular(16),
+                            ),
+                          ),
+                          child: Center(
+                            child: AnimatedScale(
+                              duration: Duration(milliseconds: 500),
+                              scale: 1.2,
+                              child: Icon(
+                                Icons.email, // Ganti dengan ikon amplop
+                                color: Colors.white,
+                                size: 80,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+
+                        // Judul dialog
+                        Text(
+                          'Pesan Lengkap',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+
+                        // Isi pesan dengan scroll jika panjang
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: SingleChildScrollView(
+                            child: Text(
+                              contact['message']?.toString() ?? '-',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+
+                        // Tombol Tutup
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor:
+                                Colors.grey[800], // Warna abu-abu tua
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Tutup',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                      ],
+                    ),
                   );
                 },
               );
@@ -502,9 +704,18 @@ class ContactDataSource extends DataTableSource {
           ),
         ),
       ),
-      DataCell(Text((contact['created_at'] ?? '')
-          .replaceAll('T', ' ')
-          .replaceAll('Z', ''))),
+      DataCell(
+        SizedBox(
+          width: 150, // Tambahkan lebar agar tanggal tidak terpotong
+          child: Text(
+            contact['created_at'] != null
+                ? DateFormat('yyyy-MM-dd')
+                    .format(DateTime.parse(contact['created_at']))
+                : '-',
+            textAlign: TextAlign.left,
+          ),
+        ),
+      ),
     ]);
   }
 
@@ -541,19 +752,87 @@ class AffiliateDataSource extends DataTableSource {
               showDialog(
                 context: context,
                 builder: (BuildContext context) {
-                  return AlertDialog(
-                    title: Text("Pesan Lengkap"),
-                    content: SingleChildScrollView(
-                      child: Text(affiliate['info']?.toString() ?? '-'),
+                  return Dialog(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: Text("Tutup"),
-                      ),
-                    ],
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Container untuk header dengan background abu-abu dan ikon amplop
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: Colors.grey[700], // Warna abu-abu
+                            borderRadius: BorderRadius.only(
+                              topLeft: Radius.circular(16),
+                              topRight: Radius.circular(16),
+                            ),
+                          ),
+                          child: Center(
+                            child: AnimatedScale(
+                              duration: Duration(milliseconds: 500),
+                              scale: 1.2,
+                              child: Icon(
+                                Icons.email, // Ganti dengan ikon amplop
+                                color: Colors.white,
+                                size: 80,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+
+                        // Judul dialog
+                        Text(
+                          'Pesan Lengkap',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+
+                        // Isi pesan dengan scroll jika panjang
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 20),
+                          child: SingleChildScrollView(
+                            child: Text(
+                              affiliate['info']?.toString() ?? '-',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+
+                        // Tombol Tutup
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pop();
+                          },
+                          style: TextButton.styleFrom(
+                            backgroundColor:
+                                Colors.grey[800], // Warna abu-abu tua
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 30, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: Text(
+                            'Tutup',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                      ],
+                    ),
                   );
                 },
               );
@@ -571,9 +850,18 @@ class AffiliateDataSource extends DataTableSource {
           ),
         ),
       ),
-      DataCell(Text((affiliate['created_at'] ?? '')
-          .replaceAll('T', ' ')
-          .replaceAll('Z', ''))),
+      DataCell(
+        SizedBox(
+          width: 150, // Tambahkan lebar agar tanggal tidak terpotong
+          child: Text(
+            affiliate['created_at'] != null
+                ? DateFormat('yyyy-MM-dd')
+                    .format(DateTime.parse(affiliate['created_at']))
+                : '-',
+            textAlign: TextAlign.left,
+          ),
+        ),
+      ),
     ]);
   }
 

@@ -333,7 +333,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _refreshData, // Trigger to fetch new data
+        onRefresh: _refreshData,
         child: SingleChildScrollView(
           child: Padding(
             padding: EdgeInsets.all(16.0),
