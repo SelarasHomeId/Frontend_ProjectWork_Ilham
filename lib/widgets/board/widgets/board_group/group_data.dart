@@ -194,13 +194,16 @@ class AppFlowyGroupData<CustomData> extends ReoderFlexItem with EquatableMixin {
   AppFlowyGroupData({
     required this.id,
     required String name,
+    required String task_total,
+    required String workspace_id,
     this.customData,
     List<AppFlowyGroupItem> items = const [],
   })  : _items = items,
         headerData = AppFlowyGroupHeaderData(
-          groupId: id,
-          groupName: name,
-        );
+            groupId: id,
+            groupName: name,
+            groupTaskTotal: task_total,
+            groupWorkspaceId: workspace_id);
 
   @override
   final String id;
@@ -224,8 +227,12 @@ class AppFlowyGroupHeaderData {
   AppFlowyGroupHeaderData({
     required this.groupId,
     required this.groupName,
+    required this.groupTaskTotal,
+    required this.groupWorkspaceId,
   });
 
   String groupId;
   String groupName;
+  String groupTaskTotal;
+  String groupWorkspaceId;
 }

@@ -3,6 +3,10 @@ import 'package:pie_chart/pie_chart.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:intl/intl.dart';
+import 'package:excel/excel.dart' as Excel;
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 class DashboardWidget extends StatefulWidget {
   final int roleId;
@@ -21,6 +25,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   List<Map<String, dynamic>> _basecontacts = [];
   List<Map<String, dynamic>> _affiliates = [];
   List<Map<String, dynamic>> _baseaffiliates = [];
+  List<Map<String, dynamic>> _calculateTaskData = [];
 
   bool _isLoadingData = false;
   bool _isLoadingContacts = false;
@@ -43,6 +48,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     _fetchData();
     _fetchContacts();
     _fetchAffiliates();
+    _fetchCalculateTask();
   }
 
   @override
@@ -90,13 +96,16 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     try {
       final result = await ApiService.handleContacts(
         token: widget.token,
-        params: {'page': '1', 'limit': '10'},
+        params: {'offset': '0', 'limit': '10'},
       );
 
-      print("Contacts API Response: $result");
-
       if (result != null && result['data'] != null) {
-        final responseData = result['data'];
+        final resultContact = await ApiService.handleContacts(
+          token: widget.token,
+          params: {'offset': '0', 'limit': result['count'].toString()},
+        );
+
+        final responseData = resultContact?['data'];
         final List<dynamic> contactsData =
             responseData is List ? responseData : responseData['data'] ?? [];
 
@@ -105,10 +114,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
               .map((data) => Map<String, dynamic>.from(data))
               .toList();
           _basecontacts = List.from(_contacts);
-          _contactCount = result['count'] ?? _contacts.length;
+          _contactCount = resultContact?['count'] ?? _contacts.length;
         });
-
-        print("Parsed Contacts: $_contacts");
       }
     } catch (e, stackTrace) {
       print("Error fetching contacts: $e, $stackTrace");
@@ -126,13 +133,16 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     try {
       final result = await ApiService.handleAffiliates(
         token: widget.token,
-        params: {'page': '1', 'limit': '10'},
+        params: {'offset': '0', 'limit': '10'},
       );
 
-      print("Affiliate API Response: $result");
-
       if (result != null && result['data'] != null) {
-        final responseData = result['data'];
+        final resultAffiliate = await ApiService.handleAffiliates(
+          token: widget.token,
+          params: {'offset': '0', 'limit': result['count'].toString()},
+        );
+
+        final responseData = resultAffiliate?['data'];
         final List<dynamic> affiliateData =
             responseData is List ? responseData : responseData['data'] ?? [];
 
@@ -141,10 +151,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
               .map((data) => Map<String, dynamic>.from(data))
               .toList();
           _baseaffiliates = List.from(_affiliates);
-          _affiliateCount = result['count'] ?? _affiliates.length;
+          _affiliateCount = resultAffiliate?['count'] ?? _affiliates.length;
         });
-
-        print("Parsed Affiliate: $_affiliates");
       }
     } catch (e, stackTrace) {
       print("Error fetching affiliate: $e, $stackTrace");
@@ -208,6 +216,154 @@ class _DashboardWidgetState extends State<DashboardWidget> {
             .toList();
       }
     });
+  }
+
+  Future<void> _exportMessagingData() async {
+    var excel = Excel.Excel.createExcel();
+    Excel.Sheet sheetObject = excel['Messaging Data'];
+
+    // Tambahkan header
+    sheetObject.appendRow([
+      Excel.TextCellValue('No'),
+      Excel.TextCellValue('Name'),
+      Excel.TextCellValue('Email'),
+      Excel.TextCellValue('Phone'),
+      Excel.TextCellValue('Message'),
+      Excel.TextCellValue('Created At'),
+    ]);
+
+    // Tambahkan data dari list _contacts
+    for (var i = 0; i < _contacts.length; i++) {
+      sheetObject.appendRow([
+        Excel.TextCellValue((i + 1).toString()),
+        Excel.TextCellValue(_contacts[i]['name']),
+        Excel.TextCellValue(_contacts[i]['email']),
+        Excel.TextCellValue(_contacts[i]['phone']),
+        Excel.TextCellValue(_contacts[i]['message']),
+        Excel.TextCellValue(DateFormat('yyyy-MM-dd')
+            .format(DateTime.parse(_contacts[i]['created_at'].toString()))),
+      ]);
+    }
+
+    String timestamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
+    String fileName = 'Messaging_Data_$timestamp.xlsx';
+
+    // Simpan file
+    await _saveExcelFile(context, excel, fileName);
+  }
+
+  // Fungsi untuk membuat file Excel dari data Affiliate Request
+  Future<void> _exportAffiliateData() async {
+    var excel = Excel.Excel.createExcel();
+    Excel.Sheet sheetObject = excel['Affiliate Data'];
+
+    // Tambahkan header
+    sheetObject.appendRow([
+      Excel.TextCellValue('No'),
+      Excel.TextCellValue('Name'),
+      Excel.TextCellValue('Email'),
+      Excel.TextCellValue('Phone'),
+      Excel.TextCellValue('Instagram'),
+      Excel.TextCellValue('TikTok'),
+      Excel.TextCellValue('Info'),
+      Excel.TextCellValue('Created At'),
+    ]);
+
+    // Tambahkan data dari list _affiliates
+    for (var i = 0; i < _affiliates.length; i++) {
+      sheetObject.appendRow([
+        Excel.TextCellValue((i + 1).toString()),
+        Excel.TextCellValue(_affiliates[i]['name']),
+        Excel.TextCellValue(_affiliates[i]['email']),
+        Excel.TextCellValue(_affiliates[i]['phone']),
+        Excel.TextCellValue(_affiliates[i]['instagram']),
+        Excel.TextCellValue(_affiliates[i]['tiktok']),
+        Excel.TextCellValue(_affiliates[i]['info']),
+        Excel.TextCellValue(DateFormat('yyyy-MM-dd')
+            .format(DateTime.parse(_affiliates[i]['created_at'].toString()))),
+      ]);
+    }
+
+    String timestamp = DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now());
+    String fileName = 'Affiliate_Data_$timestamp.xlsx';
+
+    // Simpan file
+    await _saveExcelFile(context, excel, fileName);
+  }
+
+  // Fungsi untuk menyimpan file Excel
+  Future<void> _saveExcelFile(
+      BuildContext context, Excel.Excel excel, String fileName) async {
+    Directory? directory;
+
+    if (Platform.isAndroid) {
+      if (await Permission.manageExternalStorage.request().isGranted) {
+        directory = Directory("/storage/emulated/0/Download");
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Izin penyimpanan tidak diberikan.')),
+        );
+        openAppSettings(); // Arahkan ke pengaturan aplikasi
+        return;
+      }
+    } else if (Platform.isIOS) {
+      directory = await getApplicationDocumentsDirectory();
+    }
+
+    if (directory != null) {
+      String filePath = '${directory.path}/$fileName';
+
+      try {
+        File(filePath)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(excel.encode()!);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('File Excel berhasil disimpan di: $filePath')),
+        );
+
+        print('File berhasil disimpan di: $filePath');
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menyimpan file: $e')),
+        );
+        print('Gagal menyimpan file: $e');
+      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal mendapatkan direktori penyimpanan.')),
+      );
+    }
+  }
+
+  Future<void> _fetchCalculateTask() async {
+    setState(() => _isLoadingAffiliate = true);
+    try {
+      final response = await ApiService.calculateTask();
+      setState(() {
+        _calculateTaskData = (response as List).map((workspace) {
+          return {
+            "workspace_name": workspace["workspace"], // Sesuaikan key dari API
+            "boards": (workspace["board"] != null && workspace["board"] is List)
+                ? (workspace["board"] as List).map((board) {
+                    return {
+                      "count_task": board["count_task"], // Ambil jumlah task
+                      "name": board["name"], // Ambil nama board
+                      "has_new": board["has_new"]
+                    };
+                  }).toList()
+                : [], // Jika null, set default list kosong
+          };
+        }).toList();
+      });
+    } catch (e, stackTrace) {
+      print("Error fetching calculate task: $e, $stackTrace");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat affiliate: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => _isLoadingAffiliate = false);
+    }
   }
 
   @override
@@ -395,7 +551,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                   ],
                   SizedBox(height: 10.0),
 
-                  // Kontainer Messaging dengan Tabel Contact
+                  // Kontainer Calculation of Tasks
                   Container(
                     width: double.infinity,
                     padding: EdgeInsets.all(16.0),
@@ -404,9 +560,178 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Messaging',
+                          'Calculation of tasks to date',
                           style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold),
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        if (_calculateTaskData.isNotEmpty)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children:
+                                _calculateTaskData.map<Widget>((workspace) {
+                              return Column(
+                                children: [
+                                  // Garis dan nama workspace
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Container(
+                                          height: 2,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Colors.grey[400]!,
+                                                Colors.transparent
+                                              ],
+                                              begin: Alignment.centerRight,
+                                              end: Alignment.centerLeft,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      Padding(
+                                        padding: EdgeInsets.symmetric(
+                                            horizontal: 10),
+                                        child: Text(
+                                          workspace['workspace_name'],
+                                          style: TextStyle(
+                                            fontSize: 20,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Container(
+                                          height: 2,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                Colors.grey[400]!,
+                                                Colors.transparent
+                                              ],
+                                              begin: Alignment.centerLeft,
+                                              end: Alignment.centerRight,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 10),
+                                  if (workspace.containsKey('boards') &&
+                                      workspace['boards'] != null &&
+                                      workspace['boards'].isNotEmpty)
+                                    GridView.count(
+                                      shrinkWrap: true,
+                                      physics: NeverScrollableScrollPhysics(),
+                                      crossAxisCount:
+                                          2, // Maksimal 2 ikon per baris
+                                      crossAxisSpacing: 15, // Jarak antar kolom
+                                      mainAxisSpacing: 15, // Jarak antar baris
+                                      children: workspace['boards']
+                                          .map<Widget>((board) {
+                                        return Container(
+                                          padding: EdgeInsets.all(5),
+                                          decoration: BoxDecoration(
+                                            color: Colors.blue[100],
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            children: [
+                                              if (board['has_new'] == true)
+                                                Text(
+                                                  "Has New!", // Nama board
+                                                  textAlign: TextAlign.center,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color: Colors.red,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              SizedBox(height: 5),
+                                              Icon(
+                                                Icons
+                                                    .assignment_turned_in, // Ikon baru
+                                                color: Colors.blue,
+                                                size: 50, // Ukuran lebih besar
+                                              ),
+                                              SizedBox(height: 5),
+                                              Text(
+                                                board['name'], // Nama board
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                              SizedBox(height: 5),
+                                              Text(
+                                                '${board['count_task']} tasks', // Jumlah tugas
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      }).toList(),
+                                    )
+                                  else
+                                    Center(
+                                      child: Padding(
+                                        padding:
+                                            EdgeInsets.symmetric(vertical: 20),
+                                        child: Text(
+                                          "No boards to display",
+                                          style: TextStyle(
+                                              fontSize: 16,
+                                              fontStyle: FontStyle.italic,
+                                              color: Colors.grey),
+                                        ),
+                                      ),
+                                    ),
+                                  SizedBox(height: 10),
+                                ],
+                              );
+                            }).toList(),
+                          )
+                        else
+                          Center(child: CircularProgressIndicator()),
+                      ],
+                    ),
+                  ),
+                  SizedBox(height: 10.0),
+
+                  // Kontainer Messaging dengan Tabel Contact
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(16.0),
+                    decoration: _containerDecoration(),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Messaging',
+                              style: TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                            Spacer(),
+                            ElevatedButton.icon(
+                              onPressed: _exportMessagingData,
+                              icon: Icon(Icons.file_download),
+                              label: Text('Unduh Data'),
+                            ),
+                          ],
                         ),
                         SizedBox(height: 10),
                         Text(
@@ -475,11 +800,22 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Affiliate Request',
-                          style: TextStyle(
-                              fontSize: 22, fontWeight: FontWeight.bold),
+                        Row(
+                          children: [
+                            Text(
+                              'Affiliate Request',
+                              style: TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.bold),
+                            ),
+                            Spacer(),
+                            ElevatedButton.icon(
+                              onPressed: _exportAffiliateData,
+                              icon: Icon(Icons.file_download),
+                              label: Text('Unduh Data'),
+                            ),
+                          ],
                         ),
+                        SizedBox(height: 10),
                         Text(
                           'Data Permintaan Untuk Join Affiliate Marketing Selarashome.id. Klik untuk melihat detail info',
                           style: TextStyle(

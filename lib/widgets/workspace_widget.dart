@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
-import 'package:selarashomeid/widget_board.dart';
+import 'package:selarashomeid/widgets/widget_board.dart';
 import 'package:selarashomeid/widgets/board/appflowy_board.dart';
 
 class WorkspaceWidget extends StatefulWidget {
@@ -62,6 +62,8 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         final groupData = AppFlowyGroupData(
             id: singleBoard["id"].toString(),
             name: singleBoard["name"],
+            task_total: singleBoard["task_total"].toString(),
+            workspace_id: singleBoard["workspace_id"].toString(),
             items: taskAsList); //masukin data task baru
         controller.addGroup(groupData); //nampilin grup kedalam board
       } catch (e) {
@@ -80,7 +82,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       boardController = AppFlowyBoardScrollController();
       controller = AppFlowyBoardController(
         onMoveGroup: (fromGroupId, fromIndex, toGroupId, toIndex) {
-          debugPrint('Move item from $fromIndex to $toIndex');
+          _updateSortNumbers(fromIndex, toIndex);
         },
         onMoveGroupItem: (groupId, fromIndex, toIndex) {
           debugPrint('Move $groupId:$fromIndex to $groupId:$toIndex');
@@ -174,9 +176,18 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         workspaceId: widget.workspaceId,
         boardId: boardId,
       );
+
+      final boards = await ApiService.handleBoard(
+        method: 'GET',
+        workspaceId: widget.workspaceId,
+      );
+
       setState(() {
-        _boards.removeWhere((board) => board['id'] == boardId);
+        _boards = boards;
+        _isLoading = false;
       });
+      controller.clear();
+      onLoadListBoard();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Board berhasil dihapus')),
       );
@@ -184,6 +195,91 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menghapus board: $e')),
       );
+    }
+  }
+
+  Future<void> _editBoard({
+    required int boardId,
+    String? name,
+    int? workspaceId,
+    int? sortNumber,
+  }) async {
+    try {
+      Map<String, dynamic> updatedData = {};
+
+      if (name != null) updatedData['name'] = name;
+      if (workspaceId != null) updatedData['workspace_id'] = workspaceId;
+      if (sortNumber != null) updatedData['sort_number'] = sortNumber;
+
+      if (updatedData.isNotEmpty) {
+        await ApiService.handleBoard(
+          method: 'PUT',
+          workspaceId: widget.workspaceId,
+          boardId: boardId,
+          data: updatedData,
+        );
+      }
+
+      final boards = await ApiService.handleBoard(
+        method: 'GET',
+        workspaceId: widget.workspaceId,
+      );
+
+      setState(() {
+        _boards = boards;
+        _isLoading = false;
+      });
+
+      controller.clear();
+      onLoadListBoard();
+      if (sortNumber == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Board berhasil diperbarui')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memperbarui board: $e')),
+      );
+    }
+  }
+
+  void _updateSortNumbers(int fromIndex, int toIndex) {
+    if (fromIndex == toIndex) return;
+
+    // Ambil board yang dipindahkan
+    var movedBoard = _boards[fromIndex];
+    int movedBoardId = movedBoard['id'];
+    int movedBoardSortNumber = movedBoard['sort_number'];
+
+    // Tentukan rentang update
+    int minSort = fromIndex < toIndex
+        ? movedBoardSortNumber
+        : _boards[toIndex]['sort_number'];
+    int maxSort = fromIndex < toIndex
+        ? _boards[toIndex]['sort_number']
+        : movedBoardSortNumber;
+
+    // Update sort_number untuk boards dalam rentang yang terdampak
+    for (var board in _boards) {
+      int currentSort = board['sort_number'];
+
+      if (currentSort >= minSort && currentSort <= maxSort) {
+        int newSortNumber;
+        if (board['id'] == movedBoardId) {
+          newSortNumber = toIndex + 1; // Pindahkan board ke posisi baru
+        } else {
+          newSortNumber = fromIndex < toIndex
+              ? currentSort - 1
+              : currentSort + 1; // Geser yang lain
+        }
+
+        // Panggil API untuk update
+        _editBoard(
+          boardId: board['id'],
+          sortNumber: newSortNumber,
+        );
+      }
     }
   }
 
@@ -379,7 +475,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                   ),
                 ),
                 child: Text(
-                  "+ add Board",
+                  "+ Add Board",
                   style: TextStyle(
                       fontSize: MediaQuery.of(context).size.width * 0.04),
                 ),
@@ -391,102 +487,32 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
             ? Center(child: CircularProgressIndicator())
             : _boards.isEmpty
                 ? Center(child: Text('Tidak ada board untuk workspace ini'))
-                : WidgetBoard(
-                    controller: controller,
-                    boardController: boardController,
-                    addTask: (boardId) async {
-                      _showCreateTaskDialog(boardId);
-                    },
-                    onLoadBoard: () async {
-                      return onLoadListBoard();
-                    },
-                  )
-        // SingleChildScrollView(
-        //     scrollDirection: Axis.horizontal,
-        //     child: Row(
-        //       children: [
-        //         ..._boards.map((board) {
-        //           return GestureDetector(
-        //             onLongPress: () {
-        //               _deleteBoard(board['id']);
-        //             },
-        //             child: _buildBoard(
-        //               board['name'],
-        //               Color.fromRGBO(216, 216, 216, 1),
-        //               board['task_total'],
-        //             ),
-        //           );
-        //         }),
-        //         _buildAddBoardContainer(),
-        //       ],
-        //     ),
-        // ),
-        );
-  }
-
-  Widget _buildBoard(String title, Color color, int taskTotal) {
-    return Container(
-      width: 200,
-      height: 200,
-      margin: EdgeInsets.all(8.0),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.4),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Title section
-          Container(
-            padding: EdgeInsets.all(16.0),
-            child: Text(
-              title,
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black,
-              ),
-            ),
-          ),
-          // Task section
-          Center(
-            child: Container(
-              padding: EdgeInsets.all(16.0),
-              child: Text(
-                '$taskTotal Tasks',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAddBoardContainer() {
-    return GestureDetector(
-      onTap: _showCreateBoardDialog,
-      child: Container(
-        width: 200,
-        height: 200,
-        margin: EdgeInsets.all(8.0),
-        decoration: BoxDecoration(
-          color: Colors.blue.withOpacity(0.4),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Center(
-          child: Text(
-            'Tambahkan Board',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ),
-    );
+                : ScrollConfiguration(
+                    behavior: ScrollBehavior().copyWith(overscroll: false),
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      children: [
+                        WidgetBoard(
+                          controller: controller,
+                          boardController: boardController,
+                          addTask: (boardId) async {
+                            _showCreateTaskDialog(boardId);
+                          },
+                          onLoadBoard: () async {
+                            return onLoadListBoard();
+                          },
+                          deleteBoard: (boardId) async {
+                            _deleteBoard(boardId);
+                          },
+                          renameBoard: (boardId, newName) async {
+                            _editBoard(boardId: boardId, name: newName);
+                          },
+                          moveBoard: (boardId, newWorkspaceId) async {
+                            _editBoard(
+                                boardId: boardId, workspaceId: newWorkspaceId);
+                          },
+                        ),
+                      ],
+                    )));
   }
 }

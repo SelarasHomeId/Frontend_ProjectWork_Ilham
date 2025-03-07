@@ -207,9 +207,6 @@ class ApiService {
           "Gagal mengambil data kontak. Pesan: ${response?['message']}");
     }
 
-    // Debugging Response
-    print("Raw Response: ${response.toString()}");
-
     try {
       try {
         final encodeValue = json.encode(response);
@@ -269,9 +266,6 @@ class ApiService {
           "Gagal mengambil data affiliate. Pesan: ${response?['message']}");
     }
 
-    // Debugging Response
-    print("Raw Response: ${response.toString()}");
-
     try {
       try {
         final encodeValue = json.encode(response);
@@ -304,6 +298,21 @@ class ApiService {
     } catch (e, stacktace) {
       print("stacktace : $stacktace");
     }
+  }
+
+  static Future<List<Map<String, dynamic>>> calculateTask() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    final response = await apiRequest(
+      method: 'GET',
+      endpoint: '/crm/calculate_task',
+      body: null,
+      token: token,
+      contentType: 'application/json',
+    );
+
+    return List<Map<String, dynamic>>.from(response?['data']['data']);
   }
 
   //END DASHBOARD================================================================
