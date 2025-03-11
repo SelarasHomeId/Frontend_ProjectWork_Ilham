@@ -15,6 +15,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   final TextEditingController _resetEmailController = TextEditingController();
+  FocusNode _loginEmailFocusNode = FocusNode();
+  FocusNode _loginPasswordFocusNode = FocusNode();
   bool _isLoading = false;
   bool _isPasswordVisible = false;
   bool _isDialogLoading = false;
@@ -416,27 +418,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: GestureDetector(
                         onTap: () {
                           setState(() {
-                            // Animasi zoom-out ketika ikon ditekan
                             _isIconClicked = !_isIconClicked;
                           });
                           Future.delayed(Duration(milliseconds: 200), () {
-                            Navigator.of(context)
-                                .pop(); // Tutup dialog setelah animasi
+                            Navigator.of(context).pop();
+                            _resetEmailController
+                                .clear(); // Clear the email input when dialog is closed
                           });
                         },
                         child: MouseRegion(
                           onEnter: (_) {
                             setState(() {
-                              _isHovered = true; // Efek hover aktif
+                              _isHovered = true;
                             });
                           },
                           onExit: (_) {
                             setState(() {
-                              _isHovered = false; // Efek hover tidak aktif
+                              _isHovered = false;
                             });
                           },
                           child: AnimatedScale(
-                            scale: _isIconClicked ? 0.7 : 1.0, // Efek zoom out
+                            scale: _isIconClicked ? 0.7 : 1.0,
                             duration: Duration(milliseconds: 150),
                             curve: Curves.easeInOut,
                             child: CircleAvatar(
@@ -444,9 +446,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               backgroundColor: Colors.white,
                               child: Icon(
                                 Icons.close,
-                                color: _isHovered
-                                    ? Colors.red
-                                    : Colors.black, // Ubah warna saat hover
+                                color: _isHovered ? Colors.red : Colors.black,
                                 size: 20,
                               ),
                             ),
@@ -484,16 +484,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   controller: _resetEmailController,
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    border: UnderlineInputBorder(), // Menghapus border kotak
-                    isDense:
-                        true, // Mengurangi tinggi padding di dalam textfield
-                    contentPadding: EdgeInsets.symmetric(
-                        horizontal: 5,
-                        vertical: 10), // Mengurangi padding kiri kanan
+                    border: UnderlineInputBorder(),
+                    isDense: true,
+                    contentPadding:
+                        EdgeInsets.symmetric(horizontal: 5, vertical: 10),
                     prefixIcon: Padding(
                       padding: EdgeInsets.only(left: 0),
                       child: Icon(
-                        Icons.mail_outline, // Ikon Mail di kiri
+                        Icons.mail_outline,
                         color: Colors.grey,
                         size: 24,
                       ),
@@ -503,7 +501,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: _isLoading
-                      ? null // Disable button saat sedang loading
+                      ? null
                       : () async {
                           String email = _resetEmailController.text.trim();
 
@@ -514,41 +512,41 @@ class _LoginScreenState extends State<LoginScreen> {
                           }
 
                           setState(() {
-                            _isLoading = true; // Tampilkan indikator loading
+                            _isLoading = true;
                           });
 
                           try {
                             final response =
                                 await ApiService.sendForgotPasswordEmail(email);
 
-                            // Debugging log untuk memeriksa response
                             debugPrint('Response dari API: $response');
+
+                            setState(() {
+                              _isLoading = false;
+                            });
 
                             if (response != null &&
                                 response['success'] == true) {
-                              // Jika sukses
-                              setState(() {
-                                _isLoading = false; // Selesai loading
-                              });
                               _showResetSuccessDialog();
                             } else {
-                              setState(() {
-                                _isLoading = false; // Selesai loading
-                              });
-                              // Menampilkan error jika gagal
-                              _showErrorResetDialog(response?['message'] ??
-                                  'Gagal mengirim email reset password');
+                              String errorMessage = response?['message'] ??
+                                  'Mohon Maaf Email Tidak Terdaftar';
+                              _showErrorResetDialog(errorMessage);
                             }
                           } catch (e) {
-                            // Menangkap error saat pemanggilan API
                             debugPrint('Error saat mengirim email reset: $e');
                             setState(() {
-                              _isLoading = false; // Selesai loading
+                              _isLoading = false;
                             });
                             _showErrorResetDialog('Terjadi kesalahan: $e');
                           }
                         },
-                  child: Text('Submit'),
+                  child: _isLoading
+                      ? CircularProgressIndicator(
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        )
+                      : Text('Submit'),
                   style: ElevatedButton.styleFrom(
                     foregroundColor: Colors.white,
                     backgroundColor: Colors.red[900],
@@ -629,31 +627,76 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15.0),
           ),
+          backgroundColor: Colors.white,
           child: Padding(
             padding: const EdgeInsets.all(20.0),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
-                  Icons.error,
-                  color: Colors.red,
-                  size: 80,
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Positioned(
+                      top: -15,
+                      right: -15,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: MouseRegion(
+                          onEnter: (_) {
+                            setState(() {
+                              _isHovered = true;
+                            });
+                          },
+                          onExit: (_) {
+                            setState(() {
+                              _isHovered = false;
+                            });
+                          },
+                          child: AnimatedScale(
+                            scale: _isIconClicked ? 0.7 : 1.0,
+                            duration: Duration(milliseconds: 150),
+                            curve: Curves.easeInOut,
+                            child: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.white,
+                              child: Icon(
+                                Icons.close,
+                                color: _isHovered ? Colors.red : Colors.black,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.error_outline,
+                          color: Colors.red,
+                          size: 40,
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Error',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
                 SizedBox(height: 20),
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15.0),
+                  style: TextStyle(fontSize: 15),
                 ),
                 SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white,
-                    backgroundColor: Colors.red,
-                  ),
-                  child: Text('OK'),
-                ),
               ],
             ),
           ),
@@ -674,182 +717,196 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          // Background image with reduced opacity and blend mode
-          Container(
-            decoration: BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(
-                    'assets/background.jpg'), // Background image path
-                fit: BoxFit.cover,
-                colorFilter: ColorFilter.mode(
-                  Colors.black.withOpacity(0.5),
-                  BlendMode.darken,
+      body: GestureDetector(
+        // Ini akan mendeteksi sentuhan di luar text field
+        behavior: HitTestBehavior
+            .opaque, // Agar sentuhan di luar widget lainnya tetap terdeteksi
+        onTap: () {
+          // Unfocus jika ada text field yang aktif
+          _loginEmailFocusNode.unfocus();
+          _loginPasswordFocusNode.unfocus();
+        },
+        child: Stack(
+          children: [
+            // Background image with reduced opacity and blend mode
+            Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage(
+                      'assets/background.jpg'), // Background image path
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withOpacity(0.5),
+                    BlendMode.darken,
+                  ),
                 ),
               ),
             ),
-          ),
-          Center(
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Logo
-                    Image.asset(
-                      'assets/selaras_logo2.png', // Logo path
-                      height: 100,
-                    ),
-                    SizedBox(height: 20),
-                    Container(
-                      constraints: BoxConstraints(
-                        maxWidth: 400.0,
-                        maxHeight: 450.0,
+            Center(
+              child: SingleChildScrollView(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Logo
+                      Image.asset(
+                        'assets/selaras_logo2.png', // Logo path
+                        height: 100,
                       ),
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 24.0, horizontal: 16.0),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
-                        borderRadius: BorderRadius.circular(12.0),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.grey.withOpacity(0.5),
-                            spreadRadius: 5,
-                            blurRadius: 7,
-                            offset: Offset(0, 3),
-                          ),
-                        ],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Login',
-                            style: TextStyle(
-                              fontSize: 24.0,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.red[900],
+                      SizedBox(height: 20),
+                      Container(
+                        constraints: BoxConstraints(
+                          maxWidth: 400.0,
+                          maxHeight: 450.0,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 24.0, horizontal: 16.0),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.withOpacity(0.5),
+                              spreadRadius: 5,
+                              blurRadius: 7,
+                              offset: Offset(0, 3),
                             ),
-                          ),
-                          SizedBox(height: 20),
-                          Form(
-                            key: _formKey,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                TextFormField(
-                                  controller: _usernameController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Email',
-                                    prefixIcon: Icon(Icons.account_circle),
-                                    border: UnderlineInputBorder(),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.grey),
-                                    ),
-                                    focusedBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.red),
-                                    ),
-                                  ),
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Masukkan Email';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                SizedBox(height: 30),
-                                TextFormField(
-                                  controller: _passwordController,
-                                  decoration: InputDecoration(
-                                    labelText: 'Password',
-                                    prefixIcon: Icon(Icons.lock),
-                                    suffixIcon: IconButton(
-                                      icon: Icon(
-                                        _isPasswordVisible
-                                            ? Icons.visibility
-                                            : Icons.visibility_off,
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Login',
+                              style: TextStyle(
+                                fontSize: 24.0,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red[900],
+                              ),
+                            ),
+                            SizedBox(height: 20),
+                            Form(
+                              key: _formKey,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextFormField(
+                                    controller: _usernameController,
+                                    focusNode: _loginEmailFocusNode,
+                                    decoration: InputDecoration(
+                                      labelText: 'Email',
+                                      prefixIcon: Icon(Icons.account_circle),
+                                      border: UnderlineInputBorder(),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            BorderSide(color: Colors.grey),
                                       ),
-                                      onPressed: () {
-                                        setState(() {
-                                          _isPasswordVisible =
-                                              !_isPasswordVisible;
-                                        });
-                                      },
+                                      focusedBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            BorderSide(color: Colors.red),
+                                      ),
                                     ),
-                                    border: UnderlineInputBorder(),
-                                    enabledBorder: UnderlineInputBorder(
-                                      borderSide:
-                                          BorderSide(color: Colors.grey),
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Masukkan Email';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  SizedBox(height: 30),
+                                  TextFormField(
+                                    controller: _passwordController,
+                                    focusNode: _loginPasswordFocusNode,
+                                    decoration: InputDecoration(
+                                      labelText: 'Password',
+                                      prefixIcon: Icon(Icons.lock),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _isPasswordVisible
+                                              ? Icons.visibility
+                                              : Icons.visibility_off,
+                                        ),
+                                        onPressed: () {
+                                          setState(() {
+                                            _isPasswordVisible =
+                                                !_isPasswordVisible;
+                                          });
+                                        },
+                                      ),
+                                      border: UnderlineInputBorder(),
+                                      enabledBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            BorderSide(color: Colors.grey),
+                                      ),
+                                      focusedBorder: UnderlineInputBorder(
+                                        borderSide:
+                                            BorderSide(color: Colors.red),
+                                      ),
                                     ),
-                                    focusedBorder: UnderlineInputBorder(
-                                      borderSide: BorderSide(color: Colors.red),
+                                    obscureText: !_isPasswordVisible,
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Masukkan password';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  SizedBox(height: 20),
+                                  Container(
+                                    width: double.infinity,
+                                    child: ElevatedButton(
+                                      onPressed: _isLoading ? null : _login,
+                                      style: ElevatedButton.styleFrom(
+                                          backgroundColor:
+                                              Color.fromARGB(255, 213, 37, 29),
+                                          foregroundColor: Colors.white),
+                                      child: _isLoading
+                                          ? CircularProgressIndicator(
+                                              valueColor:
+                                                  AlwaysStoppedAnimation<Color>(
+                                                      const Color.fromARGB(
+                                                          255, 255, 255, 255)),
+                                            )
+                                          : Text('Login'),
                                     ),
                                   ),
-                                  obscureText: !_isPasswordVisible,
-                                  validator: (value) {
-                                    if (value == null || value.isEmpty) {
-                                      return 'Masukkan password';
-                                    }
-                                    return null;
-                                  },
-                                ),
-                                SizedBox(height: 20),
-                                Container(
-                                  width: double.infinity,
-                                  child: ElevatedButton(
-                                    onPressed: _isLoading ? null : _login,
-                                    style: ElevatedButton.styleFrom(
-                                        backgroundColor:
-                                            Color.fromARGB(255, 213, 37, 29),
-                                        foregroundColor: Colors.white),
-                                    child: _isLoading
-                                        ? CircularProgressIndicator(
-                                            valueColor:
-                                                AlwaysStoppedAnimation<Color>(
-                                                    const Color.fromARGB(
-                                                        255, 255, 255, 255)),
-                                          )
-                                        : Text('Login'),
-                                  ),
-                                ),
-                                SizedBox(height: 10),
-                                GestureDetector(
-                                  onTap: _showPasswordResetDialog,
-                                  child: Text(
-                                    'Forgot Password?',
-                                    style: TextStyle(
-                                      color:
-                                          const Color.fromARGB(255, 7, 54, 92),
-                                      fontSize: 16,
+                                  SizedBox(height: 10),
+                                  GestureDetector(
+                                    onTap: _showPasswordResetDialog,
+                                    child: Text(
+                                      'Forgot Password?',
+                                      style: TextStyle(
+                                        color: const Color.fromARGB(
+                                            255, 7, 54, 92),
+                                        fontSize: 16,
+                                      ),
                                     ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-          if (_isLoading || _isDialogLoading)
-            AnimatedOpacity(
-              opacity: _isLoading || _isDialogLoading ? 1.0 : 0.0,
-              duration: Duration(milliseconds: 300),
-              child: Container(
-                color: Colors.black54,
-                child: Center(
-                  child: CircularProgressIndicator(),
+            if (_isLoading || _isDialogLoading)
+              AnimatedOpacity(
+                opacity: _isLoading || _isDialogLoading ? 1.0 : 0.0,
+                duration: Duration(milliseconds: 300),
+                child: Container(
+                  color: Colors.black54,
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }

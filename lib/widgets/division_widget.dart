@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/widgets/add_division_widget.dart';
 
 class DivisionWidget extends StatefulWidget {
   @override
@@ -116,6 +117,130 @@ class _DivisionWidgetState extends State<DivisionWidget>
     });
   }
 
+  void _deleteDivision(int divisiId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red, // Mengubah warna menjadi merah
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.delete, // Menambahkan ikon tong sampah
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Hapus Divisio',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Apakah Anda yakin ingin menghapus divisi ini?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                          Colors.grey[600], // Warna abu-abu untuk Cancel
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                          Colors.red[800], // Warna merah untuk Delete
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Hapus',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirm != null && confirm) {
+      try {
+        final response = await ApiService.handleDivision(
+            method: 'DELETE', divisiId: divisiId);
+
+        if (response != null &&
+            response['code'] == 200 &&
+            response['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('User deleted successfully!')));
+          setState(() {
+            divisions.removeWhere((user) => user['id'] == divisiId);
+          });
+        } else {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Failed to delete divisi')));
+        }
+      } catch (e) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error deleting divisi: $e')));
+      } finally {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   // Function to create route for navigating with custom animation
   Route _createRoute(Widget targetScreen) {
     return PageRouteBuilder(
@@ -159,20 +284,41 @@ class _DivisionWidgetState extends State<DivisionWidget>
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          // Search button
-          IconButton(
-            icon: Icon(Icons.search),
-            onPressed:
-                _toggleSearchVisibility, // Toggle visibility of search TextField
-          ),
-          // Add division button with "+" icon only
           Padding(
             padding: EdgeInsets.only(right: 16),
-            child: IconButton(
-              icon: Icon(Icons.add), // "+" icon
-              onPressed: () {
-                // Navigate to add division screen
-              },
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor:
+                  Color(0xFFC0BCB5), // Set the background color of the circle
+              child: IconButton(
+                icon: Icon(Icons.search),
+                color: Colors.white, // Set the icon color
+                onPressed:
+                    _toggleSearchVisibility, // Toggle visibility of search TextField
+                padding:
+                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
+                iconSize: 28, // Adjust the size of the icon
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: CircleAvatar(
+              radius: 20, // Set the size of the CircleAvatar
+              backgroundColor:
+                  Color(0xFF4A6C6F), // Set the background color of the circle
+              child: IconButton(
+                icon: Icon(Icons.add),
+                color: Colors.white, // Set the icon color
+                onPressed: () {
+                  Navigator.of(context).push(
+                    _createRoute(AddDivisionWidget()),
+                  );
+                },
+                padding:
+                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
+                iconSize: 28, // Adjust the size of the icon
+              ),
             ),
           ),
         ],
@@ -255,12 +401,12 @@ class _DivisionWidgetState extends State<DivisionWidget>
                                     ),
                                   ],
                                   source: MyDataSource(
-                                    filteredDivisions,
-                                    _totalItems,
-                                    _pageIndex,
-                                    _rowsPerPage,
-                                    context,
-                                  ),
+                                      filteredDivisions,
+                                      _totalItems,
+                                      _pageIndex,
+                                      _rowsPerPage,
+                                      context,
+                                      _deleteDivision),
                                 ),
                               ),
                             ),
@@ -280,9 +426,16 @@ class MyDataSource extends DataTableSource {
   final int pageIndex;
   final int rowsPerPage;
   final BuildContext context;
+  final Function onDeletePressed;
 
-  MyDataSource(this.divisions, this.totalItems, this.pageIndex,
-      this.rowsPerPage, this.context);
+  MyDataSource(
+    this.divisions,
+    this.totalItems,
+    this.pageIndex,
+    this.rowsPerPage,
+    this.context,
+    this.onDeletePressed,
+  );
 
   @override
   DataRow? getRow(int index) {
@@ -310,7 +463,7 @@ class MyDataSource extends DataTableSource {
             IconButton(
               icon: Icon(Icons.delete),
               onPressed: () {
-                // Add delete functionality
+                // onDeletePressed(user['id']);
               },
             ),
           ],

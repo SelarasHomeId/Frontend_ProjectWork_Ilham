@@ -149,24 +149,42 @@ class ApiService {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
-    final response = await apiRequest(
+    try {
+      final response = await apiRequest(
         method: 'POST',
         endpoint: '/auth/logout',
         body: null,
         token: token,
-        contentType: 'application/json');
+        contentType: 'application/json',
+      );
 
-    if (response != null && response['success'] == true) {
+      if (response != null && response['code'] == 200) {
+        debugPrint("✅ Logout berhasil, menghapus sesi...");
+        await prefs.clear();
+      } else {
+        debugPrint("❌ Logout API gagal atau code != 200: ${response?['code']}");
+        await prefs.clear(); // Tetap hapus sesi jika logout API gagal
+      }
+    } catch (e) {
+      debugPrint("🚨 Error saat logout: $e");
       await prefs.clear();
+    }
+
+    // Pastikan context masih valid sebelum navigasi
+    finally {
+      await prefs.clear();
+
       if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => LoginScreen()),
+        Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => LoginScreen()),
           (route) => false,
         );
+      } else {
+        debugPrint("⚠️ Gunakan context yang valid dari parent widget!");
       }
     }
   }
+
   //END AUTH ================================================================
 
   //START DASHBOARD================================================================
@@ -318,13 +336,16 @@ class ApiService {
   //END DASHBOARD================================================================
 
   // START WORKSPACE================================================================
-  static Future<List<Map<String, dynamic>>> workspaceFind() async {
+  static Future<List<Map<String, dynamic>>> workspaceFind({
+    Map<String, String>? params,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
 
     final response = await apiRequest(
       method: 'GET',
-      endpoint: '/workspace',
+      endpoint:
+          '/workspace${params != null ? General.buildQueryParams(params) : ""}',
       body: null,
       token: token,
       contentType: 'application/json',
@@ -337,15 +358,33 @@ class ApiService {
   // Send email forgot password
   static Future<Map<String, dynamic>?> sendForgotPasswordEmail(
       String email) async {
-    final response = await apiRequest(
-      method: 'POST',
-      endpoint: '/auth/send-email/forgot-password',
-      body: {'email': email},
-      token: null, // Token tidak diperlukan untuk reset password
-      contentType: 'application/json',
-    );
+    try {
+      final response = await apiRequest(
+        method: 'POST',
+        endpoint: '/auth/send-email/forgot-password',
+        body: {'email': email},
+        token: null, // Tidak ada token yang dibutuhkan
+        contentType: 'application/json',
+      );
 
-    return response;
+      if (response != null && response['code'] == 401) {
+        // Jika kode status 401, email tidak ditemukan
+        return {
+          'success': false,
+          'message': 'Email tidak terdaftar',
+        };
+      }
+
+      // Jika response sukses (kode selain 401)
+      return response;
+    } catch (e) {
+      // Menangani kesalahan yang terjadi pada saat pemanggilan API
+      debugPrint('Error saat mengirim email reset: $e');
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan saat mengirim email reset: $e',
+      };
+    }
   }
 
 //START NOTIFICATION================================================================
@@ -690,6 +729,25 @@ class ApiService {
   }
 
   //handle project
+  static String getProjectUrl({int? projectId}) {
+    return projectId != null
+        ? '$baseUrl/project/$projectId'
+        : '$baseUrl/project';
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null || token.isEmpty) {
+      print("⚠️ Token tidak ditemukan di SharedPreferences!");
+      return null;
+    }
+
+    print("✅ Token yang digunakan: $token");
+    return token;
+  }
+
   static Future<dynamic> handleProject({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? projectId,

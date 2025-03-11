@@ -41,6 +41,7 @@ dependencies:
   pie_chart: ^5.0.1
   intl: any
   file_picker: ^8.3.2
+  image_picker: ^1.1.2
   image_cropper: ^5.0.1
   mime: ^1.0.4
   http_parser: ^4.0.2
@@ -48,6 +49,7 @@ dependencies:
   excel: ^4.0.6
   permission_handler: ^11.4.0
   path_provider: ^2.0.15
+  font_awesome_flutter: '>= 4.7.0'
  
   
 

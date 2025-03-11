@@ -97,7 +97,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: 20),
                 child: Text(
-                  'Apakah Anda yakin ingin menghapus user ini?',
+                  'Apakah Anda yakin ingin menghapus project ini?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 16,
@@ -159,18 +159,18 @@ class _ProjectWidgetState extends State<ProjectWidget>
             response['code'] == 200 &&
             response['success']) {
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('User deleted successfully!')));
+              SnackBar(content: Text('Project deleted successfully!')));
           setState(() {
-            projects.removeWhere((user) => user['id'] == projectId);
+            projects.removeWhere((project) => project['id'] == projectId);
             _totalItems--;
           });
         } else {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Failed to delete user')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to delete project')));
         }
       } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error deleting user: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting project: $e')));
       } finally {
         setState(() {
           _isLoading = false;

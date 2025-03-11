@@ -7,6 +7,9 @@ import 'package:excel/excel.dart' as Excel;
 import 'package:permission_handler/permission_handler.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:flutter/services.dart';
 
 class DashboardWidget extends StatefulWidget {
   final int roleId;
@@ -938,90 +941,96 @@ class ContactDataSource extends DataTableSource {
       DataCell(
         GestureDetector(
           onTap: () {
-            if ((contact['message']?.toString() ?? '-').length > 30) {
+            if ((contact['info']?.toString() ?? '-').length > 30) {
               showDialog(
                 context: context,
                 builder: (BuildContext context) {
                   return Dialog(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Container untuk header dengan background abu-abu dan ikon amplop
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[700], // Warna abu-abu
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(16),
-                              topRight: Radius.circular(16),
+                    ), // Penutup untuk RoundedRectangleBorder
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.6,
+                        maxWidth: MediaQuery.of(context).size.height * 0.8,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header Section
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[700],
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
                             ),
-                          ),
-                          child: Center(
-                            child: AnimatedScale(
-                              duration: Duration(milliseconds: 500),
-                              scale: 1.2,
-                              child: Icon(
-                                Icons.email, // Ganti dengan ikon amplop
-                                color: Colors.white,
-                                size: 80,
+                            child: Center(
+                              child: AnimatedScale(
+                                duration: Duration(milliseconds: 500),
+                                scale: 1.2,
+                                child: Icon(
+                                  Icons.email,
+                                  color: Colors.white,
+                                  size: 80,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 20),
+                          SizedBox(height: 5),
 
-                        // Judul dialog
-                        Text(
-                          'Pesan Lengkap',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                          // Title
+                          Text(
+                            'Pesan Lengkap',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 10),
+                          SizedBox(height: 5),
 
-                        // Isi pesan dengan scroll jika panjang
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: SingleChildScrollView(
+                          // Scrollable Content
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: SingleChildScrollView(
+                                physics: AlwaysScrollableScrollPhysics(),
+                                child: Text(
+                                  contact['message']?.toString() ?? '-',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 5),
+
+                          // Close Button
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.grey[800],
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 30, vertical: 5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
                             child: Text(
-                              contact['message']?.toString() ?? '-',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.black54,
-                              ),
+                              'Tutup',
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 20),
-
-                        // Tombol Tutup
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          style: TextButton.styleFrom(
-                            backgroundColor:
-                                Colors.grey[800], // Warna abu-abu tua
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 30, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            'Tutup',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                      ],
+                          SizedBox(height: 20),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -1029,13 +1038,16 @@ class ContactDataSource extends DataTableSource {
             }
           },
           child: Container(
-            width: 200, // Atur lebar kolom
-            child: Text(
-              contact['message']?.toString() ?? '-',
-              softWrap: true,
-              maxLines: 1, // Batasi satu baris
-              overflow: TextOverflow
-                  .ellipsis, // Tampilkan titik tiga jika terlalu panjang
+            width: 200,
+            constraints: BoxConstraints(maxHeight: 50),
+            child: SingleChildScrollView(
+              physics: NeverScrollableScrollPhysics(),
+              child: Text(
+                contact['message']?.toString() ?? '-',
+                softWrap: true,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ),
@@ -1074,13 +1086,171 @@ class AffiliateDataSource extends DataTableSource {
   @override
   DataRow getRow(int index) {
     final affiliate = affiliates[index];
+    final String? tiktok = affiliate['tiktok'];
+    final Uri? tiktokUri = tiktok != null ? Uri.tryParse(tiktok) : null;
+    final String? instagram = affiliate['instagram'];
+    final Uri? instagramUri =
+        instagram != null ? Uri.tryParse(instagram) : null;
     return DataRow(cells: [
       DataCell(Text('${index + 1}')),
       DataCell(Text(affiliate['name']?.toString() ?? '-')),
       DataCell(Text(affiliate['email']?.toString() ?? '-')),
       DataCell(Text(affiliate['phone']?.toString() ?? '-')),
-      DataCell(Text(affiliate['instagram']?.toString() ?? '-')),
-      DataCell(Text(affiliate['tiktok']?.toString() ?? '-')),
+      DataCell(
+        Row(
+          children: [
+            // 1. Jika valid URL Tiktok
+            if (instagramUri != null && instagramUri.isAbsolute)
+              IconButton(
+                icon: Icon(
+                  FontAwesomeIcons.instagram,
+                  color: Colors.black, // Sesuaikan warna
+                  size: 20,
+                ),
+                onPressed: () async {
+                  try {
+                    await launchUrl(
+                      instagramUri,
+                      mode: LaunchMode
+                          .externalApplication, // Buka di app eksternal
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content:
+                            Text('Gagal membuka Instagram: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+              )
+
+            // 2. Jika text biasa (username) atau URL tidak valid
+            else if (instagram != null && instagram.isNotEmpty)
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: instagram));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Berhasil disalin ke clipboard!'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+                child: Tooltip(
+                  // Tambahkan tooltip untuk UX lebih baik
+                  message: 'Tap untuk menyalin',
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.content_copy, size: 14),
+                        SizedBox(width: 6),
+                        Text(
+                          instagram,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: const Color.fromARGB(255, 0, 0, 0),
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+
+            // 3. Jika kosong/null
+            else
+              Text(
+                'No Instagram Account',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                ),
+              ),
+          ],
+        ),
+      ),
+      DataCell(
+        Row(
+          children: [
+            // 1. Jika valid URL Tiktok
+            if (tiktokUri != null && tiktokUri.isAbsolute)
+              IconButton(
+                icon: Icon(
+                  FontAwesomeIcons.tiktok,
+                  color: Colors.black, // Sesuaikan warna
+                  size: 20,
+                ),
+                onPressed: () async {
+                  try {
+                    await launchUrl(
+                      tiktokUri,
+                      mode: LaunchMode
+                          .externalApplication, // Buka di app eksternal
+                    );
+                  } catch (e) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Gagal membuka TikTok: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                },
+              )
+
+            // 2. Jika text biasa (username) atau URL tidak valid
+            else if (tiktok != null && tiktok.isNotEmpty)
+              InkWell(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: tiktok));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Berhasil disalin ke clipboard!'),
+                      backgroundColor: Colors.green,
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                },
+                child: Tooltip(
+                  // Tambahkan tooltip untuk UX lebih baik
+                  message: 'Tap untuk menyalin',
+                  child: Container(
+                    padding: EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    child: Row(
+                      children: [
+                        Icon(Icons.content_copy, size: 14),
+                        SizedBox(width: 6),
+                        Text(
+                          tiktok,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.blue[800],
+                            decoration: TextDecoration.underline,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              )
+
+            // 3. Jika kosong/null
+            else
+              Text(
+                'No Tiktok Account',
+                style: TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: Colors.grey,
+                ),
+              ),
+          ],
+        ),
+      ),
       DataCell(
         GestureDetector(
           onTap: () {
@@ -1091,83 +1261,89 @@ class AffiliateDataSource extends DataTableSource {
                   return Dialog(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Container untuk header dengan background abu-abu dan ikon amplop
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[700], // Warna abu-abu
-                            borderRadius: BorderRadius.only(
-                              topLeft: Radius.circular(16),
-                              topRight: Radius.circular(16),
+                    ), // Penutup untuk RoundedRectangleBorder
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.6,
+                        maxWidth: MediaQuery.of(context).size.height * 0.8,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Header Section
+                          Container(
+                            width: double.infinity,
+                            padding: EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[700],
+                              borderRadius: BorderRadius.only(
+                                topLeft: Radius.circular(16),
+                                topRight: Radius.circular(16),
+                              ),
                             ),
-                          ),
-                          child: Center(
-                            child: AnimatedScale(
-                              duration: Duration(milliseconds: 500),
-                              scale: 1.2,
-                              child: Icon(
-                                Icons.email, // Ganti dengan ikon amplop
-                                color: Colors.white,
-                                size: 80,
+                            child: Center(
+                              child: AnimatedScale(
+                                duration: Duration(milliseconds: 500),
+                                scale: 1.2,
+                                child: Icon(
+                                  Icons.email,
+                                  color: Colors.white,
+                                  size: 80,
+                                ),
                               ),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 20),
+                          SizedBox(height: 5),
 
-                        // Judul dialog
-                        Text(
-                          'Pesan Lengkap',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                          // Title
+                          Text(
+                            'Pesan Lengkap',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
                           ),
-                        ),
-                        SizedBox(height: 10),
+                          SizedBox(height: 5),
 
-                        // Isi pesan dengan scroll jika panjang
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 20),
-                          child: SingleChildScrollView(
+                          // Scrollable Content
+                          Expanded(
+                            child: Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 20),
+                              child: SingleChildScrollView(
+                                physics: AlwaysScrollableScrollPhysics(),
+                                child: Text(
+                                  affiliate['info']?.toString() ?? '-',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 5),
+
+                          // Close Button
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            style: TextButton.styleFrom(
+                              backgroundColor: Colors.grey[800],
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 30, vertical: 5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
                             child: Text(
-                              affiliate['info']?.toString() ?? '-',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Colors.black54,
-                              ),
+                              'Tutup',
+                              style: TextStyle(color: Colors.white),
                             ),
                           ),
-                        ),
-                        SizedBox(height: 20),
-
-                        // Tombol Tutup
-                        TextButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          style: TextButton.styleFrom(
-                            backgroundColor:
-                                Colors.grey[800], // Warna abu-abu tua
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 30, vertical: 10),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: Text(
-                            'Tutup',
-                            style: TextStyle(color: Colors.white),
-                          ),
-                        ),
-                        SizedBox(height: 20),
-                      ],
+                          SizedBox(height: 20),
+                        ],
+                      ),
                     ),
                   );
                 },
@@ -1175,13 +1351,16 @@ class AffiliateDataSource extends DataTableSource {
             }
           },
           child: Container(
-            width: 200, // Atur lebar kolom
-            child: Text(
-              affiliate['info']?.toString() ?? '-',
-              softWrap: true,
-              maxLines: 1, // Batasi satu baris
-              overflow: TextOverflow
-                  .ellipsis, // Tampilkan titik tiga jika terlalu panjang
+            width: 200,
+            constraints: BoxConstraints(maxHeight: 50),
+            child: SingleChildScrollView(
+              physics: NeverScrollableScrollPhysics(),
+              child: Text(
+                affiliate['info']?.toString() ?? '-',
+                softWrap: true,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
         ),

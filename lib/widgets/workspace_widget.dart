@@ -20,6 +20,7 @@ class WorkspaceWidget extends StatefulWidget {
 
 class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   List<Map<String, dynamic>> _boards = [];
+  String _coverView = "";
   bool _isLoading = true;
   String currentWorkspace = "";
 
@@ -31,7 +32,50 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   void initState() {
     super.initState();
     _fetchBoards();
+    _fetchWorkspace();
     currentWorkspace = widget.workspace;
+  }
+
+  @override
+  void didUpdateWidget(covariant WorkspaceWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.workspaceId != oldWidget.workspaceId) {
+      // Jika workspaceId berubah, fetch ulang workspace
+      _fetchWorkspace();
+      _fetchBoards();
+      currentWorkspace = widget.workspace;
+    }
+  }
+
+  Future<void> _fetchWorkspace() async {
+    try {
+      final params = {'id': widget.workspaceId.toString()};
+      final workspace = await ApiService.workspaceFind(params: params);
+      setState(() {
+        if (workspace[0]['cover'] != null) {
+          _coverView = workspace[0]['cover']['view'];
+        } else {
+          _coverView = "";
+        }
+      });
+      print(widget.workspace);
+      print("ini cover :");
+      print(_coverView);
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      print(widget.workspace);
+      print("ga ada cover :");
+      print(_coverView);
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat workspace: $e')),
+      );
+    }
   }
 
   Future<void> onLoadListBoard() async {
@@ -446,73 +490,105 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       currentWorkspace = widget.workspace;
     }
     return Scaffold(
-        appBar: AppBar(
-          title: Text(
-            widget.workspace,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 20,
-            ),
+      appBar: AppBar(
+        title: Text(
+          widget.workspace,
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
           ),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          actions: [
-            Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: OutlinedButton(
-                onPressed: () {
-                  _showCreateBoardDialog();
-                },
-                style: OutlinedButton.styleFrom(
-                  backgroundColor: Color(0xFF4C6A92),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: MediaQuery.of(context).size.width * 0.04,
-                    vertical: MediaQuery.of(context).size.height * 0.01,
-                  ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 16),
+            child: OutlinedButton(
+              onPressed: () {
+                _showCreateBoardDialog();
+              },
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Color(0xFF4C6A92),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  "+ Add Board",
-                  style: TextStyle(
-                      fontSize: MediaQuery.of(context).size.width * 0.04),
+                padding: EdgeInsets.symmetric(
+                  horizontal: MediaQuery.of(context).size.width * 0.04,
+                  vertical: MediaQuery.of(context).size.height * 0.01,
+                ),
+              ),
+              child: Text(
+                "+ Add Board",
+                style: TextStyle(
+                  fontSize: MediaQuery.of(context).size.width * 0.04,
                 ),
               ),
             ),
-          ],
-        ),
-        body: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : _boards.isEmpty
-                ? Center(child: Text('Tidak ada board untuk workspace ini'))
-                : ScrollConfiguration(
-                    behavior: ScrollBehavior().copyWith(overscroll: false),
-                    child: ListView(
-                      scrollDirection: Axis.horizontal,
-                      children: [
-                        WidgetBoard(
-                          controller: controller,
-                          boardController: boardController,
-                          addTask: (boardId) async {
-                            _showCreateTaskDialog(boardId);
-                          },
-                          onLoadBoard: () async {
-                            return onLoadListBoard();
-                          },
-                          deleteBoard: (boardId) async {
-                            _deleteBoard(boardId);
-                          },
-                          renameBoard: (boardId, newName) async {
-                            _editBoard(boardId: boardId, name: newName);
-                          },
-                          moveBoard: (boardId, newWorkspaceId) async {
-                            _editBoard(
-                                boardId: boardId, workspaceId: newWorkspaceId);
-                          },
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          // Background Image
+          if (_coverView.isNotEmpty)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  image: DecorationImage(
+                    image: NetworkImage(
+                        _coverView), // Gunakan gambar jika tersedia
+                    fit: BoxFit.cover, // Sesuaikan agar menutupi layar
+                  ),
+                ),
+              ),
+            ),
+
+          // Konten utama
+          _isLoading
+              ? Center(child: CircularProgressIndicator())
+              : _boards.isEmpty
+                  ? Center(
+                      child: Text(
+                        'Tidak ada board untuk workspace ini',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors
+                              .white, // Sesuaikan agar terbaca di atas background
                         ),
-                      ],
-                    )));
+                      ),
+                    )
+                  : ScrollConfiguration(
+                      behavior: ScrollBehavior().copyWith(overscroll: false),
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: [
+                          WidgetBoard(
+                            controller: controller,
+                            boardController: boardController,
+                            addTask: (boardId) async {
+                              _showCreateTaskDialog(boardId);
+                            },
+                            onLoadBoard: () async {
+                              return onLoadListBoard();
+                            },
+                            deleteBoard: (boardId) async {
+                              _deleteBoard(boardId);
+                            },
+                            renameBoard: (boardId, newName) async {
+                              _editBoard(boardId: boardId, name: newName);
+                            },
+                            moveBoard: (boardId, newWorkspaceId) async {
+                              _editBoard(
+                                  boardId: boardId,
+                                  workspaceId: newWorkspaceId);
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+        ],
+      ),
+    );
   }
 }

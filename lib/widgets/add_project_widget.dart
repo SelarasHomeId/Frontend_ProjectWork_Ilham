@@ -1,5 +1,8 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:http/http.dart' as http;
 
 class AddProjectWidget extends StatefulWidget {
   @override
@@ -9,8 +12,8 @@ class AddProjectWidget extends StatefulWidget {
 class _AddProjectWidgetState extends State<AddProjectWidget> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
-  TextEditingController dateController =
-      TextEditingController(); // Controller untuk tanggal
+  TextEditingController dateController = TextEditingController();
+  File? _selectedImage;
 
   @override
   void initState() {
@@ -77,6 +80,19 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
     );
   }
 
+  // Fungsi untuk memilih gambar dari galeri
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedImage =
+        await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedImage != null) {
+      setState(() {
+        _selectedImage = File(pickedImage.path);
+      });
+    }
+  }
+
   // Fungsi untuk menambah project
   void _addProject(BuildContext context) async {
     if (nameController.text.isEmpty ||
@@ -86,27 +102,58 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
       return;
     }
 
-    final data = {
-      'name': nameController.text,
-      'location': locationController.text,
-      'date_created': dateController.text, // Menggunakan tanggal yang dipilih
-    };
-
     try {
-      final response = await ApiService.handleProject(
-        method: 'POST',
-        data: data,
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse(ApiService.getProjectUrl()),
       );
-      print('Response: $response');
-      if (response != null) {
-        Navigator.pop(context); // Kembali ke halaman sebelumnya
+
+      // ✅ Ambil token dengan benar sebelum digunakan
+      final token = await ApiService.getToken();
+      if (token == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content:
+                  Text('Gagal menambahkan project: Token tidak ditemukan')),
+        );
+        return;
+      }
+
+      // ✅ Pastikan format Authorization sesuai dengan API
+      request.headers['Authorization'] = 'Bearer $token';
+      request.headers['Content-Type'] = 'multipart/form-data';
+
+      // Tambahkan data proyek
+      request.fields['name'] = nameController.text;
+      request.fields['location'] = locationController.text;
+      request.fields['date_created'] = dateController.text;
+
+      // Upload gambar jika ada
+      if (_selectedImage != null) {
+        request.files.add(
+          await http.MultipartFile.fromPath('cover', _selectedImage!.path),
+        );
+      }
+
+      // Kirim request
+      var response = await request.send();
+      var responseData = await response.stream.bytesToString();
+
+      if (response.statusCode == 200) {
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Project berhasil ditambahkan!')),
         );
+      } else {
+        print("⚠️ Error Response: $responseData"); // Debug Response
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal menambahkan project: $responseData')),
+        );
       }
     } catch (e) {
+      print("⚠️ Error: $e"); // Debug Error
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menambahkan project: $e')),
+        SnackBar(content: Text('Error: $e')),
       );
     }
   }
@@ -146,7 +193,7 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Silahkan masukkan data proyek baru",
+                "Silahkan Masukkan Data Proyek Baru",
                 style: TextStyle(fontSize: screenWidth * 0.05),
               ),
               SizedBox(height: screenHeight * 0.02),
@@ -229,6 +276,95 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
               ),
               SizedBox(height: screenHeight * 0.02),
 
+              // Pilih Gambar
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Text(
+                      "Gambar Cover",
+                      style: TextStyle(
+                        fontSize: screenWidth * 0.04,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.01),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: _pickImage,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons
+                                .cloud_upload, // Ganti dengan ikon yang diinginkan
+                            color: Colors.white,
+                            size: screenWidth * 0.06,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            "Pilih Gambar",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: screenWidth * 0.04),
+                          ),
+                        ],
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF7EA0B7),
+                        padding: EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: screenHeight * 0.02),
+                  _selectedImage != null
+                      ? Stack(
+                          alignment: Alignment.topRight,
+                          children: [
+                            Image.file(
+                              _selectedImage!,
+                              width: 100,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _selectedImage = null;
+                                });
+                              },
+                              child: Container(
+                                margin: EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.close,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          "Tidak ada gambar",
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                ],
+              ),
+
+              SizedBox(
+                height: 10,
+              ),
+
               // Tombol Submit
               SizedBox(
                 width: double.infinity,
@@ -245,7 +381,7 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
                     backgroundColor: Color(0xFF7EA0B7),
                     padding: EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
+                      borderRadius: BorderRadius.circular(15),
                     ),
                   ),
                 ),
