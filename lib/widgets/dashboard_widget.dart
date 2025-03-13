@@ -464,11 +464,12 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                             chartRadius:
                                 MediaQuery.of(context).size.width / 3.2,
                             colorList: [
-                              Color(0xFFFD1D1D),
-                              Color(0xFF00F2EA),
+                              Color(0xFFFF006A),
+                              Color.fromARGB(255, 0, 0, 0),
                               Color(0xff1877F2),
                               Colors.green
                             ],
+                            gradientList: [],
                             initialAngleInDegree: 0,
                             chartType: ChartType.disc,
                             ringStrokeWidth: 32,
@@ -524,7 +525,10 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                             chartLegendSpacing: 32,
                             chartRadius:
                                 MediaQuery.of(context).size.width / 3.2,
-                            colorList: [Color(0xFFC1DBE3), Color(0xFF474441)],
+                            colorList: [
+                              Color.fromARGB(255, 8, 197, 254),
+                              Color(0xFF474441)
+                            ],
                             initialAngleInDegree: 0,
                             chartType: ChartType.disc,
                             ringStrokeWidth: 40,
@@ -941,7 +945,7 @@ class ContactDataSource extends DataTableSource {
       DataCell(
         GestureDetector(
           onTap: () {
-            if ((contact['info']?.toString() ?? '-').length > 30) {
+            if ((contact['message']?.toString() ?? '-').length > 30) {
               showDialog(
                 context: context,
                 builder: (BuildContext context) {

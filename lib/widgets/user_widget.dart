@@ -355,7 +355,7 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
         onRefresh: _refreshData, // Trigger to fetch new data
         child: SingleChildScrollView(
           child: Padding(
-            padding: EdgeInsets.all(2.0),
+            padding: EdgeInsets.all(16.0),
             child: Column(
               children: [
                 AnimatedSwitcher(
@@ -396,46 +396,44 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
                     : filteredUsers.isEmpty
                         ? Center(child: Text('No users to display'))
                         : Padding(
-                            padding: const EdgeInsets.all(10.0),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 2, vertical: 5),
                             child: SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
                               child: SizedBox(
                                 width: MediaQuery.of(context).size.width,
-                                child: PaginatedDataTable(
-                                  columnSpacing: 20,
-                                  horizontalMargin: 12,
-                                  rowsPerPage: _rowsPerPage,
-                                  sortColumnIndex: _sortColumnIndex,
-                                  sortAscending: _sortAscending,
-                                  columns: [
-                                    DataColumn(label: Text('No')),
-                                    DataColumn(
-                                      label: Text('Name'),
-                                      onSort: (columnIndex, ascending) {
-                                        _sort<String>((user) => user['name'],
-                                            columnIndex, ascending);
-                                      },
+                                child: Container(
+                                  constraints: BoxConstraints(
+                                      maxWidth:
+                                          900), // Maksimal 900px agar tidak terlalu luas
+                                  child: PaginatedDataTable(
+                                    columnSpacing: 16,
+                                    horizontalMargin: 5,
+                                    rowsPerPage: _rowsPerPage,
+                                    sortColumnIndex: _sortColumnIndex,
+                                    sortAscending: _sortAscending,
+                                    columns: [
+                                      DataColumn(
+                                          label: SizedBox(
+                                              width: 40, child: Text('No'))),
+                                      DataColumn(label: Text('Name')),
+                                      DataColumn(label: Text('Email')),
+                                      DataColumn(label: Text('Role')),
+                                      DataColumn(label: Text('Divisi')),
+                                      DataColumn(label: Text('Login')),
+                                      DataColumn(label: Text('Status')),
+                                      DataColumn(
+                                          label: SizedBox(
+                                              width: 100,
+                                              child: Text('Actions'))),
+                                    ],
+                                    source: MyDataSource(
+                                      filteredUsers,
+                                      0,
+                                      _rowsPerPage,
+                                      context,
+                                      _deleteUser,
                                     ),
-                                    DataColumn(label: Text('Email')),
-                                    DataColumn(label: Text('Role')),
-                                    DataColumn(label: Text('Divisi')),
-                                    DataColumn(label: Text('Login ')),
-                                    DataColumn(label: Text('Status')),
-                                    DataColumn(
-                                      label: IntrinsicWidth(
-                                        child: Container(
-                                          width: 120,
-                                          child: Text('Actions'),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  source: MyDataSource(
-                                    filteredUsers,
-                                    0,
-                                    _rowsPerPage,
-                                    context,
-                                    _deleteUser,
                                   ),
                                 ),
                               ),
@@ -482,23 +480,31 @@ class MyDataSource extends DataTableSource {
       DataCell(Text(user['is_locked'] ? 'Locked' : 'Unlocked')),
       DataCell(
         Row(
+          mainAxisSize: MainAxisSize.min, // Pastikan row tidak melebar
           children: [
-            IconButton(
-              icon: Icon(Icons.edit),
-              onPressed: () {
-                int userId = user['id'];
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => UpdateUserWidget(userId: userId),
-                  ),
-                );
-              },
+            SizedBox(
+              width: 30, // Tetapkan width yang lebih kecil agar tidak melebar
+              child: IconButton(
+                icon: Icon(Icons.edit),
+                onPressed: () {
+                  int userId = user['id'];
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => UpdateUserWidget(userId: userId),
+                    ),
+                  );
+                },
+              ),
             ),
-            IconButton(
-              icon: Icon(Icons.delete),
-              onPressed: () {
-                onDeletePressed(user['id']);
-              },
+            SizedBox(width: 2), // Mengurangi jarak antar ikon
+            SizedBox(
+              width: 30, // Tetapkan width agar lebih rapat
+              child: IconButton(
+                icon: Icon(Icons.delete),
+                onPressed: () {
+                  onDeletePressed(user['id']);
+                },
+              ),
             ),
           ],
         ),

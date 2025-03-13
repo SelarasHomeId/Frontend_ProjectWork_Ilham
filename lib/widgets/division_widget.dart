@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
-import 'package:selarashomeid/widgets/add_division_widget.dart';
 
 class DivisionWidget extends StatefulWidget {
   @override
@@ -10,6 +9,7 @@ class DivisionWidget extends StatefulWidget {
 class _DivisionWidgetState extends State<DivisionWidget>
     with TickerProviderStateMixin {
   TextEditingController _searchController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
   List<dynamic> divisions = [];
   List<dynamic> filteredDivisions = [];
   bool _isLoading = true;
@@ -117,7 +117,398 @@ class _DivisionWidgetState extends State<DivisionWidget>
     });
   }
 
-  void _deleteDivision(int divisiId) async {
+  Future<void> _addDivision() async {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.add,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Tambah Divisi',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan nama divisi',
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final divisionName = nameController.text.trim();
+                      if (divisionName.isEmpty) {
+                        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Nama divisi tidak boleh kosong'),
+                            duration: Duration(seconds: 1),
+                            behavior: SnackBarBehavior.floating,
+                            margin:
+                                EdgeInsets.only(top: 20, left: 20, right: 20),
+                          ),
+                        );
+                        return;
+                      }
+
+                      bool isDuplicate = divisions.any((division) =>
+                          division['name'].toLowerCase() ==
+                          divisionName.toLowerCase());
+                      if (isDuplicate) {
+                        Navigator.of(context).pop();
+                        Future.delayed(Duration(milliseconds: 100), () {
+                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Nama divisi sudah ada!'),
+                              duration: Duration(seconds: 1),
+                              behavior: SnackBarBehavior.floating,
+                              margin:
+                                  EdgeInsets.only(top: 20, left: 20, right: 20),
+                            ),
+                          );
+                        });
+                        return;
+                      }
+
+                      try {
+                        print("Menambahkan divisi: $divisionName");
+                        final response = await ApiService.handleDivision(
+                          method: 'POST',
+                          data: {'name': divisionName},
+                        );
+
+                        if (response != null && response['success'] == true) {
+                          print("Divisi berhasil ditambahkan");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Divisi berhasil ditambahkan!'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                          fetchDivisions();
+                          nameController.text = "";
+                          Navigator.pop(context);
+                        } else {
+                          print(
+                              "Gagal menambahkan divisi: ${response?['message']}");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                  'Gagal menambahkan divisi: ${response?['message']}'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        print("Error saat menambahkan divisi: $e");
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Error: $e'),
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.green[800],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Simpan',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _editDivision(int divisiId) async {
+    print("Fetching divisi data for ID: $divisiId");
+    try {
+      final response = await ApiService.handleDivision(
+        method: 'GET',
+        divisiId: divisiId,
+      );
+      print("Response received: $response");
+
+      if (response != null && response['data'] != null) {
+        final division = response['data'];
+        print("Project Data: $divisions");
+
+        setState(() {
+          nameController.text = division['name'] ?? '';
+          _isLoading = false;
+        });
+      } else {
+        print("No Division data found");
+      }
+    } catch (e) {
+      print("Error fetching Division data: $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memuat data Division: $e')),
+      );
+      setState(() {
+        _isLoading = false;
+      });
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.add,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Edit Divisi',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    hintText: 'Masukkan nama divisi',
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final divisionName = nameController.text.trim();
+                      if (divisionName.isEmpty) {
+                        ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Nama divisi tidak boleh kosong'),
+                            duration: Duration(seconds: 1),
+                            behavior: SnackBarBehavior.floating,
+                            margin:
+                                EdgeInsets.only(top: 20, left: 20, right: 20),
+                          ),
+                        );
+                        return;
+                      }
+
+                      bool isDuplicate = divisions.any((division) =>
+                          division['name'].toLowerCase() ==
+                          divisionName.toLowerCase());
+                      if (isDuplicate) {
+                        Navigator.of(context).pop();
+                        Future.delayed(Duration(milliseconds: 100), () {
+                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Nama divisi sudah ada!'),
+                              duration: Duration(seconds: 1),
+                              behavior: SnackBarBehavior.floating,
+                              margin:
+                                  EdgeInsets.only(top: 20, left: 20, right: 20),
+                            ),
+                          );
+                        });
+                        return;
+                      }
+
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return AlertDialog(
+                            title: Text("Konfirmasi"),
+                            content: Text(
+                                "Apakah Anda yakin ingin mengubah data project ini?"),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: Text("Batal"),
+                              ),
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: Text("Ya, Ubah"),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (confirm != null && confirm) {
+                        final data = {
+                          'name': nameController.text,
+                        };
+
+                        print("Updating divisi with data: $data");
+                        try {
+                          // Membuat form data dengan file
+                          final data = {
+                            'name': nameController.text,
+                          };
+
+                          // Panggil API service dengan file
+                          final response = await ApiService.handleDivision(
+                            method: 'PUT',
+                            divisiId: divisiId,
+                            data: data,
+                          );
+                          print("Update Response: $response");
+
+                          if (response != null && response['success'] == true) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Divisi berhasil diperbarui!')),
+                            );
+                            fetchDivisions();
+                            nameController.text = "";
+                            Navigator.pop(context);
+                          } else {
+                            print("Failed to update divisi");
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Gagal memperbarui divisi')),
+                            );
+                          }
+                        } catch (e) {
+                          print("Error updating divisi: $e");
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                                content: Text('Gagal memperbarui divisi: $e')),
+                          );
+                        }
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.green[800],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Simpan',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteDivision(int divisiId) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -132,7 +523,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
                 width: double.infinity,
                 padding: EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.red, // Mengubah warna menjadi merah
+                  color: Colors.red,
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(16),
@@ -141,7 +532,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
                 ),
                 child: Center(
                   child: Icon(
-                    Icons.delete, // Menambahkan ikon tong sampah
+                    Icons.delete,
                     size: 80,
                     color: Colors.white,
                   ),
@@ -149,7 +540,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
               ),
               SizedBox(height: 20),
               Text(
-                'Hapus Divisio',
+                'Hapus Divisi',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -175,8 +566,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(false),
                     style: TextButton.styleFrom(
-                      backgroundColor:
-                          Colors.grey[600], // Warna abu-abu untuk Cancel
+                      backgroundColor: Colors.grey[600],
                       padding:
                           EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       shape: RoundedRectangleBorder(
@@ -189,10 +579,10 @@ class _DivisionWidgetState extends State<DivisionWidget>
                     ),
                   ),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
+                    onPressed: () =>
+                        {fetchDivisions(), Navigator.of(context).pop(true)},
                     style: TextButton.styleFrom(
-                      backgroundColor:
-                          Colors.red[800], // Warna merah untuk Delete
+                      backgroundColor: Colors.red[800],
                       padding:
                           EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       shape: RoundedRectangleBorder(
@@ -215,6 +605,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
 
     if (confirm != null && confirm) {
       try {
+        print("Menghapus divisi dengan ID: $divisiId");
         final response = await ApiService.handleDivision(
             method: 'DELETE', divisiId: divisiId);
 
@@ -222,44 +613,24 @@ class _DivisionWidgetState extends State<DivisionWidget>
             response['code'] == 200 &&
             response['success']) {
           ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('User deleted successfully!')));
+              SnackBar(content: Text('Division deleted successfully!')));
           setState(() {
-            divisions.removeWhere((user) => user['id'] == divisiId);
+            divisions.removeWhere((division) => division['id'] == divisiId);
+            _totalItems--;
           });
         } else {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Failed to delete divisi')));
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to delete Division')));
         }
       } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error deleting divisi: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error deleting Division: $e')));
       } finally {
         setState(() {
           _isLoading = false;
         });
       }
     }
-  }
-
-  // Function to create route for navigating with custom animation
-  Route _createRoute(Widget targetScreen) {
-    return PageRouteBuilder(
-      pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0); // Slide in from the right
-        const end = Offset.zero; // End at the normal position
-        const curve = Curves.easeInOut;
-
-        var tween =
-            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
-        var offsetAnimation = animation.drive(tween);
-
-        return SlideTransition(
-          position: offsetAnimation,
-          child: child,
-        );
-      },
-    );
   }
 
   @override
@@ -311,9 +682,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
                 icon: Icon(Icons.add),
                 color: Colors.white, // Set the icon color
                 onPressed: () {
-                  Navigator.of(context).push(
-                    _createRoute(AddDivisionWidget()),
-                  );
+                  _addDivision();
                 },
                 padding:
                     EdgeInsets.zero, // Remove padding inside the CircleAvatar
@@ -406,7 +775,8 @@ class _DivisionWidgetState extends State<DivisionWidget>
                                       _pageIndex,
                                       _rowsPerPage,
                                       context,
-                                      _deleteDivision),
+                                      _deleteDivision,
+                                      _editDivision),
                                 ),
                               ),
                             ),
@@ -427,6 +797,7 @@ class MyDataSource extends DataTableSource {
   final int rowsPerPage;
   final BuildContext context;
   final Function onDeletePressed;
+  final Function onEditPressed;
 
   MyDataSource(
     this.divisions,
@@ -435,6 +806,7 @@ class MyDataSource extends DataTableSource {
     this.rowsPerPage,
     this.context,
     this.onDeletePressed,
+    this.onEditPressed,
   );
 
   @override
@@ -450,20 +822,22 @@ class MyDataSource extends DataTableSource {
     return DataRow(cells: [
       DataCell(Text('${globalRowIndex + 1}')),
       DataCell(Text(division['name'] ?? '')),
-      DataCell(Text(division['created_at'] ?? '')),
+      DataCell(Text((division['created_at'] ?? '')
+          .replaceAll('T', ' ')
+          .replaceAll('Z', ''))),
       DataCell(
         Row(
           children: [
             IconButton(
               icon: Icon(Icons.edit),
               onPressed: () {
-                // Add navigation for edit
+                onEditPressed(division['id']);
               },
             ),
             IconButton(
               icon: Icon(Icons.delete),
               onPressed: () {
-                // onDeletePressed(user['id']);
+                onDeletePressed(division['id']);
               },
             ),
           ],

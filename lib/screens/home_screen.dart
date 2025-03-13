@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selarashomeid/utils/general.dart';
 import 'package:selarashomeid/widgets/division_widget.dart';
 import 'package:selarashomeid/widgets/project_widget.dart';
 import 'package:selarashomeid/widgets/role_widget.dart';
@@ -7,6 +8,7 @@ import 'package:selarashomeid/widgets/appbar_widget.dart';
 import 'package:selarashomeid/widgets/dashboard_widget.dart';
 import 'package:selarashomeid/widgets/user_widget.dart';
 import 'package:selarashomeid/widgets/workspace_widget.dart';
+import 'package:flutter/services.dart';
 
 class HomeScreen extends StatefulWidget {
   final int roleId;
@@ -19,7 +21,8 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  Widget _currentWidget = DashboardWidget(roleId: 0, token: '');
+  late Widget _currentWidget;
+  DateTime? _lastPressed;
 
   @override
   void initState() {
@@ -50,21 +53,50 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  /// Fungsi untuk menangani tombol back
+  void _onPopInvoked(bool didPop, dynamic result) {
+    if (didPop) return; // Jika pop sudah diproses oleh sistem, biarkan saja
+
+    if (_currentWidget is! DashboardWidget) {
+      // Jika bukan di Dashboard, kembali ke Dashboard
+      setState(() {
+        _currentWidget =
+            DashboardWidget(roleId: widget.roleId, token: widget.token);
+      });
+    } else {
+      // Jika sudah di Dashboard, tekan dua kali dalam 800ms untuk keluar
+      DateTime now = DateTime.now();
+      if (_lastPressed == null ||
+          now.difference(_lastPressed!) > Duration(milliseconds: 800)) {
+        _lastPressed = now;
+        General.showSnackBar(
+          context,
+          "Tekan kembali untuk keluar",
+        );
+      } else {
+        // Jika tombol back ditekan dua kali dalam 800ms, keluar aplikasi
+        SystemNavigator.pop();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBarWidget(), // AppBar custom
-      backgroundColor: const Color.fromARGB(255, 248, 248, 248),
-      drawer: Drawer(
-        child: Sidebar(
-          // Kirim daftar menu
-
-          roleId: widget.roleId, // Role pengguna
-          onMenuItemSelected: _onMenuItemSelected, // Callback untuk menu
+    return PopScope(
+      canPop: false, // Tangani back secara manual
+      onPopInvokedWithResult: _onPopInvoked,
+      child: Scaffold(
+        appBar: AppBarWidget(), // AppBar custom
+        backgroundColor: const Color.fromARGB(255, 248, 248, 248),
+        drawer: Drawer(
+          child: Sidebar(
+            roleId: widget.roleId, // Role pengguna
+            onMenuItemSelected: _onMenuItemSelected, // Callback untuk menu
+          ),
         ),
-      ),
-      body: SafeArea(
-        child: _currentWidget, // Tampilkan widget sesuai menu
+        body: SafeArea(
+          child: _currentWidget, // Tampilkan widget sesuai menu
+        ),
       ),
     );
   }

@@ -718,9 +718,8 @@ class ApiService {
         return response; // Kembalikan response jika sukses
       } else {
         print(
-            'Operasi gagal: ${response?['message']}'); // Debugging pesan error
-        throw Exception(
-            'Operasi $method gagal pada endpoint $endpoint: ${response?['message']}');
+            'Operasi gagal: ${response?['data']['message']}'); // Debugging pesan error
+        throw '${response?['data']['message']}';
       }
     } else {
       // Jika tidak ada response yang valid
