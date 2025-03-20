@@ -47,10 +47,11 @@ class _SidebarState extends State<Sidebar> {
         _menuItems = response;
       });
     } catch (e) {
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat menu: $e')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat menu: $e')),
+        );
+      }
     }
   }
 
@@ -173,9 +174,7 @@ class _SidebarState extends State<Sidebar> {
             FutureBuilder<Map<String, dynamic>>(
               future: General.getUserProfile(),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
+                if (snapshot.hasError) {
                   return Center(child: Text('Error loading profile'));
                 } else if (snapshot.hasData) {
                   final user = snapshot.data!;

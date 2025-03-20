@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/detail_task_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/general.dart';
 
 import 'board/appflowy_board.dart';
 
@@ -11,6 +12,7 @@ class WidgetBoard extends StatefulWidget {
   final Future<void> Function(int boardId) deleteBoard;
   final Future<void> Function(int boardId, String newName) renameBoard;
   final Future<void> Function(int boardId, int newWorkspaceId) moveBoard;
+  final Future<void> Function(int taskId, bool isCompleted) completedChange;
   final Future<void> Function() onLoadBoard;
   const WidgetBoard({
     super.key,
@@ -21,6 +23,7 @@ class WidgetBoard extends StatefulWidget {
     required this.renameBoard,
     required this.moveBoard,
     required this.onLoadBoard,
+    required this.completedChange,
   });
 
   @override
@@ -28,6 +31,14 @@ class WidgetBoard extends StatefulWidget {
 }
 
 class _WidgetBoardState extends State<WidgetBoard> {
+  Map<String, bool> _loadingCheckboxMap = {};
+
+  Future<void> onCompletedChange(int taskId, bool isCompleted) async {
+    setState(() => _loadingCheckboxMap[taskId.toString()] = true);
+    await widget.completedChange(taskId, isCompleted);
+    setState(() => _loadingCheckboxMap[taskId.toString()] = false);
+  }
+
   Future<void> onMenuSelected(String value, dynamic columnData) async {
     switch (value) {
       case 'move':
@@ -248,89 +259,105 @@ class _WidgetBoardState extends State<WidgetBoard> {
 
   Widget _buildCard(AppFlowyGroupItem item) {
     if (item is TextItem) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
-          child: Text(item.s),
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        child: Row(
+          crossAxisAlignment:
+              CrossAxisAlignment.start, // Agar checkbox di atas dan di kiri
+          children: [
+            // Container pertama untuk checkbox (paling kiri)
+            Align(
+              alignment: Alignment.centerLeft,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return ScaleTransition(scale: animation, child: child);
+                },
+                child: Checkbox(
+                  key: ValueKey(item.isCompleted),
+                  value: item.isCompleted,
+                  onChanged: _loadingCheckboxMap[item.id] == true
+                      ? null
+                      : (bool? value) {
+                          onCompletedChange(int.parse(item.id), value!);
+                        },
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+            ),
+
+            // Container kedua untuk title dan ikon description
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment
+                    .start, // Judul dan ikon akan diatur vertikal
+                children: [
+                  // Menambahkan cover jika item.cover tidak kosong
+                  if (item.cover.isNotEmpty) ...[
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          bottom: 8), // Memberikan jarak antara cover dan title
+                      child: Image(
+                        image: NetworkImage(item.cover[
+                            "view"]), // Menggunakan NetworkImage untuk menampilkan gambar
+                        fit: BoxFit.cover,
+                        width: double
+                            .infinity, // Membuat gambar memenuhi lebar kontainer
+                        height: 120, // Mengatur tinggi gambar cover
+                      ),
+                    ),
+                  ],
+
+                  // Title
+                  Text(
+                    General.capitalizeEachWord(item.title),
+                    style: TextStyle(
+                      color: item.isCompleted ? Colors.grey : Colors.black,
+                      decoration:
+                          item.isCompleted ? TextDecoration.lineThrough : null,
+                    ),
+                  ),
+                  // Ikon description jika item.description = true
+                  if (item.description == true) ...[
+                    SizedBox(
+                        height: 8), // Memberikan jarak antara title dan ikon
+                    Icon(
+                      Icons.description, // Ikon dokumen
+                      size: 20, // Ukuran ikon
+                      color: Colors.grey, // Warna ikon
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
         ),
       );
-    }
-
-    if (item is RichTextItem) {
-      return RichTextCard(item: item);
     }
 
     throw UnimplementedError();
   }
 }
 
-class RichTextCard extends StatefulWidget {
-  final RichTextItem item;
-  const RichTextCard({
-    required this.item,
-    Key? key,
-  }) : super(key: key);
-
-  @override
-  State<RichTextCard> createState() => _RichTextCardState();
-}
-
-class _RichTextCardState extends State<RichTextCard> {
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.item.title,
-              style: const TextStyle(fontSize: 14),
-              textAlign: TextAlign.left,
-            ),
-            const SizedBox(height: 10),
-            Text(
-              widget.item.subtitle,
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            )
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class TextItem extends AppFlowyGroupItem {
-  final String s;
   final String currentId;
+  final int boardId;
+  final String title;
+  final bool isCompleted;
+  final bool description;
+  final Map<String, dynamic> cover;
 
   TextItem(
-    this.s,
     this.currentId,
+    this.boardId,
+    this.title,
+    this.isCompleted,
+    this.description,
+    this.cover,
   );
 
   @override
   String get id => currentId;
-}
-
-class RichTextItem extends AppFlowyGroupItem {
-  final String title;
-  final String subtitle;
-
-  RichTextItem({required this.title, required this.subtitle});
-
-  @override
-  String get id => title;
-}
-
-extension HexColor on Color {
-  static Color fromHex(String hexString) {
-    final buffer = StringBuffer();
-    if (hexString.length == 6 || hexString.length == 7) buffer.write('ff');
-    buffer.write(hexString.replaceFirst('#', ''));
-    return Color(int.parse(buffer.toString(), radix: 16));
-  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/detail_task_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/general.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationScreen extends StatefulWidget {
@@ -83,17 +84,22 @@ class _NotificationScreenState extends State<NotificationScreen> {
     final response = await ApiService.setNotificationsAsRead(token, id);
 
     if (response != null && response['success'] == true) {
-      fetchNotifications();
       final taskDetail = await ApiService.handleDetailTask(taskId);
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => DetailTaskScreen(
-            boardId: taskDetail["board_id"],
-            taskId: taskDetail["id"],
+      if (taskDetail != null && taskDetail['success'] == true) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => DetailTaskScreen(
+              boardId: taskDetail["board_id"],
+              taskId: taskDetail["id"],
+            ),
           ),
-        ),
-      );
+        );
+      } else {
+        General.showSnackBar(context,
+            "The task may have been deleted, please contact your admin.");
+      }
+      fetchNotifications();
     } else {
       String message = response?['data']['message'];
       ScaffoldMessenger.of(context).showSnackBar(

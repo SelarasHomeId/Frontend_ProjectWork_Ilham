@@ -102,7 +102,7 @@ class ApiService {
     var request = http.MultipartRequest(method, Uri.parse(url))
       ..headers.addAll(header);
     body?.forEach((key, value) {
-      request.fields[key] = value;
+      request.fields[key] = value.toString();
     });
 
     request.files.addAll(listFile);
@@ -351,7 +351,7 @@ class ApiService {
       contentType: 'application/json',
     );
 
-    return List<Map<String, dynamic>>.from(response?['data']['data']);
+    return List<Map<String, dynamic>>.from(response?['data']['data'] ?? []);
   }
   //END WORKSPACE================================================================
 
@@ -459,7 +459,7 @@ class ApiService {
     // Validasi response
     if (response != null && response['success'] == true) {
       if (method == 'GET') {
-        return List<Map<String, dynamic>>.from(response['data']['data']);
+        return List<Map<String, dynamic>>.from(response['data']['data'] ?? []);
       } else {
         return response['data']; // Return hasil operasi selain GET
       }
@@ -472,7 +472,7 @@ class ApiService {
 //START TASK================================================================
   static Future<dynamic> handleTask({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
-    required int boardId, // Tidak boleh null dan wajib diisi
+    int? boardId, // Tidak boleh null dan wajib diisi
     int? taskId,
     Map<String, dynamic>? data,
     String? search,
@@ -623,6 +623,54 @@ class ApiService {
     }
   }
 
+  static Future<dynamic> handleComment({
+    required String method,
+    int? commentId,
+    int? taskId,
+    Map<String, dynamic>? data,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint = '/task/comment/${commentId != null ? "/$commentId" : ""}';
+    } else if (method == 'POST' && commentId != null) {
+      endpoint = '/task/comment/$commentId';
+    } else if (method == 'PUT' && commentId != null) {
+      endpoint = '/task/comment/$commentId';
+    } else if (method == 'DELETE' && commentId != null) {
+      endpoint = '/task/comment/$commentId';
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: data,
+      token: token,
+      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
+    );
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      if (method == 'GET') {
+        final currentData = response['data']['data'] ?? [];
+        return List<Map<String, dynamic>>.from(currentData);
+      } else {
+        return response['data']; // Return hasil operasi selain GET
+      }
+    } else {
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
   static Future<dynamic> handleDetailTask(
     int taskId,
   ) async {
@@ -649,6 +697,7 @@ class ApiService {
       throw Exception('Operasi GET gagal pada endpoint $endpoint');
     }
   }
+
   //END TASK================================================================
 
   //START MASTER DATA================================================================

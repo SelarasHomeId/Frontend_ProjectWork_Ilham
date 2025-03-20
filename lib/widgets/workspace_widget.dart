@@ -21,19 +21,20 @@ class WorkspaceWidget extends StatefulWidget {
 class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   List<Map<String, dynamic>> _boards = [];
   String _coverView = "";
-  bool _isLoading = true;
   String currentWorkspace = "";
 
   late AppFlowyBoardController controller;
 
   late AppFlowyBoardScrollController boardController;
 
+  bool isMovingGroup = false;
+
   @override
   void initState() {
     super.initState();
-    _fetchBoards();
-    _fetchWorkspace();
     currentWorkspace = widget.workspace;
+    _fetchWorkspace();
+    _fetchBoards();
   }
 
   @override
@@ -41,10 +42,9 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
     super.didUpdateWidget(oldWidget);
 
     if (widget.workspaceId != oldWidget.workspaceId) {
-      // Jika workspaceId berubah, fetch ulang workspace
+      currentWorkspace = widget.workspace;
       _fetchWorkspace();
       _fetchBoards();
-      currentWorkspace = widget.workspace;
     }
   }
 
@@ -59,19 +59,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
           _coverView = "";
         }
       });
-      print(widget.workspace);
-      print("ini cover :");
-      print(_coverView);
-      setState(() {
-        _isLoading = false;
-      });
     } catch (e) {
-      print(widget.workspace);
-      print("ga ada cover :");
-      print(_coverView);
-      setState(() {
-        _isLoading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal memuat workspace: $e')),
       );
@@ -79,46 +67,82 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   }
 
   Future<void> onLoadListBoard() async {
-    if (controller.groupDatas.isNotEmpty) {
-      controller.clear();
-    }
+    final Set<String> newBoardIds =
+        _boards.map((b) => b["id"].toString()).toSet();
+
+    List<AppFlowyGroupData> updatedGroups = [];
 
     for (final singleBoard in _boards) {
       try {
-        final currentBoardId = singleBoard["id"];
+        final String currentBoardId = singleBoard["id"].toString();
         final getDataTask = await ApiService.handleTask(
           method: 'GET',
-          boardId: currentBoardId,
+          boardId: int.parse(currentBoardId),
         );
 
         var taskAsList = <AppFlowyGroupItem>[];
         for (final singleTask in (getDataTask as List)) {
           taskAsList.add(
             TextItem(
-              singleTask["title"],
               singleTask["id"].toString(),
+              singleTask["board_id"],
+              singleTask["title"],
+              singleTask["is_completed"],
+              singleTask["description"],
+              singleTask["cover"] != null
+                  ? {
+                      "view": singleTask["cover"]?["view"] ?? "",
+                      "content": singleTask["cover"]?["content"] ?? "",
+                      "id": singleTask["cover"]?["id"] ?? "",
+                      "name": singleTask["cover"]?["name"] ?? "",
+                    }
+                  : {},
             ),
           );
-        } //ambil data task
-        // final taskAsList =
-        //     (getDataTask as List).map((e) => TextItem(e["title"])).toList();
+        }
 
-        final groupData = AppFlowyGroupData(
-            id: singleBoard["id"].toString(),
+        final existingGroupIndex = controller.groupDatas.indexWhere(
+          (group) => group.id == currentBoardId,
+        );
+
+        if (existingGroupIndex != -1) {
+          // Update data board & task
+          final updatedGroup = AppFlowyGroupData(
+            id: currentBoardId,
             name: singleBoard["name"],
             task_total: singleBoard["task_total"].toString(),
             workspace_id: singleBoard["workspace_id"].toString(),
-            items: taskAsList); //masukin data task baru
-        controller.addGroup(groupData); //nampilin grup kedalam board
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
+            items: taskAsList,
+          );
+
+          updatedGroups.add(updatedGroup);
+        } else {
+          // Tambahkan board baru jika belum ada
+          updatedGroups.add(AppFlowyGroupData(
+            id: currentBoardId,
+            name: singleBoard["name"],
+            task_total: singleBoard["task_total"].toString(),
+            workspace_id: singleBoard["workspace_id"].toString(),
+            items: taskAsList,
+          ));
+        }
+      } catch (e, stackTrace) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Gagal memuat board: $e')),
         );
+        debugPrintStack(stackTrace: stackTrace);
       }
     }
+
+    controller.groupDatas
+        .where((group) => !newBoardIds.contains(group.id))
+        .toList()
+        .forEach((group) => controller.removeGroup(group.id));
+    controller.clear();
+    for (var group in updatedGroups) {
+      controller.addGroup(group);
+    }
+    setState(() {});
   }
 
   Future<void> _fetchBoards() async {
@@ -126,13 +150,89 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       boardController = AppFlowyBoardScrollController();
       controller = AppFlowyBoardController(
         onMoveGroup: (fromGroupId, fromIndex, toGroupId, toIndex) {
+          isMovingGroup = true;
           _updateSortNumbers(fromIndex, toIndex);
+          isMovingGroup = false;
         },
         onMoveGroupItem: (groupId, fromIndex, toIndex) {
-          debugPrint('Move $groupId:$fromIndex to $groupId:$toIndex');
+          Future.microtask(() async {
+            try {
+              final getDataTask = await ApiService.handleTask(
+                method: 'GET',
+                boardId: int.parse(groupId),
+              );
+
+              List<Map<String, dynamic>> tasks =
+                  List<Map<String, dynamic>>.from(getDataTask ?? []);
+
+              if (tasks.isEmpty) return;
+
+              if (fromIndex >= 0 &&
+                  fromIndex < tasks.length &&
+                  toIndex >= 0 &&
+                  toIndex < tasks.length) {
+                final task = tasks.removeAt(fromIndex);
+                tasks.insert(toIndex, task);
+                List<Future<void>> updateFutures = [];
+                for (int i = 0; i < tasks.length; i++) {
+                  updateFutures.add(_editTask(
+                    taskId: tasks[i]['id'],
+                    sortNumber: i + 1,
+                  ));
+                }
+              }
+              onLoadListBoard();
+            } catch (e) {
+              debugPrint('Error updating task order: $e');
+            }
+          });
         },
         onMoveGroupItemToGroup: (fromGroupId, fromIndex, toGroupId, toIndex) {
-          debugPrint('Move $fromGroupId:$fromIndex to $toGroupId:$toIndex');
+          Future.microtask(() async {
+            try {
+              final fromTasks = await ApiService.handleTask(
+                method: 'GET',
+                boardId: int.parse(fromGroupId),
+              );
+
+              List<Map<String, dynamic>> tasksFrom =
+                  List<Map<String, dynamic>>.from(fromTasks ?? []);
+              if (tasksFrom.isEmpty) return;
+              final toTasks = await ApiService.handleTask(
+                method: 'GET',
+                boardId: int.parse(toGroupId),
+              );
+
+              List<Map<String, dynamic>> tasksTo =
+                  List<Map<String, dynamic>>.from(toTasks ?? []);
+              final task = tasksFrom.removeAt(fromIndex);
+              tasksTo.insert(toIndex, task);
+              await _editTask(
+                taskId: task['id'],
+                boardId: int.parse(toGroupId),
+                sortNumber: toIndex + 1,
+              );
+
+              List<Future<void>> updateFuturesFrom = [];
+              for (int i = 0; i < tasksFrom.length; i++) {
+                updateFuturesFrom.add(_editTask(
+                  taskId: tasksFrom[i]['id'],
+                  sortNumber: i + 1,
+                ));
+              }
+
+              List<Future<void>> updateFuturesTo = [];
+              for (int i = 0; i < tasksTo.length; i++) {
+                updateFuturesTo.add(_editTask(
+                  taskId: tasksTo[i]['id'],
+                  sortNumber: i + 1,
+                ));
+              }
+              onLoadListBoard();
+            } catch (e) {
+              debugPrint('Error moving task: $e');
+            }
+          });
         },
       );
       final boards = await ApiService.handleBoard(
@@ -143,13 +243,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         _boards = boards;
       });
       await onLoadListBoard();
-      setState(() {
-        _isLoading = false;
-      });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal memuat board: $e')),
       );
@@ -167,16 +261,10 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         method: 'GET',
         workspaceId: widget.workspaceId,
       );
-
       setState(() {
         _boards = boards;
-        _isLoading = false;
       });
-      controller.clear();
       onLoadListBoard();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Board berhasil ditambahkan')),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menambahkan board: $e')),
@@ -188,7 +276,6 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
     try {
       await ApiService.handleTask(
         method: 'POST',
-        // workspaceId: widget.workspaceId,
         boardId: boardId,
         data: {'title': title, 'board_id': boardId},
       );
@@ -196,16 +283,10 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         method: 'GET',
         workspaceId: widget.workspaceId,
       );
-
       setState(() {
         _boards = boards;
-        _isLoading = false;
       });
-      controller.clear();
       onLoadListBoard();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Board berhasil ditambahkan')),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menambahkan board: $e')),
@@ -220,21 +301,14 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         workspaceId: widget.workspaceId,
         boardId: boardId,
       );
-
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
       );
-
       setState(() {
         _boards = boards;
-        _isLoading = false;
       });
-      controller.clear();
       onLoadListBoard();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Board berhasil dihapus')),
-      );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menghapus board: $e')),
@@ -263,24 +337,14 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
           data: updatedData,
         );
       }
-
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
       );
-
       setState(() {
         _boards = boards;
-        _isLoading = false;
       });
-
-      controller.clear();
       onLoadListBoard();
-      if (sortNumber == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Board berhasil diperbarui')),
-        );
-      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal memperbarui board: $e')),
@@ -288,37 +352,64 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
     }
   }
 
-  void _updateSortNumbers(int fromIndex, int toIndex) {
-    if (fromIndex == toIndex) return;
+  Future<void> _editTask({
+    required int taskId,
+    int? boardId,
+    bool? isCompleted,
+    int? sortNumber,
+  }) async {
+    try {
+      Map<String, dynamic> updatedData = {};
 
-    // Ambil board yang dipindahkan
+      if (boardId != null) updatedData['board_id'] = boardId;
+      if (isCompleted != null) updatedData['is_completed'] = isCompleted;
+      if (sortNumber != null) updatedData['sort_number'] = sortNumber;
+
+      if (updatedData.isNotEmpty) {
+        await ApiService.handleTask(
+          method: 'PUT',
+          taskId: taskId,
+          data: updatedData,
+        );
+      }
+
+      final boards = await ApiService.handleBoard(
+        method: 'GET',
+        workspaceId: widget.workspaceId,
+      );
+      setState(() {
+        _boards = boards;
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal memperbarui task: $e')),
+      );
+    }
+  }
+
+  void _updateSortNumbers(int fromIndex, int toIndex) {
+    if (!isMovingGroup || fromIndex == toIndex) return;
     var movedBoard = _boards[fromIndex];
     int movedBoardId = movedBoard['id'];
     int movedBoardSortNumber = movedBoard['sort_number'];
 
-    // Tentukan rentang update
     int minSort = fromIndex < toIndex
         ? movedBoardSortNumber
         : _boards[toIndex]['sort_number'];
     int maxSort = fromIndex < toIndex
         ? _boards[toIndex]['sort_number']
         : movedBoardSortNumber;
-
-    // Update sort_number untuk boards dalam rentang yang terdampak
     for (var board in _boards) {
       int currentSort = board['sort_number'];
 
       if (currentSort >= minSort && currentSort <= maxSort) {
         int newSortNumber;
         if (board['id'] == movedBoardId) {
-          newSortNumber = toIndex + 1; // Pindahkan board ke posisi baru
+          newSortNumber = toIndex + 1;
         } else {
-          newSortNumber = fromIndex < toIndex
-              ? currentSort - 1
-              : currentSort + 1; // Geser yang lain
+          newSortNumber =
+              fromIndex < toIndex ? currentSort - 1 : currentSort + 1;
         }
-
-        // Panggil API untuk update
         _editBoard(
           boardId: board['id'],
           sortNumber: newSortNumber,
@@ -545,48 +636,39 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
             ),
 
           // Konten utama
-          _isLoading
-              ? Center(child: CircularProgressIndicator())
-              : _boards.isEmpty
-                  ? Center(
-                      child: Text(
-                        'Tidak ada board untuk workspace ini',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: Colors
-                              .white, // Sesuaikan agar terbaca di atas background
-                        ),
-                      ),
-                    )
-                  : ScrollConfiguration(
-                      behavior: ScrollBehavior().copyWith(overscroll: false),
-                      child: ListView(
-                        scrollDirection: Axis.horizontal,
-                        children: [
-                          WidgetBoard(
-                            controller: controller,
-                            boardController: boardController,
-                            addTask: (boardId) async {
-                              _showCreateTaskDialog(boardId);
-                            },
-                            onLoadBoard: () async {
-                              return onLoadListBoard();
-                            },
-                            deleteBoard: (boardId) async {
-                              _deleteBoard(boardId);
-                            },
-                            renameBoard: (boardId, newName) async {
-                              _editBoard(boardId: boardId, name: newName);
-                            },
-                            moveBoard: (boardId, newWorkspaceId) async {
-                              _editBoard(
-                                  boardId: boardId,
-                                  workspaceId: newWorkspaceId);
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
+          if (_boards.isNotEmpty)
+            ScrollConfiguration(
+              key: ValueKey('list'),
+              behavior: ScrollBehavior().copyWith(overscroll: false),
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: [
+                  WidgetBoard(
+                    controller: controller,
+                    boardController: boardController,
+                    addTask: (boardId) async {
+                      _showCreateTaskDialog(boardId);
+                    },
+                    onLoadBoard: () async {
+                      return onLoadListBoard();
+                    },
+                    deleteBoard: (boardId) async {
+                      _deleteBoard(boardId);
+                    },
+                    renameBoard: (boardId, newName) async {
+                      _editBoard(boardId: boardId, name: newName);
+                    },
+                    moveBoard: (boardId, newWorkspaceId) async {
+                      _editBoard(boardId: boardId, workspaceId: newWorkspaceId);
+                    },
+                    completedChange: (taskId, isCompleted) async {
+                      await _editTask(taskId: taskId, isCompleted: isCompleted);
+                      onLoadListBoard();
+                    },
+                  ),
+                ],
+              ),
+            )
         ],
       ),
     );

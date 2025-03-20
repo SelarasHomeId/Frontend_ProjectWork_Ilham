@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'dart:math';
 
 class General {
   static Future<void> saveToSharedPreferences(Map<String, dynamic> data) async {
@@ -53,6 +54,16 @@ class General {
     }
   }
 
+  static Color _generateRandomColor() {
+    Random random = Random();
+    return Color.fromARGB(
+      255, // Opacity full
+      100 + random.nextInt(156), // Red (100-255)
+      100 + random.nextInt(156), // Green (100-255)
+      100 + random.nextInt(156), // Blue (100-255)
+    );
+  }
+
   static Future<Map<String, String>> getUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('name') ?? 'User Name';
@@ -62,6 +73,17 @@ class General {
     final initials = name.isNotEmpty
         ? name.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
         : 'U';
+
+    // Generate warna unik untuk user jika belum ada
+    String colorKey =
+        'color_$initials'; // Gunakan inisial sebagai kunci penyimpanan warna
+    int? storedColor = prefs.getInt(colorKey);
+
+    if (storedColor == null) {
+      // Jika belum ada, buat warna baru dan simpan
+      storedColor = _generateRandomColor().value;
+      await prefs.setInt(colorKey, storedColor);
+    }
 
     return {
       'name': name,
@@ -142,5 +164,13 @@ class General {
         backgroundColor: Colors.black87, // Warna lebih elegan
       ),
     );
+  }
+
+  static String capitalizeEachWord(String input) {
+    return input.split(' ').map((word) {
+      return word.isNotEmpty
+          ? word[0].toUpperCase() + word.substring(1).toLowerCase()
+          : '';
+    }).join(' ');
   }
 }

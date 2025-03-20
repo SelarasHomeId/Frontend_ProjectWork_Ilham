@@ -29,16 +29,21 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
   late TextEditingController textDescController;
   late TextEditingController textTitleController;
+  late TextEditingController textCommentController;
+
   late FocusNode focusNode;
 
   late ValueNotifier<bool> onLoadingNotifier;
   late ValueNotifier<List<Map<String, dynamic>>> onFileNotifier;
   late ValueNotifier<bool> onLoadingFileNotifier;
+  late ValueNotifier<List<Map<String, dynamic>>> onCommentNotifier;
+  late ValueNotifier<bool> onLoadingCommentNotifier;
 
   late ValueNotifier<(String labelName, Color color)?> notifierLabelColor;
 
   String? currentDesc;
   String? currentTitle;
+  String? currentComment;
   late ValueNotifier<DateTime?> onEndDateNotifier;
 
   @override
@@ -52,13 +57,19 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onEndDateNotifier = ValueNotifier<DateTime?>(null);
     onFileNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
     onLoadingFileNotifier = ValueNotifier<bool>(false);
+    onCommentNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
+    onLoadingCommentNotifier = ValueNotifier<bool>(false);
 
     textDescController = TextEditingController();
     textTitleController = TextEditingController();
+    textCommentController = TextEditingController();
     focusNode = FocusNode();
 
     Future.wait(
-      [onLoadValue(), loadFile()],
+      [
+        onLoadValue(),
+        loadFile(),
+      ],
     );
     super.initState();
   }
@@ -72,6 +83,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     final desc = getUpdatedData["description"];
     final title = getUpdatedData["title"];
     final label = getUpdatedData["label"];
+    final comment = getUpdatedData["commnet"];
     final labelData = label != null ? label["data"] as List : [];
     if (labelData.isNotEmpty) {
       final tyrParceColor = int.tryParse(labelData.first["color"]);
@@ -84,11 +96,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       );
     }
 
+    await loadComments();
+
+    textTitleController.text = General.capitalizeEachWord(title ?? "");
     textDescController.text = desc ?? "";
-    textTitleController.text = title ?? "";
-    currentDesc = desc;
     currentTitle = title;
+    currentDesc = desc;
+    currentComment = comment;
     onLoadingNotifier.value = false;
+    debugPrint("ini title");
+    debugPrint(currentTitle);
   }
 
   @override
@@ -98,6 +115,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     textDescController.dispose();
     textTitleController.dispose();
+    textCommentController.dispose();
     focusNode.dispose();
     super.dispose();
   }
@@ -118,10 +136,37 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text(textTitleController.text),
+          backgroundColor: Colors.red[900],
+          title: TextField(
+            controller: textTitleController,
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+            ),
+            onChanged: (value) {
+              setState(() {
+                // textTitleController.text =
+                //     toBeginningOfSentenceCase(value) ?? value;
+                // textTitleController.selection =
+                //     TextSelection.collapsed(offset: value.length);
+              });
+            },
+          ),
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            onPressed: () {
+              // Aksi ketika tombol back ditekan
+              Navigator.pop(context); // Contoh aksi kembali
+            },
+            color: Colors.white, // Menentukan warna tombol back
+          ),
           actions: [
             IconButton(
               icon: Icon(Icons.more_vert),
+              color: Colors.white,
               onPressed: () {},
             ),
           ],
@@ -147,7 +192,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   onSubmitButton: () async {
                     final getUpdatedData = await ApiService.handleTask(
                       method: 'PUT',
-                      // workspaceId: widget.workspaceId,
                       taskId: widget.taskId,
                       boardId: widget.boardId,
                       data: {'description': textDescController.text},
@@ -170,7 +214,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     onLoadingNotifier.value = true;
                     final getUpdatedData = await ApiService.handleTask(
                       method: 'PUT',
-                      // workspaceId: widget.workspaceId,
                       taskId: widget.taskId,
                       boardId: widget.boardId,
                       data: {'label': labelId},
@@ -192,8 +235,32 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                 SizedBox(height: 20),
 
-                // Add Comments
-                _buildAddCommentSection(),
+                // Comments Section
+                Text("Comments",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                SizedBox(height: 10),
+
+                // **Gunakan ValueListenableBuilder untuk update komentar tanpa fetch ulang**
+                ValueListenableBuilder(
+                  valueListenable: onLoadingNotifier,
+                  builder: (context, value, child) {
+                    return Container(
+                      constraints: BoxConstraints(maxHeight: 300),
+                      padding: EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child:
+                          _buildCommentList(), // **Menampilkan daftar komentar**
+                    );
+                  },
+                ),
+
+                SizedBox(height: 10),
+                // _buildAddCommentSection(widget.taskId),
+
                 SizedBox(height: 20),
 
                 listFileWidget(),
@@ -223,6 +290,29 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         : <Map<String, dynamic>>[]);
 
     onLoadingFileNotifier.value = false;
+  }
+
+  Future<void> loadComments() async {
+    onLoadingCommentNotifier.value = true;
+
+    final response = await ApiService.handleDetailTask(widget.taskId);
+
+    if (response != null && response['comment'] != null) {
+      final commentData = response['comment']['data'] as List<dynamic>;
+
+      onCommentNotifier.value = commentData.map((e) {
+        return {
+          "id": e["id"],
+          "comment": e["comment"],
+          "created_at": e["created_at"],
+          // Jika perlu menampilkan user, mungkin perlu penyesuaian dari API
+          "user_name": response['created_by']
+              ['name'], // Ambil dari created_by task
+        };
+      }).toList();
+    }
+
+    onLoadingCommentNotifier.value = false;
   }
 
   Widget _buildUserInfo(Future<Map<String, String>> userProfileFuture) {
@@ -517,30 +607,115 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
-  Widget _buildAddCommentSection() {
-    return Row(
-      children: [
-        CircleAvatar(
-          backgroundColor: Colors.blue,
-          child: Text('IH'),
-        ),
-        SizedBox(width: 10),
-        Expanded(
-          child: TextField(
-            decoration: InputDecoration(
-              hintText: 'Add comment',
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.all(10),
-            ),
-          ),
-        ),
-        IconButton(
-          icon: Icon(Icons.send),
-          onPressed: () {},
-        ),
-      ],
+  Widget _buildCommentList() {
+    return ValueListenableBuilder(
+      valueListenable: onCommentNotifier,
+      builder: (context, commentList, child) {
+        if (commentList.isEmpty) {
+          return Center(child: Text('Belum ada komentar'));
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: commentList.length,
+          itemBuilder: (context, index) {
+            final comment = commentList[index];
+            return ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Colors.blueAccent,
+                child: Text(comment['user_name'][0].toUpperCase()),
+              ),
+              title: Text(comment['user_name']),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(comment['comment']),
+                  Text(
+                    DateFormat('dd MMM yyyy HH:mm').format(
+                      DateTime.parse(comment['created_at']).toLocal(),
+                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
     );
   }
+
+  Future<void> _addComment(int commentId, int taskId) async {
+    if (textCommentController.text.isEmpty) return;
+
+    final data = {"comment": textCommentController.text};
+
+    final response = await ApiService.handleComment(
+      method: 'POST',
+      commentId: commentId,
+      data: data,
+    );
+
+    if (response != null) {
+      textCommentController.clear(); // Kosongkan input setelah komentar dikirim
+
+      // **Langsung update komentar menggunakan getUpdatedData**
+      final getUpdatedData = await ApiService.handleDetailTask(taskId);
+
+      setState(() {
+        currentComment = getUpdatedData["comment"]; // Perbarui komentar terbaru
+      });
+    }
+  }
+
+  // Widget _buildAddCommentSection(int taskId) {
+  //   return Column(
+  //     crossAxisAlignment: CrossAxisAlignment.start,
+  //     children: [
+  //       Row(
+  //         children: [
+  //           CircleAvatar(
+  //             backgroundColor: Colors.blue,
+  //             child: FutureBuilder<Map<String, String>>(
+  //               future: userProfileFuture,
+  //               builder: (context, snapshot) {
+  //                 if (!snapshot.hasData) return Text('U');
+  //                 return Text(snapshot.data!['initials'] ?? 'U');
+  //               },
+  //             ),
+  //           ),
+  //           SizedBox(width: 10),
+  //           Expanded(
+  //             child: TextField(
+  //               controller: textCommentController,
+  //               decoration: InputDecoration(
+  //                 hintText: 'Add comment',
+  //                 border: OutlineInputBorder(),
+  //                 contentPadding: EdgeInsets.all(10),
+  //               ),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //       SizedBox(height: 10),
+  //       ValueListenableBuilder(
+  //         valueListenable: textCommentController,
+  //         builder: (context, value, child) {
+  //           if (textCommentController.text.isNotEmpty) {
+  //             return ElevatedButton(
+  //               onPressed: () async {
+  //                 await _addComment(taskId);
+  //               },
+  //               child: Text("Kirim"),
+  //             );
+  //           }
+  //           return Container();
+  //         },
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget listFileWidget() {
     return Column(
