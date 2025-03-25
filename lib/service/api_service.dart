@@ -580,7 +580,8 @@ class ApiService {
   static Future<dynamic> handleLabel({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? labelId,
-    Map<String, dynamic>? data, // Body data untuk Create atau Update
+    Map<String, dynamic>? data,
+    Map<String, String>? params,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -588,7 +589,8 @@ class ApiService {
     // Tentukan endpoint berdasarkan metode
     String endpoint;
     if (method == 'GET') {
-      endpoint = '/task/label${labelId != null ? "/$labelId" : ""}';
+      endpoint =
+          '/task/label${labelId != null ? "/$labelId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
     } else if (method == 'POST') {
       endpoint = '/task/label'; // Endpoint untuk create board
     } else if (method == 'PUT' && labelId != null) {

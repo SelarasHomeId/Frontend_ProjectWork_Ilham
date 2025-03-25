@@ -32,6 +32,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late TextEditingController textCommentController;
 
   late FocusNode focusNode;
+  late FocusNode titleFocusNode;
 
   late ValueNotifier<bool> onLoadingNotifier;
   late ValueNotifier<List<Map<String, dynamic>>> onFileNotifier;
@@ -66,6 +67,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textCommentController = TextEditingController();
     currentWatch = ValueNotifier<bool>(false);
     focusNode = FocusNode();
+    titleFocusNode = FocusNode();
 
     Future.wait(
       [
@@ -119,6 +121,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textTitleController.dispose();
     textCommentController.dispose();
     focusNode.dispose();
+    titleFocusNode.dispose();
     super.dispose();
   }
 
@@ -141,6 +144,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           backgroundColor: Colors.red[900],
           title: TextField(
             controller: textTitleController,
+            focusNode: titleFocusNode,
             style: TextStyle(
               color: Colors.white,
               fontWeight: FontWeight.bold,

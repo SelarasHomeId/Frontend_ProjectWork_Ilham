@@ -27,7 +27,22 @@ class _LabelScreenState extends State<LabelScreen> {
 
   Future<void> onLoadingLabel() async {
     onLoadingNotifier.value = false;
-    final getData = await ApiService.handleLabel(method: "GET");
+    final params = {
+      'limit': 100.toString(),
+      'offset': 0.toString(),
+    };
+    final getData = await ApiService.handleLabel(method: "GET", params: params);
+
+    // if (getData != null) {
+    //   final params = {
+    //     'limit': getData['count'].toString(),
+    //     'offset': 0.toString(),
+    //   };
+    //   debugPrint(params.toString());
+    //   final resultLabel =
+    //       await ApiService.handleLabel(method: 'GET', params: params);
+    //   debugPrint(resultLabel);
+    // }
     onDataNotifier.value = getData;
     onLoadingNotifier.value = false;
   }
