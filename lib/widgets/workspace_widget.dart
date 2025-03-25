@@ -97,6 +97,8 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                       "name": singleTask["cover"]?["name"] ?? "",
                     }
                   : {},
+              singleTask["due_date"],
+              singleTask["watch"],
             ),
           );
         }

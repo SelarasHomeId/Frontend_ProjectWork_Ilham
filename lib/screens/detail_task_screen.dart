@@ -45,6 +45,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   String? currentTitle;
   String? currentComment;
   late ValueNotifier<DateTime?> onEndDateNotifier;
+  late ValueNotifier<bool> currentWatch;
 
   @override
   void initState() {
@@ -63,6 +64,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textDescController = TextEditingController();
     textTitleController = TextEditingController();
     textCommentController = TextEditingController();
+    currentWatch = ValueNotifier<bool>(false);
     focusNode = FocusNode();
 
     Future.wait(
@@ -82,6 +84,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     final desc = getUpdatedData["description"];
     final title = getUpdatedData["title"];
+    final watch = getUpdatedData["watch"];
     final label = getUpdatedData["label"];
     final comment = getUpdatedData["commnet"];
     final labelData = label != null ? label["data"] as List : [];
@@ -101,11 +104,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textTitleController.text = General.capitalizeEachWord(title ?? "");
     textDescController.text = desc ?? "";
     currentTitle = title;
+    currentWatch.value = watch;
     currentDesc = desc;
     currentComment = comment;
     onLoadingNotifier.value = false;
-    debugPrint("ini title");
-    debugPrint(currentTitle);
   }
 
   @override
@@ -146,13 +148,26 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             decoration: InputDecoration(
               border: InputBorder.none,
             ),
-            onChanged: (value) {
-              setState(() {
-                // textTitleController.text =
-                //     toBeginningOfSentenceCase(value) ?? value;
-                // textTitleController.selection =
-                //     TextSelection.collapsed(offset: value.length);
-              });
+            onEditingComplete: () async {
+              // Fungsi ini dipanggil ketika TextField selesai diedit (gagal fokus atau tekan "enter")
+              final value = textTitleController.text;
+
+              // Pastikan nilai tidak kosong dan lakukan update API jika sudah selesai editing
+              if (value.isNotEmpty) {
+                final data = {"title": value};
+
+                final response = await ApiService.handleTask(
+                  method: 'PUT',
+                  data: data,
+                  taskId: widget.taskId,
+                );
+
+                if (response != null) {
+                  // Jika API berhasil, kita update text controller dengan nilai yang dikirim
+                  textTitleController.text =
+                      value; // Pastikan text controller memiliki nilai terbaru
+                }
+              }
             },
           ),
           leading: IconButton(
@@ -164,10 +179,73 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             color: Colors.white, // Menentukan warna tombol back
           ),
           actions: [
-            IconButton(
-              icon: Icon(Icons.more_vert),
-              color: Colors.white,
-              onPressed: () {},
+            PopupMenuButton<String>(
+              icon: Icon(
+                Icons.more_vert,
+                color: Colors.white,
+              ),
+              onSelected: (String result) async {
+                switch (result) {
+                  case 'watch':
+                    final valueWatch = !currentWatch.value;
+                    final data = {"watch": valueWatch};
+
+                    final response = await ApiService.handleTask(
+                      method: 'PUT',
+                      data: data,
+                      taskId: widget.taskId,
+                    );
+
+                    if (response != null) {
+                      // Jika API berhasil, kita update text controller dengan nilai yang dikirim
+                      currentWatch.value =
+                          valueWatch; // Pastikan text controller memiliki nilai terbaru
+                    }
+                    break;
+                  case 'move':
+                    // Tindakan untuk pindah board
+                    break;
+                  case 'delete':
+                    // Tindakan untuk hapus task
+                    break;
+                }
+              },
+              itemBuilder: (BuildContext context) => [
+                PopupMenuItem<String>(
+                  value: 'watch',
+                  child: Row(
+                    children: [
+                      Icon(currentWatch.value == false
+                          ? Icons.visibility
+                          : Icons.visibility_off),
+                      SizedBox(width: 8),
+                      Text(currentWatch.value == false
+                          ? "Watch"
+                          : "Stop Watching"),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'move',
+                  child: Row(
+                    children: [
+                      Icon(Icons.move_to_inbox),
+                      SizedBox(width: 8),
+                      Text('Pindah Board'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem<String>(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete),
+                      SizedBox(width: 8),
+                      Text('Delete Task'),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -186,6 +264,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 SizedBox(height: 20),
 
                 // Add Card Description
+                Text("Description",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 _buildCardDescription(
                   textDescController: textDescController,
                   focusNode: focusNode,
@@ -209,6 +290,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 SizedBox(height: 20),
 
                 // Labels
+                Text("Labels",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 _buildLabelsButton(
                   onAddingLabel: (labelId) async {
                     onLoadingNotifier.value = true;
@@ -231,6 +315,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 SizedBox(height: 20),
 
                 // Start and Due Dates
+                Text("Due Date",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                SizedBox(
+                  height: 10,
+                ),
                 _buildDatePickers(),
 
                 SizedBox(height: 20),
@@ -240,6 +330,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     style:
                         TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 SizedBox(height: 10),
+                _buildAddCommentSection(widget.taskId),
 
                 // **Gunakan ValueListenableBuilder untuk update komentar tanpa fetch ulang**
                 ValueListenableBuilder(
@@ -252,17 +343,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         color: Colors.grey[200],
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child:
-                          _buildCommentList(), // **Menampilkan daftar komentar**
+                      // **Menampilkan daftar komentar**
+                      child: _buildCommentList(),
                     );
                   },
                 ),
 
-                SizedBox(height: 10),
-                // _buildAddCommentSection(widget.taskId),
-
-                SizedBox(height: 20),
-
+                SizedBox(height: 30),
+                Text("Attachment",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                 listFileWidget(),
               ],
             ),
@@ -297,8 +387,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     final response = await ApiService.handleDetailTask(widget.taskId);
 
-    if (response != null && response['comment'] != null) {
-      final commentData = response['comment']['data'] as List<dynamic>;
+    final getComment = response['comment'];
+    if (response != null && getComment != null) {
+      final getCommentData = getComment['data'];
+      final commentData = getCommentData != null && getCommentData is List
+          ? getCommentData
+          : [];
 
       onCommentNotifier.value = commentData.map((e) {
         return {
@@ -536,19 +630,17 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Widget _buildDatePickers() {
     return Row(
       children: [
-        // _buildDateField('Start date'),
-        SizedBox(width: 20),
-        _buildDateField('Due date'),
+        _buildDateField(),
       ],
     );
   }
 
-  Widget _buildDateField(String label) {
+  Widget _buildDateField() {
     return InkWell(
       onTap: () async {
         var datePicker = await showDatePicker(
           context: context,
-          firstDate: DateTime.now(),
+          firstDate: DateTime(2000),
           lastDate: DateTime(2500),
           fieldLabelText: "Waktu Akhir Task",
         );
@@ -567,8 +659,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               minute: currentTime.minute,
             );
 
-            final timeToUtc = datePicker.toUtc();
-            final dueDate = DateFormat("yyyy-MM-dd HH:mm:ss").format(timeToUtc);
+            final timeToLocal = datePicker.toLocal();
+            final dueDate =
+                DateFormat("yyyy-MM-dd HH:mm:ss").format(timeToLocal);
 
             final getUpdatedData = await ApiService.handleTask(
               method: 'PUT',
@@ -590,15 +683,73 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         valueListenable: onEndDateNotifier,
         builder: (context, value, child) {
           final currentDateTime = value != null
-              ? DateFormat('EEEE,\ndd MMMM yyyy').format(value)
+              ? DateFormat('EEEE, dd MMMM yyyy - HH:mm WIB').format(value)
               : null;
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(label),
               SizedBox(
-                width: 150,
-                child: Text(currentDateTime ?? 'Select $label'),
+                child: currentDateTime == null
+                    ? GestureDetector(
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5), // Menambahkan padding
+                          decoration: BoxDecoration(
+                            color: Colors
+                                .transparent, // Bisa diganti warna background jika diperlukan
+                            border: Border.all(
+                                color: Colors
+                                    .blue), // Menambahkan border dengan warna biru
+                            borderRadius: BorderRadius.circular(
+                                50), // Membuat border dengan radius 50
+                          ),
+                          child: Text(
+                            'Select Due Date',
+                            style: TextStyle(), // Tidak ada underline kali ini
+                          ),
+                        ),
+                      )
+                    : Row(
+                        children: [
+                          Text(
+                            currentDateTime,
+                            style: TextStyle(decoration: TextDecoration.none),
+                          ),
+                          SizedBox(width: 10),
+                          GestureDetector(
+                            child: Icon(
+                              Icons.edit,
+                              color: const Color.fromARGB(255, 114, 114, 114),
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          GestureDetector(
+                            onTap: () async {
+                              onLoadingNotifier.value = true;
+
+                              final getUpdatedData =
+                                  await ApiService.handleTask(
+                                method: 'PUT',
+                                // workspaceId: widget.workspaceId,
+                                taskId: widget.taskId,
+                                boardId: widget.boardId,
+                                data: {'due_date': ''},
+                              );
+
+                              if (getUpdatedData != null) {
+                                onEndDateNotifier.value = null;
+                              }
+
+                              onLoadingNotifier.value = false;
+                            },
+                            child: Icon(
+                              Icons.cancel,
+                              color: const Color.fromARGB(255, 114, 114, 114),
+                            ),
+                          ),
+                        ],
+                      ),
               ),
             ],
           );
@@ -617,7 +768,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
         return ListView.builder(
           shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
+          // physics: NeverScrollableScrollPhysics(),
           itemCount: commentList.length,
           itemBuilder: (context, index) {
             final comment = commentList[index];
@@ -646,85 +797,83 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
-  Future<void> _addComment(int commentId, int taskId) async {
+  Future<void> _addComment(int taskId) async {
     if (textCommentController.text.isEmpty) return;
 
     final data = {"comment": textCommentController.text};
 
     final response = await ApiService.handleComment(
       method: 'POST',
-      commentId: commentId,
       data: data,
+      taskId: taskId,
     );
 
     if (response != null) {
-      textCommentController.clear(); // Kosongkan input setelah komentar dikirim
-
-      // **Langsung update komentar menggunakan getUpdatedData**
-      final getUpdatedData = await ApiService.handleDetailTask(taskId);
-
-      setState(() {
-        currentComment = getUpdatedData["comment"]; // Perbarui komentar terbaru
-      });
+      textCommentController.clear();
+      await loadComments();
     }
   }
 
-  // Widget _buildAddCommentSection(int taskId) {
-  //   return Column(
-  //     crossAxisAlignment: CrossAxisAlignment.start,
-  //     children: [
-  //       Row(
-  //         children: [
-  //           CircleAvatar(
-  //             backgroundColor: Colors.blue,
-  //             child: FutureBuilder<Map<String, String>>(
-  //               future: userProfileFuture,
-  //               builder: (context, snapshot) {
-  //                 if (!snapshot.hasData) return Text('U');
-  //                 return Text(snapshot.data!['initials'] ?? 'U');
-  //               },
-  //             ),
-  //           ),
-  //           SizedBox(width: 10),
-  //           Expanded(
-  //             child: TextField(
-  //               controller: textCommentController,
-  //               decoration: InputDecoration(
-  //                 hintText: 'Add comment',
-  //                 border: OutlineInputBorder(),
-  //                 contentPadding: EdgeInsets.all(10),
-  //               ),
-  //             ),
-  //           ),
-  //         ],
-  //       ),
-  //       SizedBox(height: 10),
-  //       ValueListenableBuilder(
-  //         valueListenable: textCommentController,
-  //         builder: (context, value, child) {
-  //           if (textCommentController.text.isNotEmpty) {
-  //             return ElevatedButton(
-  //               onPressed: () async {
-  //                 await _addComment(taskId);
-  //               },
-  //               child: Text("Kirim"),
-  //             );
-  //           }
-  //           return Container();
-  //         },
-  //       ),
-  //     ],
-  //   );
-  // }
+  Widget _buildAddCommentSection(int taskId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            CircleAvatar(
+              backgroundColor: Colors.blue,
+              child: FutureBuilder<Map<String, String>>(
+                future: userProfileFuture,
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData) return Text('U');
+                  return Text(snapshot.data!['initials'] ?? 'U');
+                },
+              ),
+            ),
+            SizedBox(width: 10),
+            Expanded(
+              flex: 6,
+              child: TextField(
+                controller: textCommentController,
+                decoration: InputDecoration(
+                  hintText: 'Add comment',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(10),
+                ),
+              ),
+            ),
+            Expanded(
+              child: InkWell(
+                  onTap: () async {
+                    await _addComment(taskId);
+                  },
+                  child: Icon(Icons.send)),
+            )
+          ],
+        ),
+        SizedBox(height: 10),
+        // ValueListenableBuilder(
+        //   valueListenable: textCommentController,
+        //   builder: (context, value, child) {
+        //     if (textCommentController.text.isNotEmpty) {
+        //       return ElevatedButton(
+        //         onPressed: () async {
+        //           await _addComment(taskId);
+        //         },
+        //         child: Text("Kirim"),
+        //       );
+        //     }
+        //     return Container();
+        //   },
+        // ),
+      ],
+    );
+  }
 
   Widget listFileWidget() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          "Attachment",
-          style: TextStyle(fontSize: 14, color: Colors.grey),
-        ),
         ValueListenableBuilder(
           valueListenable: onFileNotifier,
           builder: (context, listFile, child) {

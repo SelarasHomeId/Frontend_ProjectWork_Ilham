@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/detail_task_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/utils/general.dart';
+import 'package:intl/intl.dart';
 
 import 'board/appflowy_board.dart';
 
@@ -319,16 +320,90 @@ class _WidgetBoardState extends State<WidgetBoard> {
                           item.isCompleted ? TextDecoration.lineThrough : null,
                     ),
                   ),
-                  // Ikon description jika item.description = true
-                  if (item.description == true) ...[
-                    SizedBox(
-                        height: 8), // Memberikan jarak antara title dan ikon
-                    Icon(
-                      Icons.description, // Ikon dokumen
-                      size: 20, // Ukuran ikon
-                      color: Colors.grey, // Warna ikon
-                    ),
-                  ],
+
+                  // Row untuk menampilkan ikon description dan ikon alarm bersama dengan teks jika ada
+                  Row(
+                    children: [
+                      if (item.watch == true) ...[
+                        Icon(
+                          Icons.remove_red_eye_outlined, // Ikon dokumen
+                          size: 20, // Ukuran ikon
+                          color: Colors.grey, // Warna ikon
+                        ),
+                        SizedBox(
+                            width:
+                                5), // Memberikan jarak antara ikon deskripsi dan ikon lainnya
+                      ],
+                      // Ikon description jika item.description = true
+                      if (item.description == true) ...[
+                        Icon(
+                          Icons.description, // Ikon dokumen
+                          size: 20, // Ukuran ikon
+                          color: Colors.grey, // Warna ikon
+                        ),
+                        SizedBox(
+                            width:
+                                5), // Memberikan jarak antara ikon deskripsi dan ikon lainnya
+                      ],
+
+                      // Ikon alarm dan due date jika ada
+                      if (item.dueDate != null) ...[
+                        // Memberikan jarak antara icon description dan icon alarm
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 6), // Padding untuk ikon dan teks
+                          decoration: BoxDecoration(
+                            color: item.isCompleted
+                                ? Colors.green.withOpacity(
+                                    0.2) // Background hijau jika completed
+                                : (DateTime.parse(item.dueDate!)
+                                        .isBefore(DateTime.now())
+                                    ? Colors.red.withOpacity(
+                                        0.2) // Background merah jika overdue
+                                    : Colors.black.withOpacity(
+                                        0.1)), // Background hitam jika belum overdue
+                            borderRadius: BorderRadius.circular(
+                                50), // Membuat sudut melengkung pada background
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.alarm, // Ikon jam
+                                size: 20, // Ukuran ikon
+                                color: item.isCompleted
+                                    ? Colors.green
+                                    : (DateTime.parse(item.dueDate!)
+                                            .isBefore(DateTime.now())
+                                        ? Colors.red
+                                        : Colors
+                                            .black), // Menentukan warna ikon
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                // Format tanggal sesuai kondisi
+                                DateFormat(item.dueDate!.substring(0, 4) !=
+                                            DateTime.now().year.toString()
+                                        ? 'MMM dd, yyyy'
+                                        : 'MMM dd')
+                                    .format(DateTime.parse(item.dueDate!)),
+                                style: TextStyle(
+                                  color: item.isCompleted
+                                      ? Colors.green
+                                      : (DateTime.parse(item.dueDate!)
+                                              .isBefore(DateTime.now())
+                                          ? Colors.red
+                                          : Colors
+                                              .black), // Menentukan warna teks berdasarkan kondisi
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -348,6 +423,8 @@ class TextItem extends AppFlowyGroupItem {
   final bool isCompleted;
   final bool description;
   final Map<String, dynamic> cover;
+  final String? dueDate;
+  final bool watch;
 
   TextItem(
     this.currentId,
@@ -356,6 +433,8 @@ class TextItem extends AppFlowyGroupItem {
     this.isCompleted,
     this.description,
     this.cover,
+    this.dueDate,
+    this.watch,
   );
 
   @override

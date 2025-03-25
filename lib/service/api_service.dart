@@ -34,6 +34,7 @@ class ApiService {
         switch (method.toUpperCase()) {
           case 'POST':
             if (contentType == 'application/json') {
+              log("body : $body");
               return http.post(
                 Uri.parse(url),
                 headers: header,
@@ -86,7 +87,8 @@ class ApiService {
       // return body
       final Map<String, dynamic> jsonBody = jsonDecode(response.body);
       return jsonBody;
-    } catch (e) {
+    } catch (e, trace) {
+      print("trace :>>> $trace");
       // return null;
       rethrow;
     }
@@ -635,8 +637,8 @@ class ApiService {
     String endpoint;
     if (method == 'GET') {
       endpoint = '/task/comment/${commentId != null ? "/$commentId" : ""}';
-    } else if (method == 'POST' && commentId != null) {
-      endpoint = '/task/comment/$commentId';
+    } else if (method == 'POST') {
+      endpoint = '/task/comment';
     } else if (method == 'PUT' && commentId != null) {
       endpoint = '/task/comment/$commentId';
     } else if (method == 'DELETE' && commentId != null) {
@@ -649,7 +651,12 @@ class ApiService {
     final response = await apiRequest(
       method: method,
       endpoint: endpoint,
-      body: data,
+      body: {
+        if (taskId != null) ...{
+          "task_id": taskId,
+        },
+        ...(data ?? {}),
+      },
       token: token,
       contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
     );

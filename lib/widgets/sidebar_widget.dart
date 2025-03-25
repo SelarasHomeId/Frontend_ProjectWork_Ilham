@@ -19,9 +19,11 @@ class _SidebarState extends State<Sidebar> {
   List<Map<String, dynamic>> _menuItems = [];
   final ValueNotifier<bool> _isWorkspaceExpanded = ValueNotifier(false);
   final ValueNotifier<bool> _isMasterDataExpanded = ValueNotifier(false);
+  late ScrollController scrollController;
 
   @override
   void initState() {
+    scrollController = ScrollController();
     super.initState();
     _fetchMenuItems();
   }
@@ -256,8 +258,10 @@ class _SidebarState extends State<Sidebar> {
             // Menu Sidebar
             Expanded(
               child: Scrollbar(
+                controller: scrollController,
                 thumbVisibility: true,
                 child: ListView(
+                  controller: scrollController,
                   padding: const EdgeInsets.symmetric(vertical: 16.0),
                   children: [
                     ListTile(
