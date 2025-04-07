@@ -70,9 +70,7 @@ class General {
     final email = prefs.getString('email') ?? 'user@example.com';
     final roleName = prefs.getString('roleName') ?? ' - ';
     final divisiName = prefs.getString('divisiName') ?? ' - ';
-    final initials = name.isNotEmpty
-        ? name.split(' ').map((e) => e[0]).take(2).join().toUpperCase()
-        : 'U';
+    final initials = General.getInitials(name);
 
     // Generate warna unik untuk user jika belum ada
     String colorKey =
@@ -172,5 +170,124 @@ class General {
           ? word[0].toUpperCase() + word.substring(1).toLowerCase()
           : '';
     }).join(' ');
+  }
+
+  // Color Initials
+  static Color getColorFromInitial(String initial) {
+    final List<String> colors = [
+      "#FF5733",
+      "#33FF57",
+      "#3357FF",
+      "#FF33A1",
+      "#A133FF",
+      "#33FFF5",
+      "#FF8C00",
+      "#FFD700",
+      "#ADFF2F",
+      "#00FF7F",
+      "#40E0D0",
+      "#1E90FF",
+      "#DC143C",
+      "#FF4500",
+      "#8A2BE2",
+      "#4B0082",
+      "#7FFF00",
+      "#8B0000",
+      "#00FA9A",
+      "#FF69B4",
+      "#4682B4",
+      "#20B2AA",
+      "#FF6347",
+      "#BDB76B",
+      "#F08080",
+      "#556B2F",
+      "#9370DB",
+      "#DDA0DD",
+      "#8B4513",
+      "#2E8B57",
+      "#A52A2A",
+      "#708090",
+      "#FFB6C1",
+      "#6A5ACD",
+      "#FA8072",
+      "#778899",
+      "#F4A460",
+      "#008080",
+      "#BA55D3",
+      "#CD5C5C",
+      "#00CED1",
+      "#DA70D6",
+      "#B22222",
+      "#5F9EA0",
+      "#FF00FF",
+      "#DEB887",
+      "#00BFFF",
+      "#9932CC",
+      "#D2691E",
+      "#7B68EE",
+      "#C71585",
+      "#191970",
+      "#DB7093",
+      "#F5DEB3",
+      "#6495ED",
+      "#32CD32",
+      "#8FBC8F",
+      "#B8860B",
+      "#2F4F4F",
+      "#F0E68C",
+      "#8B008B",
+      "#E9967A",
+      "#800000",
+      "#FF7F50",
+      "#DC143C",
+      "#4169E1",
+      "#DAA520",
+      "#2E8B57",
+      "#CD853F",
+      "#8A2BE2",
+      "#FF4500",
+      "#D2691E",
+      "#FFDAB9",
+      "#ADFF2F",
+      "#48D1CC",
+      "#7CFC00",
+      "#F0FFF0",
+      "#5F9EA0",
+      "#FFDEAD",
+      "#9400D3",
+      "#AFEEEE",
+      "#FF1493",
+      "#00FFFF",
+      "#0000FF",
+      "#008B8B",
+      "#FF00FF",
+      "#800080",
+      "#008000",
+      "#808000",
+      "#800000",
+      "#C0C0C0",
+      "#FF6347",
+      "#FFD700",
+      "#6B8E23",
+      "#4682B4",
+      "#B0E0E6"
+    ];
+
+    int charSum = initial.length == 2
+        ? initial.codeUnitAt(0) + initial.codeUnitAt(1)
+        : initial.codeUnitAt(0);
+    int index = charSum % colors.length;
+
+    return Color(int.parse(colors[index].substring(1), radix: 16) + 0xFF000000);
+  }
+
+  //Intials User
+  static String getInitials(String name) {
+    List<String> words = name.split(" ");
+    if (words.length > 1) {
+      return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+    } else {
+      return words[0][0].toUpperCase();
+    }
   }
 }

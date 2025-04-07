@@ -311,6 +311,29 @@ class _WidgetBoardState extends State<WidgetBoard> {
                     ),
                   ],
 
+                  // Label
+                  if (item.label.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 5, // Jarak antar ikon
+                      runSpacing:
+                          3, // Jarak antar baris jika ikon terlalu banyak
+                      children: [
+                        for (var label in item.label["data"] as List)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.label, // Ikon label
+                                size: 20, // Ukuran ikon
+                                color: Color(int.parse(
+                                    label["color"])), // Warna dari JSON
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
+
                   // Title
                   Text(
                     General.capitalizeEachWord(item.title),
@@ -345,7 +368,26 @@ class _WidgetBoardState extends State<WidgetBoard> {
                             width:
                                 5), // Memberikan jarak antara ikon deskripsi dan ikon lainnya
                       ],
-
+                      if (item.comment != 0) ...[
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.comment, // Ikon komentar
+                              size: 20, // Ukuran ikon
+                              color: Colors.grey, // Warna ikon
+                            ),
+                            SizedBox(width: 3),
+                            Text(
+                              '${item.comment}', // Menampilkan jumlah komentar
+                              style: TextStyle(
+                                fontSize: 14, // Ukuran teks
+                                color: Colors.grey, // Warna teks
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(width: 5),
+                      ],
                       // Ikon alarm dan due date jika ada
                       if (item.dueDate != null) ...[
                         // Memberikan jarak antara icon description dan icon alarm
@@ -425,6 +467,8 @@ class TextItem extends AppFlowyGroupItem {
   final Map<String, dynamic> cover;
   final String? dueDate;
   final bool watch;
+  final int comment;
+  final Map<String, dynamic> label;
 
   TextItem(
     this.currentId,
@@ -435,6 +479,8 @@ class TextItem extends AppFlowyGroupItem {
     this.cover,
     this.dueDate,
     this.watch,
+    this.comment,
+    this.label,
   );
 
   @override

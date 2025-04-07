@@ -28,20 +28,14 @@ class _DivisionWidgetState extends State<DivisionWidget>
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.handleDivision(method: 'GET');
+      final result = await ApiService.handleDivision(
+          method: 'GET', params: {'no_paging': 'yes'});
 
       if (result != null) {
-        final params = {
-          'limit': result['count'].toString(),
-          'offset': _pageIndex.toString(),
-        };
-
-        final resultDivision =
-            await ApiService.handleDivision(method: 'GET', params: params);
         setState(() {
-          divisions = resultDivision['data'];
+          divisions = result['data'];
           filteredDivisions = divisions; // Store original divisions
-          _totalItems = resultDivision['count'];
+          _totalItems = result['count'];
         });
       }
     } catch (e) {

@@ -84,22 +84,35 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         for (final singleTask in (getDataTask as List)) {
           taskAsList.add(
             TextItem(
-              singleTask["id"].toString(),
-              singleTask["board_id"],
-              singleTask["title"],
-              singleTask["is_completed"],
-              singleTask["description"],
-              singleTask["cover"] != null
-                  ? {
-                      "view": singleTask["cover"]?["view"] ?? "",
-                      "content": singleTask["cover"]?["content"] ?? "",
-                      "id": singleTask["cover"]?["id"] ?? "",
-                      "name": singleTask["cover"]?["name"] ?? "",
-                    }
-                  : {},
-              singleTask["due_date"],
-              singleTask["watch"],
-            ),
+                singleTask["id"].toString(),
+                singleTask["board_id"],
+                singleTask["title"],
+                singleTask["is_completed"],
+                singleTask["description"],
+                singleTask["cover"] != null
+                    ? {
+                        "view": singleTask["cover"]?["view"] ?? "",
+                        "content": singleTask["cover"]?["content"] ?? "",
+                        "id": singleTask["cover"]?["id"] ?? "",
+                        "name": singleTask["cover"]?["name"] ?? "",
+                      }
+                    : {},
+                singleTask["due_date"],
+                singleTask["watch"],
+                singleTask["comment"],
+                singleTask["label"] != null
+                    ? {
+                        "count": singleTask["label"]?["count"] ?? "",
+                        "data": (singleTask["label"]?["data"] as List?)
+                                ?.map((item) => {
+                                      "color": item["color"],
+                                      "id": item["id"],
+                                      "title": item["title"]
+                                    })
+                                .toList() ??
+                            []
+                      }
+                    : {}),
           );
         }
 
@@ -576,12 +589,22 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
     );
   }
 
+  Future<void> _handleRefresh() async {
+    await Future.wait([
+      _fetchWorkspace(),
+      onLoadListBoard(),
+      _fetchBoards(),
+    ]);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Cek apakah workspace berubah dan perlu pemuatan ulang data
     if (currentWorkspace != widget.workspace) {
       _fetchBoards();
       currentWorkspace = widget.workspace;
     }
+
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -621,57 +644,67 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Background Image
-          if (_coverView.isNotEmpty)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  image: DecorationImage(
-                    image: NetworkImage(
-                        _coverView), // Gunakan gambar jika tersedia
-                    fit: BoxFit.cover, // Sesuaikan agar menutupi layar
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh, // Handle refresh action
+        child: Stack(
+          children: [
+            // Background Image
+            if (_coverView.isNotEmpty)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    image: DecorationImage(
+                      image: NetworkImage(_coverView),
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+              ),
+
+            // Konten utama dengan scroll vertikal
+            SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height,
+                child: ScrollConfiguration(
+                  key: ValueKey('list'),
+                  behavior: ScrollBehavior().copyWith(overscroll: false),
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      WidgetBoard(
+                        controller: controller,
+                        boardController: boardController,
+                        addTask: (boardId) async {
+                          _showCreateTaskDialog(boardId);
+                        },
+                        onLoadBoard: () async {
+                          return onLoadListBoard();
+                        },
+                        deleteBoard: (boardId) async {
+                          _deleteBoard(boardId);
+                        },
+                        renameBoard: (boardId, newName) async {
+                          _editBoard(boardId: boardId, name: newName);
+                        },
+                        moveBoard: (boardId, newWorkspaceId) async {
+                          _editBoard(
+                              boardId: boardId, workspaceId: newWorkspaceId);
+                        },
+                        completedChange: (taskId, isCompleted) async {
+                          await _editTask(
+                              taskId: taskId, isCompleted: isCompleted);
+                          onLoadListBoard();
+                        },
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-
-          // Konten utama
-          if (_boards.isNotEmpty)
-            ScrollConfiguration(
-              key: ValueKey('list'),
-              behavior: ScrollBehavior().copyWith(overscroll: false),
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                children: [
-                  WidgetBoard(
-                    controller: controller,
-                    boardController: boardController,
-                    addTask: (boardId) async {
-                      _showCreateTaskDialog(boardId);
-                    },
-                    onLoadBoard: () async {
-                      return onLoadListBoard();
-                    },
-                    deleteBoard: (boardId) async {
-                      _deleteBoard(boardId);
-                    },
-                    renameBoard: (boardId, newName) async {
-                      _editBoard(boardId: boardId, name: newName);
-                    },
-                    moveBoard: (boardId, newWorkspaceId) async {
-                      _editBoard(boardId: boardId, workspaceId: newWorkspaceId);
-                    },
-                    completedChange: (taskId, isCompleted) async {
-                      await _editTask(taskId: taskId, isCompleted: isCompleted);
-                      onLoadListBoard();
-                    },
-                  ),
-                ],
-              ),
-            )
-        ],
+          ],
+        ),
       ),
     );
   }

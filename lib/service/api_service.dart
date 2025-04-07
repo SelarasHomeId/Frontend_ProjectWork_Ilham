@@ -259,6 +259,7 @@ class ApiService {
     } catch (e, stacktace) {
       print("stacktace : $stacktace");
     }
+    return null;
   }
 
   static Future<Map<String, dynamic>?> handleAffiliates({
@@ -318,6 +319,7 @@ class ApiService {
     } catch (e, stacktace) {
       print("stacktace : $stacktace");
     }
+    return null;
   }
 
   static Future<List<Map<String, dynamic>>> calculateTask() async {
@@ -478,6 +480,8 @@ class ApiService {
     int? taskId,
     Map<String, dynamic>? data,
     String? search,
+    String? contentType,
+    List<http.MultipartFile> listFile = const [],
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -505,7 +509,10 @@ class ApiService {
       endpoint: endpoint,
       body: data,
       token: token,
-      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
+      listFile: listFile,
+      contentType: method == 'PUT' && listFile.isNotEmpty
+          ? 'multipart/form-data'
+          : contentType ?? 'application/json',
     );
     try {
       final encodeValue = json.encode(response);

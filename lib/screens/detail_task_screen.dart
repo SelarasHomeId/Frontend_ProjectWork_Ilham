@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart';
+import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:mime/mime.dart';
 import 'package:selarashomeid/screens/label_screen.dart';
@@ -8,14 +10,20 @@ import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/utils/file_picker.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:selarashomeid/widgets/loading_screen_widget.dart';
+import 'package:selarashomeid/widgets/workspace_widget.dart';
 
 class DetailTaskScreen extends StatefulWidget {
   final int boardId;
   final int taskId;
+  // final String workspace;
+  // final int workspaceId;
+
   const DetailTaskScreen({
     super.key,
     required this.boardId,
     required this.taskId,
+    // required this.workspace,
+    // required this.workspaceId,
   });
 
   @override
@@ -33,6 +41,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
   late FocusNode focusNode;
   late FocusNode titleFocusNode;
+  late FocusNode descFocusNode;
 
   late ValueNotifier<bool> onLoadingNotifier;
   late ValueNotifier<List<Map<String, dynamic>>> onFileNotifier;
@@ -40,13 +49,32 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late ValueNotifier<List<Map<String, dynamic>>> onCommentNotifier;
   late ValueNotifier<bool> onLoadingCommentNotifier;
 
-  late ValueNotifier<(String labelName, Color color)?> notifierLabelColor;
+  late ValueNotifier<List<(String labelName, Color color, int id)>>
+      notifierLabelColor;
+  late List<int> currentLabelIds;
 
   String? currentDesc;
   String? currentTitle;
   String? currentComment;
+  String? currentDate;
+  String? currentCover;
+  File? _selectedCover;
   late ValueNotifier<DateTime?> onEndDateNotifier;
   late ValueNotifier<bool> currentWatch;
+  late ValueNotifier<int> currentWorkspaceId;
+  late ValueNotifier<int> currentBoardId;
+
+  late int workspaceId;
+  late String workspaceName;
+
+  bool imageLoaded = false;
+  bool currentIsCompleted = false;
+
+  loadInitialData() async {
+    await onLoadValue();
+    await loadFile();
+    setState(() {});
+  }
 
   @override
   void initState() {
@@ -55,7 +83,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onExpandableValue = ValueNotifier<bool>(false);
     onLoadingNotifier = ValueNotifier<bool>(false);
 
-    notifierLabelColor = ValueNotifier<(String labelName, Color color)?>(null);
+    notifierLabelColor =
+        ValueNotifier<List<(String labelName, Color color, int id)>>([]);
+    currentLabelIds = [];
     onEndDateNotifier = ValueNotifier<DateTime?>(null);
     onFileNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
     onLoadingFileNotifier = ValueNotifier<bool>(false);
@@ -66,8 +96,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textTitleController = TextEditingController();
     textCommentController = TextEditingController();
     currentWatch = ValueNotifier<bool>(false);
-    focusNode = FocusNode();
+
     titleFocusNode = FocusNode();
+    descFocusNode = FocusNode();
+
+    currentBoardId = ValueNotifier<int>(0);
+    currentWorkspaceId = ValueNotifier<int>(0);
 
     Future.wait(
       [
@@ -76,6 +110,15 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       ],
     );
     super.initState();
+    if (currentCover != null) {
+      precacheImage(NetworkImage(currentCover!), context).then((_) {
+        print("📦 Gambar sudah di-preload");
+      }).catchError((err) {
+        print("❌ preload gagal: $err");
+      });
+    }
+
+    loadInitialData();
   }
 
   Future<void> onLoadValue() async {
@@ -85,20 +128,33 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     final desc = getUpdatedData["description"];
+    final isCompleted = getUpdatedData["is_completed"] ?? false;
     final title = getUpdatedData["title"];
     final watch = getUpdatedData["watch"];
     final label = getUpdatedData["label"];
-    final comment = getUpdatedData["commnet"];
+    final workspaceIdCurrent = getUpdatedData["workspace"]["id"];
+    final boardId = getUpdatedData["board_id"];
+    final cover = getUpdatedData["cover"];
+    final date = getUpdatedData["due_date"];
+
+    final workspaceData = getUpdatedData["workspace"];
+    workspaceId = workspaceData["id"];
+    workspaceName = workspaceData["name"];
+
     final labelData = label != null ? label["data"] as List : [];
     if (labelData.isNotEmpty) {
-      final tyrParceColor = int.tryParse(labelData.first["color"]);
-
-      notifierLabelColor.value = (
-        labelData.first["title"],
-        (tyrParceColor == null
-            ? Colors.black
-            : General().stringToColor(labelData.first["color"])),
-      );
+      currentLabelIds =
+          labelData.map<int>((item) => item["id"] as int).toList();
+      notifierLabelColor.value = labelData.map((item) {
+        final parsedColor = int.tryParse(item["color"]) ?? 0;
+        return (
+          item["title"].toString(),
+          parsedColor == 0
+              ? Colors.black
+              : General().stringToColor(item["color"]),
+          item["id"] as int,
+        );
+      }).toList();
     }
 
     await loadComments();
@@ -108,8 +164,28 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     currentTitle = title;
     currentWatch.value = watch;
     currentDesc = desc;
-    currentComment = comment;
+    currentWorkspaceId.value = workspaceIdCurrent;
+    currentBoardId.value = boardId;
+    currentDate = date;
+    String message = "";
+    if (cover != null) {
+      currentCover = cover["view"].toString();
+      message = "ada cover + $currentCover";
+    } else {
+      message = "ga ada cover + $currentCover";
+    }
+
+    setState(() {
+      // currentCover = cover != null ? cover["view"].toString() : null;
+      currentIsCompleted = isCompleted == true;
+    });
+    print(message);
+    debugPrint(message);
     onLoadingNotifier.value = false;
+
+    print('[onLoadValue] is_completed: $isCompleted');
+    print(
+        '[onLoadValue] currentIsCompleted (after setState): $currentIsCompleted');
   }
 
   @override
@@ -120,79 +196,250 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textDescController.dispose();
     textTitleController.dispose();
     textCommentController.dispose();
-    focusNode.dispose();
+    // focusNode.dispose();
     titleFocusNode.dispose();
+    descFocusNode.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickCover() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? pickedImage =
+        await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedImage != null) {
+      setState(() {
+        _selectedCover = File(pickedImage.path);
+      });
+
+      final fileStream = await http.MultipartFile.fromPath(
+        'cover', // nama field yang diharapkan backend
+        _selectedCover!.path,
+      );
+
+      onLoadingNotifier.value = true;
+      final response = await ApiService.handleTask(
+        method: 'PUT',
+        taskId: widget.taskId,
+        data: {}, // tetap dikirim walau kosong
+        listFile: [fileStream], // ini penting!
+      );
+      onLoadingNotifier.value = false;
+
+      if (response != null) {
+        await onLoadValue();
+        // setState(() {});
+        General.showSnackBar(context, "cover added");
+      }
+    }
+  }
+
+  void deteleTask(int taskId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red, // Mengubah warna menjadi merah
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.delete, // Menambahkan ikon tong sampah
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Hapus Task',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Apakah Anda yakin ingin menghapus task ini?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                          Colors.grey[600], // Warna abu-abu untuk Cancel
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                          Colors.red[800], // Warna merah untuk Delete
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Hapus',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirm == true) {
+      try {
+        print('[DELETE_TASK] User konfirmasi penghapusan');
+        final response =
+            await ApiService.handleTask(method: 'DELETE', taskId: taskId);
+        print('[DELETE_TASK] Response dari API: $response');
+
+        if (response != null && response['message'] == 'success delete!') {
+          print('[DELETE_TASK] Task berhasil dihapus. Menampilkan snackbar');
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Task berhasil dihapus!')),
+          );
+
+          // ⏳ Kasih jeda 500ms sebelum navigasi
+          await Future.delayed(Duration(milliseconds: 500));
+
+          print('[DELETE_TASK] Navigasi ke WorkspaceWidget');
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (_) => WorkspaceWidget(
+                workspace: workspaceName,
+                workspaceId: workspaceId,
+              ),
+            ),
+            (route) => false,
+          );
+        } else {
+          print('[DELETE_TASK] Response tidak sesuai ekspektasi.');
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text('Gagal menghapus task.')));
+        }
+      } catch (e) {
+        print('[DELETE_TASK] Terjadi error saat hapus task: $e');
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Terjadi error: $e')));
+      }
+    }
+  }
+
+  Future<void> toggleCompleteStatus() async {
+    final newStatus = !currentIsCompleted;
+    final data = {"is_completed": newStatus};
+
+    final response = await ApiService.handleTask(
+      method: 'PUT',
+      data: data,
+      taskId: widget.taskId,
+    );
+
+    if (response != null) {
+      await onLoadValue();
+      setState(() {});
+      General.showSnackBar(
+        context,
+        newStatus ? "Task marked as complete" : "Task marked as incomplete",
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: onLoadingNotifier,
-      builder: (context, value, child) {
-        return Stack(
-          children: [
-            child ?? Container(),
-            if (value) ...{
-              loadingScreenWidget(context),
-            },
-          ],
-        );
+    return PopScope(
+      canPop: !titleFocusNode.hasFocus && !descFocusNode.hasFocus,
+      onPopInvokedWithResult: (didPop, result) {
+        if (titleFocusNode.hasFocus) {
+          titleFocusNode.unfocus();
+        }
+        if (descFocusNode.hasFocus) {
+          descFocusNode.unfocus();
+        }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.red[900],
-          title: TextField(
-            controller: textTitleController,
-            focusNode: titleFocusNode,
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
-            ),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-            ),
-            onEditingComplete: () async {
-              // Fungsi ini dipanggil ketika TextField selesai diedit (gagal fokus atau tekan "enter")
-              final value = textTitleController.text;
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          titleFocusNode.unfocus();
+          descFocusNode.unfocus();
+        },
+        child: ValueListenableBuilder(
+          valueListenable: onLoadingNotifier,
+          builder: (context, value, child) {
+            return Stack(
+              children: [
+                child ?? Container(),
+                if (value) ...{
+                  loadingScreenWidget(context),
+                },
+              ],
+            );
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.red[900],
+              title: TextField(
+                controller: textTitleController,
+                focusNode: titleFocusNode,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                ),
+                onEditingComplete: () async {
+                  // Fungsi ini dipanggil ketika TextField selesai diedit (gagal fokus atau tekan "enter")
+                  final value = textTitleController.text;
 
-              // Pastikan nilai tidak kosong dan lakukan update API jika sudah selesai editing
-              if (value.isNotEmpty) {
-                final data = {"title": value};
-
-                final response = await ApiService.handleTask(
-                  method: 'PUT',
-                  data: data,
-                  taskId: widget.taskId,
-                );
-
-                if (response != null) {
-                  // Jika API berhasil, kita update text controller dengan nilai yang dikirim
-                  textTitleController.text =
-                      value; // Pastikan text controller memiliki nilai terbaru
-                }
-              }
-            },
-          ),
-          leading: IconButton(
-            icon: Icon(Icons.arrow_back),
-            onPressed: () {
-              // Aksi ketika tombol back ditekan
-              Navigator.pop(context); // Contoh aksi kembali
-            },
-            color: Colors.white, // Menentukan warna tombol back
-          ),
-          actions: [
-            PopupMenuButton<String>(
-              icon: Icon(
-                Icons.more_vert,
-                color: Colors.white,
-              ),
-              onSelected: (String result) async {
-                switch (result) {
-                  case 'watch':
-                    final valueWatch = !currentWatch.value;
-                    final data = {"watch": valueWatch};
+                  // Pastikan nilai tidak kosong dan lakukan update API jika sudah selesai editing
+                  if (value.isNotEmpty) {
+                    final data = {"title": value};
 
                     final response = await ApiService.handleTask(
                       method: 'PUT',
@@ -202,167 +449,428 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                     if (response != null) {
                       // Jika API berhasil, kita update text controller dengan nilai yang dikirim
-                      currentWatch.value =
-                          valueWatch; // Pastikan text controller memiliki nilai terbaru
+                      textTitleController.text =
+                          value; // Pastikan text controller memiliki nilai terbaru
                     }
-                    break;
-                  case 'move':
-                    // Tindakan untuk pindah board
-                    break;
-                  case 'delete':
-                    // Tindakan untuk hapus task
-                    break;
-                }
-              },
-              itemBuilder: (BuildContext context) => [
-                PopupMenuItem<String>(
-                  value: 'watch',
-                  child: Row(
-                    children: [
-                      Icon(currentWatch.value == false
-                          ? Icons.visibility
-                          : Icons.visibility_off),
-                      SizedBox(width: 8),
-                      Text(currentWatch.value == false
-                          ? "Watch"
-                          : "Stop Watching"),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'move',
-                  child: Row(
-                    children: [
-                      Icon(Icons.move_to_inbox),
-                      SizedBox(width: 8),
-                      Text('Pindah Board'),
-                    ],
-                  ),
-                ),
-                PopupMenuItem<String>(
-                  value: 'delete',
-                  child: Row(
-                    children: [
-                      Icon(Icons.delete),
-                      SizedBox(width: 8),
-                      Text('Delete Task'),
+                    titleFocusNode.unfocus();
+                  }
+                },
+              ),
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back),
+                onPressed: () {
+                  // Aksi ketika tombol back ditekan
+                  Navigator.pop(context); // Contoh aksi kembali
+                },
+                color: Colors.white, // Menentukan warna tombol back
+              ),
+              actions: [
+                Padding(
+                  padding: EdgeInsets.only(top: 10.0),
+                  child: PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: Colors.white,
+                    ),
+                    offset: Offset(0, 40),
+                    onSelected: (String result) async {
+                      switch (result) {
+                        case 'complete_toggle':
+                          await toggleCompleteStatus();
+                          break;
+
+                        case 'watch':
+                          final valueWatch = !currentWatch.value;
+                          final data = {"watch": valueWatch};
+
+                          final response = await ApiService.handleTask(
+                            method: 'PUT',
+                            data: data,
+                            taskId: widget.taskId,
+                          );
+
+                          if (response != null) {
+                            currentWatch.value = valueWatch;
+                          }
+                          break;
+                        case 'add_cover':
+                          _pickCover();
+                          break;
+                        case 'del_cover':
+                          final response = await ApiService.handleTask(
+                            method: 'PUT',
+                            data: {"delete_cover": true},
+                            taskId: widget.taskId,
+                          );
+                          if (response != null) {
+                            await onLoadValue();
+                            setState(() {});
+                            General.showSnackBar(context, "cover deleted");
+                          }
+                          break;
+                        case 'move':
+                          Map<String, int>? dataDialog = await _showMoveDialog(
+                              currentWorkspaceId.value, currentBoardId.value);
+                          if (dataDialog != null) {
+                            final data = {"board_id": dataDialog["board_id"]};
+
+                            await ApiService.handleTask(
+                              method: 'PUT',
+                              data: data,
+                              taskId: widget.taskId,
+                            );
+                          }
+                          General.showSnackBar(context, "task moved");
+                          break;
+                        case 'delete':
+                          deteleTask(widget.taskId);
+                          break;
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => [
+                      PopupMenuItem<String>(
+                        value: 'complete_toggle',
+                        child: Row(
+                          children: [
+                            Icon(
+                              currentIsCompleted
+                                  ? Icons.unpublished_outlined
+                                  : Icons.check,
+                              color: currentIsCompleted
+                                  ? Colors.red
+                                  : Colors.green,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              currentIsCompleted
+                                  ? "Mark as Incomplete"
+                                  : "Mark as Complete",
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'watch',
+                        child: Row(
+                          children: [
+                            Icon(
+                              currentWatch.value == false
+                                  ? Icons.visibility
+                                  : Icons.visibility,
+                              color: currentWatch.value == false
+                                  ? Colors.blueGrey
+                                  : Colors.blue[900],
+                            ),
+                            SizedBox(width: 8),
+                            Text(currentWatch.value == false
+                                ? "Watch"
+                                : "Stop Watching"),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: currentCover == null ? 'add_cover' : 'del_cover',
+                        child: Row(
+                          children: [
+                            Icon(currentCover == null
+                                ? Icons.image
+                                : Icons.broken_image),
+                            SizedBox(width: 8),
+                            Text(currentCover == null
+                                ? "Add Cover"
+                                : "Delete Cover"),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'move',
+                        child: Row(
+                          children: [
+                            Icon(Icons.move_to_inbox),
+                            SizedBox(width: 8),
+                            Text('Pindah Board'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete),
+                            SizedBox(width: 8),
+                            Text('Delete Task'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
-          ],
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildUserInfo(userProfileFuture),
-                SizedBox(height: 20),
+            body: RefreshIndicator(
+              onRefresh: _handleRefresh, // Tambahkan ini
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SingleChildScrollView(
+                  physics:
+                      const AlwaysScrollableScrollPhysics(), // Penting untuk refresh indicator
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (currentCover != null) ...[
+                        Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: currentCover == null
+                                ? Image.asset(
+                                    'assets/no_cover.png', // Gambar default dari assets
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 120,
+                                  )
+                                : Image.network(
+                                    currentCover!,
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 120,
+                                  )),
+                        SizedBox(height: 20),
+                      ],
+                      SizedBox(height: 20),
 
-                // Quick Actions
-                _buildQuickActions(onExpandableValue),
+                      _buildUserInfo(userProfileFuture),
+                      SizedBox(height: 20),
 
-                SizedBox(height: 20),
+                      // Quick Actions
+                      _buildQuickActions(onExpandableValue),
 
-                // Add Card Description
-                Text("Description",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                _buildCardDescription(
-                  textDescController: textDescController,
-                  focusNode: focusNode,
-                  onSubmitButton: () async {
-                    final getUpdatedData = await ApiService.handleTask(
-                      method: 'PUT',
-                      taskId: widget.taskId,
-                      boardId: widget.boardId,
-                      data: {'description': textDescController.text},
-                    );
+                      SizedBox(height: 20),
 
-                    if (getUpdatedData != null && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Update Description: Berhasil')),
-                      );
-                      currentDesc = textDescController.text;
-                    }
-                  },
-                ),
+                      // Add Card Description
+                      Text("Description",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      _buildCardDescription(
+                        textDescController: textDescController,
+                        focusNode: descFocusNode,
+                        onSubmitButton: () async {
+                          final getUpdatedData = await ApiService.handleTask(
+                            method: 'PUT',
+                            taskId: widget.taskId,
+                            boardId: widget.boardId,
+                            data: {'description': textDescController.text},
+                          );
 
-                SizedBox(height: 20),
-
-                // Labels
-                Text("Labels",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                _buildLabelsButton(
-                  onAddingLabel: (labelId) async {
-                    onLoadingNotifier.value = true;
-                    final getUpdatedData = await ApiService.handleTask(
-                      method: 'PUT',
-                      taskId: widget.taskId,
-                      boardId: widget.boardId,
-                      data: {'label': labelId},
-                    );
-
-                    if (getUpdatedData != null && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Update Label: Berhasil')),
-                      );
-                      await onLoadValue();
-                    }
-                  },
-                ),
-
-                SizedBox(height: 20),
-
-                // Start and Due Dates
-                Text("Due Date",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                SizedBox(
-                  height: 10,
-                ),
-                _buildDatePickers(),
-
-                SizedBox(height: 20),
-
-                // Comments Section
-                Text("Comments",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                SizedBox(height: 10),
-                _buildAddCommentSection(widget.taskId),
-
-                // **Gunakan ValueListenableBuilder untuk update komentar tanpa fetch ulang**
-                ValueListenableBuilder(
-                  valueListenable: onLoadingNotifier,
-                  builder: (context, value, child) {
-                    return Container(
-                      constraints: BoxConstraints(maxHeight: 300),
-                      padding: EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(10),
+                          if (getUpdatedData != null && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content:
+                                      Text('Update Description: Berhasil')),
+                            );
+                            currentDesc = textDescController.text;
+                          }
+                        },
                       ),
-                      // **Menampilkan daftar komentar**
-                      child: _buildCommentList(),
-                    );
-                  },
-                ),
 
-                SizedBox(height: 30),
-                Text("Attachment",
-                    style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                listFileWidget(),
-              ],
+                      SizedBox(height: 20),
+
+                      // Labels
+                      Text("Labels",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      _buildLabelsButton(
+                        onAddingLabel: (labelId) async {
+                          onLoadingNotifier.value = true;
+                          if (!currentLabelIds.contains(labelId)) {
+                            currentLabelIds.add(labelId);
+                          }
+                          final getUpdatedData = await ApiService.handleTask(
+                              method: 'PUT',
+                              taskId: widget.taskId,
+                              boardId: widget.boardId,
+                              data: {'label': currentLabelIds},
+                              contentType: 'application/json');
+
+                          if (getUpdatedData != null && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Update Label: Berhasil')),
+                            );
+                            await onLoadValue();
+                          }
+                        },
+                      ),
+
+                      SizedBox(height: 20),
+
+                      // Start and Due Dates
+                      Text("Due Date",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      SizedBox(
+                        height: 10,
+                      ),
+                      _buildDatePickers(),
+
+                      SizedBox(height: 20),
+
+                      // Comments Section
+                      Text("Comments",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 10),
+                      _buildAddCommentSection(widget.taskId),
+
+                      // **Gunakan ValueListenableBuilder untuk update komentar tanpa fetch ulang**
+                      ValueListenableBuilder(
+                        valueListenable: onLoadingNotifier,
+                        builder: (context, value, child) {
+                          return Container(
+                            constraints: BoxConstraints(maxHeight: 300),
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            // **Menampilkan daftar komentar**
+                            child: _buildCommentList(),
+                          );
+                        },
+                      ),
+
+                      SizedBox(height: 30),
+                      Text("Attachment",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      listFileWidget(),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Future<Map<String, int>?> _showMoveDialog(
+      int workspaceId, int boardId) async {
+    List<Map<String, dynamic>> workspaces = [];
+    List<Map<String, dynamic>> boards = [];
+    int? selectedWorkspaceId = workspaceId;
+    int? selectedBoardId = boardId;
+
+    try {
+      final response = await ApiService.workspaceFind();
+      if (response.isNotEmpty) {
+        workspaces = List<Map<String, dynamic>>.from(response);
+        if (!workspaces.any((w) => w['id'] == selectedWorkspaceId)) {
+          selectedWorkspaceId = workspaces.first['id']; // Default workspace
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memuat workspace: $e')),
+        );
+      }
+    }
+
+    Future<void> loadBoards(int workspaceId) async {
+      try {
+        final response = await ApiService.handleBoard(
+            method: "GET", workspaceId: workspaceId);
+        if (response.isNotEmpty) {
+          boards = List<Map<String, dynamic>>.from(response);
+          if (!boards.any((b) => b['id'] == selectedBoardId)) {
+            selectedBoardId = boards.first['id']; // Default board
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal memuat board: $e')),
+          );
+        }
+      }
+    }
+
+    await loadBoards(selectedWorkspaceId!);
+
+    return await showDialog<Map<String, int>>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Move to"),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Dropdown Workspace
+                  DropdownButtonFormField<int>(
+                    value: selectedWorkspaceId,
+                    items: workspaces.map((workspace) {
+                      return DropdownMenuItem<int>(
+                        value: workspace['id'],
+                        child: Text(workspace['name']),
+                      );
+                    }).toList(),
+                    onChanged: (int? newValue) async {
+                      setState(() {
+                        selectedWorkspaceId = newValue;
+                        selectedBoardId = null;
+                      });
+                      await loadBoards(selectedWorkspaceId!);
+                      setState(() {});
+                    },
+                    decoration: InputDecoration(
+                      labelText: "Select Workspace",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  // Dropdown Board
+                  DropdownButtonFormField<int>(
+                    value: selectedBoardId,
+                    items: boards.map((board) {
+                      return DropdownMenuItem<int>(
+                        value: board['id'],
+                        child: Text(board['name']),
+                      );
+                    }).toList(),
+                    onChanged: (int? newValue) {
+                      setState(() {
+                        selectedBoardId = newValue;
+                      });
+                    },
+                    decoration: InputDecoration(
+                      labelText: "Select Board",
+                      border: OutlineInputBorder(),
+                    ),
+                    isExpanded: true,
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null), // Batal
+              child: Text("Batal"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(
+                context,
+                {
+                  'workspace_id': selectedWorkspaceId!,
+                  'board_id': selectedBoardId!
+                },
+              ), // Konfirmasi
+              child: Text("Move", style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -404,13 +912,21 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           "comment": e["comment"],
           "created_at": e["created_at"],
           // Jika perlu menampilkan user, mungkin perlu penyesuaian dari API
-          "user_name": response['created_by']
-              ['name'], // Ambil dari created_by task
+          "user_name": e['created_by']['name'], // Ambil dari created_by task
         };
       }).toList();
     }
 
     onLoadingCommentNotifier.value = false;
+  }
+
+  // Fungsi untuk onRefresh RefreshIndicator
+  Future<void> _handleRefresh() async {
+    await Future.wait([
+      onLoadValue(),
+      loadComments(),
+      loadFile(),
+    ]);
   }
 
   Widget _buildUserInfo(Future<Map<String, String>> userProfileFuture) {
@@ -508,7 +1024,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             final currentCropped = croppedValue;
                             if (currentCropped != null) {
                               final listFile = await Future.wait([
-                                MultipartFile.fromPath(
+                                http.MultipartFile.fromPath(
                                   'file',
                                   currentCropped.path!,
                                   contentType: currentCropped.fileType,
@@ -595,8 +1111,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Widget _buildLabelsButton(
-      {required Future<void> Function(String) onAddingLabel}) {
-    return Row(
+      {required Future<void> Function(int) onAddingLabel}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ElevatedButton(
           onPressed: () async {
@@ -606,22 +1123,91 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 builder: (_) => LabelScreen(),
               ),
             );
-            await onAddingLabel(id.toString());
+            if (id != null) {
+              await onAddingLabel(id);
+            }
           },
           child: Text('Labels'),
         ),
+        SizedBox(height: 8), // Jarak antara tombol dan label
         ValueListenableBuilder(
           valueListenable: notifierLabelColor,
           builder: (context, value, child) {
-            if (value != null) {
-              return Container(
-                margin: EdgeInsets.only(left: 8),
-                padding: EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  color: value.$2,
+            if (value.isNotEmpty) {
+              return SizedBox(
+                height: 40, // Sesuaikan tinggi agar label terlihat
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: value.map((label) {
+                      return GestureDetector(
+                        onTap: () async {
+                          final confirmDelete = await showDialog<bool>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: Text("Hapus Label?"),
+                              content: Text(
+                                  "Apakah Anda yakin ingin menghapus label '${label.$1}'?"),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: Text("Batal"),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: Text("Hapus"),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirmDelete == true) {
+                            // Hapus label dari daftar
+                            currentLabelIds.remove(label.$3);
+
+                            // Perbarui ValueNotifier
+                            notifierLabelColor.value =
+                                List.from(notifierLabelColor.value)
+                                  ..remove(label);
+
+                            // Kirim data terbaru ke API
+                            onLoadingNotifier.value = true;
+                            final getUpdatedData = await ApiService.handleTask(
+                              method: 'PUT',
+                              taskId: widget.taskId,
+                              boardId: widget.boardId,
+                              data: {'label': currentLabelIds},
+                              contentType: 'application/json',
+                            );
+
+                            if (getUpdatedData != null && context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                    content: Text('Label berhasil dihapus')),
+                              );
+                            }
+                            onLoadingNotifier.value = false;
+                          }
+                        },
+                        child: Container(
+                          margin: EdgeInsets.only(right: 8),
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.all(Radius.circular(12)),
+                            color: label.$2, // Warna dari label
+                          ),
+                          child: Text(
+                            label.$1, // Nama label
+                            style: TextStyle(
+                                color: Colors.white), // Teks lebih kontras
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
                 ),
-                child: Text(value.$1),
               );
             }
             return Container();
@@ -778,8 +1364,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             final comment = commentList[index];
             return ListTile(
               leading: CircleAvatar(
-                backgroundColor: Colors.blueAccent,
-                child: Text(comment['user_name'][0].toUpperCase()),
+                backgroundColor: General.getColorFromInitial(
+                    General.getInitials(comment['user_name'])),
+                child: Text(General.getInitials(comment['user_name'])),
               ),
               title: Text(comment['user_name']),
               subtitle: Column(
@@ -824,15 +1411,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       children: [
         Row(
           children: [
-            CircleAvatar(
-              backgroundColor: Colors.blue,
-              child: FutureBuilder<Map<String, String>>(
-                future: userProfileFuture,
-                builder: (context, snapshot) {
-                  if (!snapshot.hasData) return Text('U');
-                  return Text(snapshot.data!['initials'] ?? 'U');
-                },
-              ),
+            FutureBuilder<Map<String, String>>(
+              future: userProfileFuture,
+              builder: (context, snapshot) {
+                String initial =
+                    General.getInitials(snapshot.data?['name'] ?? 'U');
+                return CircleAvatar(
+                  backgroundColor: General.getColorFromInitial(initial),
+                  child: Text(initial),
+                );
+              },
             ),
             SizedBox(width: 10),
             Expanded(
@@ -923,10 +1511,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 ImageProvider getImage(String fileFormat, String path) {
   switch (fileFormat) {
     case "pdf":
-      return AssetImage("assets/images/pdf.png");
-    case "doc":
+      return AssetImage("assets/pdf_icon.jpg");
     case "docx":
-      return AssetImage("assets/images/doc.png");
+      return AssetImage("assets/doc_icon.jpg");
     default:
       return NetworkImage(path);
   }

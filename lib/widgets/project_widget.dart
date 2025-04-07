@@ -30,20 +30,14 @@ class _ProjectWidgetState extends State<ProjectWidget>
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.handleProject(method: 'GET');
+      final result = await ApiService.handleProject(
+          method: 'GET', params: {'no_paging': 'yes'});
 
       if (result != null) {
-        final params = {
-          'limit': result['count'].toString(),
-          'offset': _pageIndex.toString(),
-        };
-
-        final resultProject =
-            await ApiService.handleProject(method: 'GET', params: params);
         setState(() {
-          projects = resultProject['data'];
+          projects = result['data'];
           filteredProjects = projects; // Store original projects
-          _totalItems = resultProject['count'];
+          _totalItems = result['count'];
         });
       }
     } catch (e) {

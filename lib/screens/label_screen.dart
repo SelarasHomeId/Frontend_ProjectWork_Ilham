@@ -27,22 +27,8 @@ class _LabelScreenState extends State<LabelScreen> {
 
   Future<void> onLoadingLabel() async {
     onLoadingNotifier.value = false;
-    final params = {
-      'limit': 100.toString(),
-      'offset': 0.toString(),
-    };
-    final getData = await ApiService.handleLabel(method: "GET", params: params);
-
-    // if (getData != null) {
-    //   final params = {
-    //     'limit': getData['count'].toString(),
-    //     'offset': 0.toString(),
-    //   };
-    //   debugPrint(params.toString());
-    //   final resultLabel =
-    //       await ApiService.handleLabel(method: 'GET', params: params);
-    //   debugPrint(resultLabel);
-    // }
+    final getData = await ApiService.handleLabel(
+        method: "GET", params: {'no_paging': 'yes'});
     onDataNotifier.value = getData;
     onLoadingNotifier.value = false;
   }
@@ -122,9 +108,8 @@ class _LabelScreenState extends State<LabelScreen> {
                                 children: [
                                   SizedBox(
                                       width: 75,
-                                      child: Text(isValidTitle
-                                          ? currentTitle
-                                          : "(title kosong)")),
+                                      child: Text(
+                                          isValidTitle ? currentTitle : " ")),
                                   SizedBox(width: 8),
                                   Expanded(
                                     child: Container(

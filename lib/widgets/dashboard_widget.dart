@@ -36,8 +36,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   int _rowsPerPage = 10;
   int? _sortColumnIndex;
   bool _sortAscending = true;
-  int _contactCount = 0;
-  int _affiliateCount = 0;
+
   TextEditingController _searchMessageController = TextEditingController();
   FocusNode _searchMessageFocusNode = FocusNode();
   TextEditingController _searchAffiliateController = TextEditingController();
@@ -99,16 +98,11 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     try {
       final result = await ApiService.handleContacts(
         token: widget.token,
-        params: {'offset': '0', 'limit': '10'},
+        params: {'no_paging': 'yes'},
       );
 
       if (result != null && result['data'] != null) {
-        final resultContact = await ApiService.handleContacts(
-          token: widget.token,
-          params: {'offset': '0', 'limit': result['count'].toString()},
-        );
-
-        final responseData = resultContact?['data'];
+        final responseData = result['data'];
         final List<dynamic> contactsData =
             responseData is List ? responseData : responseData['data'] ?? [];
 
@@ -117,7 +111,6 @@ class _DashboardWidgetState extends State<DashboardWidget> {
               .map((data) => Map<String, dynamic>.from(data))
               .toList();
           _basecontacts = List.from(_contacts);
-          _contactCount = resultContact?['count'] ?? _contacts.length;
         });
       }
     } catch (e, stackTrace) {
@@ -136,16 +129,11 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     try {
       final result = await ApiService.handleAffiliates(
         token: widget.token,
-        params: {'offset': '0', 'limit': '10'},
+        params: {'no_paging': 'yes'},
       );
 
       if (result != null && result['data'] != null) {
-        final resultAffiliate = await ApiService.handleAffiliates(
-          token: widget.token,
-          params: {'offset': '0', 'limit': result['count'].toString()},
-        );
-
-        final responseData = resultAffiliate?['data'];
+        final responseData = result['data'];
         final List<dynamic> affiliateData =
             responseData is List ? responseData : responseData['data'] ?? [];
 
@@ -154,7 +142,6 @@ class _DashboardWidgetState extends State<DashboardWidget> {
               .map((data) => Map<String, dynamic>.from(data))
               .toList();
           _baseaffiliates = List.from(_affiliates);
-          _affiliateCount = resultAffiliate?['count'] ?? _affiliates.length;
         });
       }
     } catch (e, stackTrace) {

@@ -17,7 +17,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
   int _rowsPerPage = 10;
-  int _pageIndex = 0;
 
   // Animation controller for the search TextField
   late AnimationController _animationController;
@@ -27,18 +26,12 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
     setState(() => _isLoading = true);
 
     try {
-      final result = await ApiService.handleUser(method: 'GET');
+      final result = await ApiService.handleUser(
+          method: 'GET', params: {'no_paging': 'yes'});
 
       if (result != null) {
-        final params = {
-          'limit': result['count'].toString(),
-          'offset': _pageIndex.toString(),
-        };
-
-        final resultUser =
-            await ApiService.handleUser(method: 'GET', params: params);
         setState(() {
-          users = resultUser['data'];
+          users = result['data'];
           filteredUsers = users; // Store original users
         });
       }
