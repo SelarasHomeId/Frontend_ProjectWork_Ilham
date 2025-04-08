@@ -69,6 +69,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
   bool imageLoaded = false;
   bool currentIsCompleted = false;
+  bool _isLoading = true;
+  TextEditingController _searchController = TextEditingController();
+  List<dynamic> users = [];
+  List<dynamic> filteredUsers = [];
+  List<Map<String, dynamic>> assignedMembers = [];
 
   loadInitialData() async {
     await onLoadValue();
@@ -118,6 +123,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       });
     }
 
+    fetchUsers();
     loadInitialData();
   }
 
@@ -129,6 +135,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     final desc = getUpdatedData["description"];
     final isCompleted = getUpdatedData["is_completed"] ?? false;
+    final assignToUser = getUpdatedData['assign_to_user']['data'] ?? [];
     final title = getUpdatedData["title"];
     final watch = getUpdatedData["watch"];
     final label = getUpdatedData["label"];
@@ -178,6 +185,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     setState(() {
       // currentCover = cover != null ? cover["view"].toString() : null;
       currentIsCompleted = isCompleted == true;
+      assignedMembers = assignToUser;
     });
     print(message);
     debugPrint(message);
@@ -186,6 +194,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     print('[onLoadValue] is_completed: $isCompleted');
     print(
         '[onLoadValue] currentIsCompleted (after setState): $currentIsCompleted');
+    print('[onLoadValue] Assign to User: $assignToUser');
   }
 
   @override
@@ -389,6 +398,233 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       );
     }
   }
+
+  //assign to user============================================================
+  Future<void> fetchUsers() async {
+    setState(() => _isLoading = true);
+    print("Fetching users...");
+
+    try {
+      final result = await ApiService.handleUser(
+          method: 'GET', params: {'no_paging': 'yes'});
+
+      print("Fetched users: $result"); // Cek apakah data berhasil diambil
+
+      if (result != null) {
+        setState(() {
+          users = result['data'];
+          filteredUsers = users; // Store original users
+        });
+      }
+    } catch (e) {
+      print("Error fetching users: $e");
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+    } finally {
+      setState(() => _isLoading = false);
+      print("Loading complete");
+    }
+
+    _searchController.addListener(() {
+      _searchUserByName();
+    });
+  }
+
+  void _showAddMemberDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              contentPadding:
+                  EdgeInsets.all(0), // Remove extra padding around content
+              titlePadding:
+                  EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    "Add Member",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () {
+                      Navigator.pop(
+                          context); // Menutup dialog ketika icon X ditekan
+                    },
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Search field for filtering users
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: "Search User...",
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        _searchUserByName();
+                      },
+                    ),
+                  ),
+                  SizedBox(height: 10),
+                  // Loading indicator or list of users
+                  _isLoading
+                      ? Center(child: CircularProgressIndicator())
+                      : Expanded(
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: filteredUsers.length,
+                            itemBuilder: (context, index) {
+                              final user = filteredUsers[index];
+                              return ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: General.getColorFromInitial(
+                                      General.getInitials(user['name'])),
+                                  child: Text(
+                                    General.getInitials(user['name']),
+                                    style: TextStyle(color: Colors.white),
+                                  ),
+                                ),
+                                title: Text(user['name']),
+                                subtitle: Text(user['email']),
+                                onTap: () {
+                                  // Tindakan ketika item user dipilih
+                                  print("Selected user: ${user['name']}");
+                                },
+                              );
+                            },
+                          ),
+                        ),
+                ],
+              ),
+              actions: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        minimumSize: Size(100, 36), // Lebar dan tinggi minimum
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context); // Menutup dialog
+                      },
+                      child:
+                          Text('Cancel', style: TextStyle(color: Colors.red)),
+                    ),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        minimumSize: Size(100, 36), // Lebar dan tinggi minimum
+                      ),
+                      onPressed: () {
+                        // Logika untuk melakukan tindakan Done
+                        Navigator.pop(context); // Menutup dialog
+                      },
+                      child:
+                          Text('Done', style: TextStyle(color: Colors.green)),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _searchUserByName() {
+    String keyword = _searchController.text.toLowerCase();
+
+    if (keyword.isEmpty) {
+      setState(() {
+        filteredUsers = users; // Reset to show all users
+      });
+      return;
+    }
+
+    setState(() {
+      filteredUsers = users
+          .where((user) => user['name'].toLowerCase().contains(keyword))
+          .toList();
+    });
+  }
+
+  Widget _buildMember(List<dynamic> assignedMembers) {
+    return ExpansionPanelList(
+      elevation: 1,
+      expandedHeaderPadding: EdgeInsets.all(0),
+      expansionCallback: (int index, bool isExpanded) {
+        setState(() {
+          // Toggle expansion state when clicked
+          isExpanded = !isExpanded;
+        });
+      },
+      children: [
+        ExpansionPanel(
+          headerBuilder: (BuildContext context, bool isExpanded) {
+            return InkWell(
+              onTap: () {
+                setState(() {
+                  isExpanded = !isExpanded;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  'Assigned Members', // Change the header title as needed
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            );
+          },
+          body: assignedMembers.isEmpty
+              ? Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Text('No members assigned yet.'),
+                )
+              : Wrap(
+                  children: assignedMembers.map<Widget>((member) {
+                    return Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: General.getColorFromInitial(
+                                General.getInitials(member['name'])),
+                            child: Text(
+                              General.getInitials(member['name']),
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            member['name'],
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+          isExpanded: true, // Set this to true by default for expanded state
+        ),
+      ],
+    );
+  }
+
+  //end assogn to user==========================================================
 
   @override
   Widget build(BuildContext context) {
@@ -644,6 +880,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       _buildQuickActions(onExpandableValue),
 
                       SizedBox(height: 20),
+
+                      // _buildMember(assignedMembers),
+                      // SizedBox(height: 20),
 
                       // Add Card Description
                       Text("Description",
@@ -1047,32 +1286,15 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           },
                           child: Text('Add Attachment')),
                       SizedBox(width: 10),
-                      ElevatedButton(onPressed: () {}, child: Text('Members')),
+                      ElevatedButton(
+                          onPressed: _showAddMemberDialog,
+                          child: Text('Members')),
                     ],
                   ),
                   isExpanded: expandletrue,
                 ),
               ]);
         });
-    // return Column(
-    //   crossAxisAlignment: CrossAxisAlignment.start,
-    //   children: [
-    //     Text(
-    //       'Quick Actions',
-    //       style: TextStyle(fontWeight: FontWeight.bold),
-    //     ),
-    //     SizedBox(height: 10),
-    //     Wrap(
-    //       children: [
-    //         ElevatedButton(onPressed: () {}, child: Text('Add Checklist')),
-    //         SizedBox(width: 10),
-    //         ElevatedButton(onPressed: () {}, child: Text('Add Attachment')),
-    //         SizedBox(width: 10),
-    //         ElevatedButton(onPressed: () {}, child: Text('Members')),
-    //       ],
-    //     ),
-    //   ],
-    // );
   }
 
   Widget _buildCardDescription({
