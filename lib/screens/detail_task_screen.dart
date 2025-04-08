@@ -57,18 +57,18 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   String? currentTitle;
   String? currentComment;
   String? currentDate;
-  String? currentCover;
   File? _selectedCover;
   late ValueNotifier<DateTime?> onEndDateNotifier;
   late ValueNotifier<bool> currentWatch;
+  late ValueNotifier<bool> currentIsCompleted;
   late ValueNotifier<int> currentWorkspaceId;
   late ValueNotifier<int> currentBoardId;
+  late ValueNotifier<String?> currentCover;
 
   late int workspaceId;
   late String workspaceName;
 
   bool imageLoaded = false;
-  bool currentIsCompleted = false;
   bool _isLoading = true;
   TextEditingController _searchController = TextEditingController();
   List<dynamic> users = [];
@@ -101,6 +101,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textTitleController = TextEditingController();
     textCommentController = TextEditingController();
     currentWatch = ValueNotifier<bool>(false);
+    currentIsCompleted = ValueNotifier<bool>(false);
+    currentCover = ValueNotifier<String?>(null);
 
     titleFocusNode = FocusNode();
     descFocusNode = FocusNode();
@@ -115,13 +117,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       ],
     );
     super.initState();
-    if (currentCover != null) {
-      precacheImage(NetworkImage(currentCover!), context).then((_) {
-        print("📦 Gambar sudah di-preload");
-      }).catchError((err) {
-        print("❌ preload gagal: $err");
-      });
-    }
 
     fetchUsers();
     loadInitialData();
@@ -134,8 +129,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     final desc = getUpdatedData["description"];
-    final isCompleted = getUpdatedData["is_completed"] ?? false;
-    final assignToUser = getUpdatedData['assign_to_user']['data'] ?? [];
+    final isCompleted = getUpdatedData["is_completed"];
+    final assignToUser = getUpdatedData['assign_to_user'];
     final title = getUpdatedData["title"];
     final watch = getUpdatedData["watch"];
     final label = getUpdatedData["label"];
@@ -174,27 +169,15 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     currentWorkspaceId.value = workspaceIdCurrent;
     currentBoardId.value = boardId;
     currentDate = date;
-    String message = "";
-    if (cover != null) {
-      currentCover = cover["view"].toString();
-      message = "ada cover + $currentCover";
-    } else {
-      message = "ga ada cover + $currentCover";
+    currentCover.value = cover != null ? cover["view"].toString() : null;
+    currentIsCompleted.value = isCompleted;
+    final assignedMemberData = assignToUser != null ? assignToUser["data"] as List : [];
+    if (assignedMemberData.isNotEmpty) {
+      assignedMembers = assignedMemberData.map((item) {
+        return item as Map<String, dynamic>;
+      }).toList();
     }
-
-    setState(() {
-      // currentCover = cover != null ? cover["view"].toString() : null;
-      currentIsCompleted = isCompleted == true;
-      assignedMembers = assignToUser;
-    });
-    print(message);
-    debugPrint(message);
     onLoadingNotifier.value = false;
-
-    print('[onLoadValue] is_completed: $isCompleted');
-    print(
-        '[onLoadValue] currentIsCompleted (after setState): $currentIsCompleted');
-    print('[onLoadValue] Assign to User: $assignToUser');
   }
 
   @override
@@ -380,7 +363,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Future<void> toggleCompleteStatus() async {
-    final newStatus = !currentIsCompleted;
+    final newStatus = !currentIsCompleted.value;
     final data = {"is_completed": newStatus};
 
     final response = await ApiService.handleTask(
@@ -769,16 +752,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         child: Row(
                           children: [
                             Icon(
-                              currentIsCompleted
+                              currentIsCompleted.value
                                   ? Icons.unpublished_outlined
                                   : Icons.check,
-                              color: currentIsCompleted
+                              color: currentIsCompleted.value
                                   ? Colors.red
                                   : Colors.green,
                             ),
                             SizedBox(width: 8),
                             Text(
-                              currentIsCompleted
+                              currentIsCompleted.value
                                   ? "Mark as Incomplete"
                                   : "Mark as Complete",
                             ),
@@ -805,14 +788,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         ),
                       ),
                       PopupMenuItem<String>(
-                        value: currentCover == null ? 'add_cover' : 'del_cover',
+                        value: currentCover.value == null ? 'add_cover' : 'del_cover',
                         child: Row(
                           children: [
-                            Icon(currentCover == null
+                            Icon(currentCover.value == null
                                 ? Icons.image
                                 : Icons.broken_image),
                             SizedBox(width: 8),
-                            Text(currentCover == null
+                            Text(currentCover.value == null
                                 ? "Add Cover"
                                 : "Delete Cover"),
                           ],
@@ -853,24 +836,21 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (currentCover != null) ...[
-                        Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: currentCover == null
-                                ? Image.asset(
-                                    'assets/no_cover.png', // Gambar default dari assets
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: 120,
-                                  )
-                                : Image.network(
-                                    currentCover!,
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: 120,
-                                  )),
-                        SizedBox(height: 20),
-                      ],
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: currentCover.value == null
+                              ? Image.asset(
+                                  'assets/no_cover.png', // Gambar default dari assets
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: 120,
+                                )
+                              : Image.network(
+                                  currentCover.value.toString(),
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  height: 120,
+                                )),
                       SizedBox(height: 20),
 
                       _buildUserInfo(userProfileFuture),
