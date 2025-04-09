@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:selarashomeid/utils/general.dart';
 
 class AddProjectWidget extends StatefulWidget {
   @override
@@ -111,11 +112,8 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
       // ✅ Ambil token dengan benar sebelum digunakan
       final token = await ApiService.getToken();
       if (token == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content:
-                  Text('Gagal menambahkan project: Token tidak ditemukan')),
-        );
+        General.showSnackBar(
+            context, 'Gagal menambahkan project: Token tidak ditemukan');
         return;
       }
 
@@ -141,20 +139,15 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
 
       if (response.statusCode == 200) {
         Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Project berhasil ditambahkan!')),
-        );
+        General.showSnackBar(context, 'Project berhasil ditambahkan!');
       } else {
         print("⚠️ Error Response: $responseData"); // Debug Response
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menambahkan project: $responseData')),
-        );
+        General.showSnackBar(
+            context, 'Gagal menambahkan project: $responseData');
       }
     } catch (e) {
       print("⚠️ Error: $e"); // Debug Error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
+      General.showSnackBar(context, 'Error: $e');
     }
   }
 
@@ -174,6 +167,7 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
             ),
           ),
           child: AppBar(
+            automaticallyImplyLeading: true,
             backgroundColor: Colors.transparent,
             elevation: 0,
             title: Text(
@@ -182,6 +176,9 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
                   color: Colors.white,
                   fontSize: screenWidth * 0.07,
                   fontWeight: FontWeight.w500),
+            ),
+            iconTheme: IconThemeData(
+              color: Colors.white, // Mengubah warna ikon back jadi putih
             ),
           ),
         ),

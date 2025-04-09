@@ -62,9 +62,7 @@ class _AddUserWidgetState extends State<AddUserWidget> {
   // Fungsi untuk menambah user
   void _addUser(BuildContext context) async {
     if (selectedRole == null || selectedDivision == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Role dan Divisi harus dipilih')),
-      );
+      General.showSnackBar(context, 'Role dan Divisi harus dipilih');
       return;
     }
 
@@ -120,6 +118,7 @@ class _AddUserWidgetState extends State<AddUserWidget> {
                 ),
               ),
               child: AppBar(
+                automaticallyImplyLeading: true,
                 backgroundColor: Colors.transparent,
                 elevation: 0,
                 title: Text(
@@ -128,6 +127,9 @@ class _AddUserWidgetState extends State<AddUserWidget> {
                       color: Colors.white,
                       fontSize: screenWidth * 0.07,
                       fontWeight: FontWeight.w500),
+                ),
+                iconTheme: IconThemeData(
+                  color: Colors.white, // Mengubah warna ikon back jadi putih
                 ),
               ),
             ),

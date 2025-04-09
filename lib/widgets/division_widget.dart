@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/general.dart';
 
 class DivisionWidget extends StatefulWidget {
   @override
@@ -18,7 +19,6 @@ class _DivisionWidgetState extends State<DivisionWidget>
   bool _sortAscending = true;
   int _rowsPerPage = 10;
   int _pageIndex = 0;
-  int _totalItems = 0;
 
   // Animation controller for the search TextField
   late AnimationController _animationController;
@@ -35,12 +35,10 @@ class _DivisionWidgetState extends State<DivisionWidget>
         setState(() {
           divisions = result['data'];
           filteredDivisions = divisions; // Store original divisions
-          _totalItems = result['count'];
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+      General.showSnackBar(context, 'Failed to load data: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -61,7 +59,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
       filteredDivisions = divisions
           .where((division) => division['name'].toLowerCase().contains(keyword))
           .toList();
-      _totalItems = filteredDivisions.length;
+      // _totalItems = filteredDivisions.length;
     });
   }
 
@@ -184,15 +182,8 @@ class _DivisionWidgetState extends State<DivisionWidget>
                       final divisionName = nameController.text.trim();
                       if (divisionName.isEmpty) {
                         ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Nama divisi tidak boleh kosong'),
-                            duration: Duration(seconds: 1),
-                            behavior: SnackBarBehavior.floating,
-                            margin:
-                                EdgeInsets.only(top: 20, left: 20, right: 20),
-                          ),
-                        );
+                        General.showSnackBar(
+                            context, 'Nama divisi tidak boleh kosong');
                         return;
                       }
 
@@ -203,15 +194,8 @@ class _DivisionWidgetState extends State<DivisionWidget>
                         Navigator.of(context).pop();
                         Future.delayed(Duration(milliseconds: 100), () {
                           ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Nama divisi sudah ada!'),
-                              duration: Duration(seconds: 1),
-                              behavior: SnackBarBehavior.floating,
-                              margin:
-                                  EdgeInsets.only(top: 20, left: 20, right: 20),
-                            ),
-                          );
+                          General.showSnackBar(
+                              context, 'Nama divisi sudah ada!');
                         });
                         return;
                       }
@@ -225,34 +209,20 @@ class _DivisionWidgetState extends State<DivisionWidget>
 
                         if (response != null && response['success'] == true) {
                           print("Divisi berhasil ditambahkan");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Divisi berhasil ditambahkan!'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
+                          General.showSnackBar(
+                              context, 'Divisi berhasil ditambahkan!');
                           fetchDivisions();
                           nameController.text = "";
                           Navigator.pop(context);
                         } else {
                           print(
                               "Gagal menambahkan divisi: ${response?['message']}");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                  'Gagal menambahkan divisi: ${response?['message']}'),
-                              duration: Duration(seconds: 1),
-                            ),
-                          );
+                          General.showSnackBar(context,
+                              'Gagal menambahkan divisi: ${response?['message']}');
                         }
                       } catch (e) {
                         print("Error saat menambahkan divisi: $e");
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Error: $e'),
-                            duration: Duration(seconds: 1),
-                          ),
-                        );
+                        General.showSnackBar(context, 'Error: $e');
                       }
                     },
                     style: TextButton.styleFrom(
@@ -300,9 +270,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
       }
     } catch (e) {
       print("Error fetching Division data: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat data Division: $e')),
-      );
+      General.showSnackBar(context, 'Gagal memuat data Division: $e');
       setState(() {
         _isLoading = false;
       });
@@ -380,15 +348,8 @@ class _DivisionWidgetState extends State<DivisionWidget>
                       final divisionName = nameController.text.trim();
                       if (divisionName.isEmpty) {
                         ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Nama divisi tidak boleh kosong'),
-                            duration: Duration(seconds: 1),
-                            behavior: SnackBarBehavior.floating,
-                            margin:
-                                EdgeInsets.only(top: 20, left: 20, right: 20),
-                          ),
-                        );
+                        General.showSnackBar(
+                            context, 'Nama divisi tidak boleh kosong');
                         return;
                       }
 
@@ -399,15 +360,8 @@ class _DivisionWidgetState extends State<DivisionWidget>
                         Navigator.of(context).pop();
                         Future.delayed(Duration(milliseconds: 100), () {
                           ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Nama divisi sudah ada!'),
-                              duration: Duration(seconds: 1),
-                              behavior: SnackBarBehavior.floating,
-                              margin:
-                                  EdgeInsets.only(top: 20, left: 20, right: 20),
-                            ),
-                          );
+                          General.showSnackBar(
+                              context, 'Nama divisi sudah ada!');
                         });
                         return;
                       }
@@ -456,26 +410,20 @@ class _DivisionWidgetState extends State<DivisionWidget>
                           print("Update Response: $response");
 
                           if (response != null && response['success'] == true) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('Divisi berhasil diperbarui!')),
-                            );
+                            General.showSnackBar(
+                                context, 'Divisi berhasil diperbarui!');
                             fetchDivisions();
                             nameController.text = "";
                             Navigator.pop(context);
                           } else {
                             print("Failed to update divisi");
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('Gagal memperbarui divisi')),
-                            );
+                            General.showSnackBar(
+                                context, 'Gagal memperbarui divisi');
                           }
                         } catch (e) {
                           print("Error updating divisi: $e");
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                                content: Text('Gagal memperbarui divisi: $e')),
-                          );
+                          General.showSnackBar(
+                              context, 'Gagal memperbarui divisi: $e');
                         }
                       }
                     },
@@ -606,19 +554,15 @@ class _DivisionWidgetState extends State<DivisionWidget>
         if (response != null &&
             response['code'] == 200 &&
             response['success']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Division deleted successfully!')));
+          General.showSnackBar(context, 'Division deleted successfully!');
           setState(() {
             divisions.removeWhere((division) => division['id'] == divisiId);
-            _totalItems--;
           });
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to delete Division')));
+          General.showSnackBar(context, 'Failed to delete Division');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting Division: $e')));
+        General.showSnackBar(context, 'Error deleting Division: $e');
       } finally {
         setState(() {
           _isLoading = false;
@@ -765,7 +709,6 @@ class _DivisionWidgetState extends State<DivisionWidget>
                                   ],
                                   source: MyDataSource(
                                       filteredDivisions,
-                                      _totalItems,
                                       _pageIndex,
                                       _rowsPerPage,
                                       context,
@@ -786,7 +729,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
 
 class MyDataSource extends DataTableSource {
   final List<dynamic> divisions;
-  final int totalItems;
+
   final int pageIndex;
   final int rowsPerPage;
   final BuildContext context;
@@ -795,7 +738,6 @@ class MyDataSource extends DataTableSource {
 
   MyDataSource(
     this.divisions,
-    this.totalItems,
     this.pageIndex,
     this.rowsPerPage,
     this.context,
@@ -808,7 +750,7 @@ class MyDataSource extends DataTableSource {
     final globalRowIndex = pageIndex * rowsPerPage + index;
 
     // Cegah akses di luar batas list
-    if (globalRowIndex >= totalItems) {
+    if (globalRowIndex >= divisions.length) {
       return null;
     }
 
@@ -841,7 +783,7 @@ class MyDataSource extends DataTableSource {
   }
 
   @override
-  int get rowCount => totalItems;
+  int get rowCount => divisions.length;
 
   @override
   bool get isRowCountApproximate => false;

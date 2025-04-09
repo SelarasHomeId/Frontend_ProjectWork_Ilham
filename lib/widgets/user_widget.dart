@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/widgets/update_user_widget.dart';
+import 'package:selarashomeid/utils/general.dart';
 import 'add_user_widget.dart';
 
 class UserWidget extends StatefulWidget {
@@ -36,8 +37,7 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+      General.showSnackBar(context, 'Failed to load data: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -152,18 +152,15 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
         if (response != null &&
             response['code'] == 200 &&
             response['success']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('User deleted successfully!')));
+          General.showSnackBar(context, 'Sukses Hapus User');
           setState(() {
             users.removeWhere((user) => user['id'] == userId);
           });
         } else {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Failed to delete user')));
+          General.showSnackBar(context, 'Failed to delete user');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Error deleting user: $e')));
+        General.showSnackBar(context, 'Error deleting user: $e');
       } finally {
         setState(() {
           _isLoading = false;

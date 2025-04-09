@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/widgets/add_project_widget.dart';
 import 'package:selarashomeid/widgets/update_project_widget.dart';
+import 'package:selarashomeid/utils/general.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProjectWidget extends StatefulWidget {
@@ -20,7 +21,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
   bool _sortAscending = true;
   int _rowsPerPage = 10;
   int _pageIndex = 0;
-  int _totalItems = 0;
+  // int _totalItems = 0;
 
   // Animation controller for the search TextField
   late AnimationController _animationController;
@@ -37,12 +38,10 @@ class _ProjectWidgetState extends State<ProjectWidget>
         setState(() {
           projects = result['data'];
           filteredProjects = projects; // Store original projects
-          _totalItems = result['count'];
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+      General.showSnackBar(context, 'Failed to load data: $e');
     } finally {
       setState(() => _isLoading = false);
     }
@@ -152,19 +151,15 @@ class _ProjectWidgetState extends State<ProjectWidget>
         if (response != null &&
             response['code'] == 200 &&
             response['success']) {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Project deleted successfully!')));
+          General.showSnackBar(context, 'Project deleted successfully!');
           setState(() {
             projects.removeWhere((project) => project['id'] == projectId);
-            _totalItems--;
           });
         } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to delete project')));
+          General.showSnackBar(context, 'Failed to delete project');
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting project: $e')));
+        General.showSnackBar(context, 'Error deleting project: $e');
       } finally {
         setState(() {
           _isLoading = false;
@@ -188,7 +183,6 @@ class _ProjectWidgetState extends State<ProjectWidget>
       filteredProjects = projects
           .where((project) => project['name'].toLowerCase().contains(keyword))
           .toList();
-      _totalItems = filteredProjects.length;
     });
   }
 
@@ -407,7 +401,6 @@ class _ProjectWidgetState extends State<ProjectWidget>
                                   ],
                                   source: MyDataSource(
                                     filteredProjects,
-                                    _totalItems,
                                     _pageIndex,
                                     _rowsPerPage,
                                     context,
@@ -428,20 +421,20 @@ class _ProjectWidgetState extends State<ProjectWidget>
 
 class MyDataSource extends DataTableSource {
   final List<dynamic> projects;
-  final int totalItems;
+
   final int pageIndex;
   final int rowsPerPage;
   final BuildContext context;
   final Function onDeletePressed;
 
-  MyDataSource(this.projects, this.totalItems, this.pageIndex, this.rowsPerPage,
-      this.context, this.onDeletePressed);
+  MyDataSource(this.projects, this.pageIndex, this.rowsPerPage, this.context,
+      this.onDeletePressed);
 
   @override
   DataRow? getRow(int index) {
     final globalRowIndex = pageIndex * rowsPerPage + index;
 
-    if (index >= projects.length) {
+    if (globalRowIndex >= projects.length) {
       return null;
     }
 
@@ -464,9 +457,7 @@ class MyDataSource extends DataTableSource {
                   try {
                     await launchUrl(locationUri);
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Could not open the map.')),
-                    );
+                    General.showSnackBar(context, 'Could not open the map');
                   }
                 },
               )
@@ -512,7 +503,7 @@ class MyDataSource extends DataTableSource {
   }
 
   @override
-  int get rowCount => totalItems;
+  int get rowCount => projects.length;
 
   @override
   bool get isRowCountApproximate => false;
