@@ -53,6 +53,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       notifierLabelColor;
   late List<int> currentLabelIds;
 
+  late ValueNotifier<List<Map<String, dynamic>>> assignedMembersNotifier;
+  late ValueNotifier<bool> isMemberExpanded;
+  late Set<int> _selectedUserIds;
+
   String? currentDesc;
   String? currentTitle;
   String? currentComment;
@@ -64,6 +68,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late ValueNotifier<int> currentWorkspaceId;
   late ValueNotifier<int> currentBoardId;
   late ValueNotifier<String?> currentCover;
+  late ValueNotifier<bool> showSaveDescButton;
 
   late int workspaceId;
   late String workspaceName;
@@ -103,13 +108,23 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     currentWatch = ValueNotifier<bool>(false);
     currentIsCompleted = ValueNotifier<bool>(false);
     currentCover = ValueNotifier<String?>(null);
-
+    assignedMembersNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
+    isMemberExpanded = ValueNotifier<bool>(true);
     titleFocusNode = FocusNode();
     descFocusNode = FocusNode();
 
     currentBoardId = ValueNotifier<int>(0);
     currentWorkspaceId = ValueNotifier<int>(0);
+    showSaveDescButton = ValueNotifier<bool>(false);
 
+    showSaveDescButton = ValueNotifier<bool>(false);
+    _selectedUserIds = {};
+
+    textDescController.addListener(() {
+      final now = textDescController.text.trim();
+      final original = (currentDesc ?? '').trim();
+      showSaveDescButton.value = now != original;
+    });
     Future.wait(
       [
         onLoadValue(),
@@ -129,6 +144,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     final desc = getUpdatedData["description"];
+    textDescController.text = desc ?? "";
+    currentDesc = desc ?? "";
     final isCompleted = getUpdatedData["is_completed"];
     final assignToUser = getUpdatedData['assign_to_user'];
     final title = getUpdatedData["title"];
@@ -137,7 +154,13 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     final workspaceIdCurrent = getUpdatedData["workspace"]["id"];
     final boardId = getUpdatedData["board_id"];
     final cover = getUpdatedData["cover"];
+
     final date = getUpdatedData["due_date"];
+    if (date != null && date.isNotEmpty) {
+      onEndDateNotifier.value = DateTime.parse(date);
+    } else {
+      onEndDateNotifier.value = null;
+    }
 
     final workspaceData = getUpdatedData["workspace"];
     workspaceId = workspaceData["id"];
@@ -162,7 +185,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     await loadComments();
 
     textTitleController.text = General.capitalizeEachWord(title ?? "");
-    textDescController.text = desc ?? "";
     currentTitle = title;
     currentWatch.value = watch;
     currentDesc = desc;
@@ -171,12 +193,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     currentDate = date;
     currentCover.value = cover != null ? cover["view"].toString() : null;
     currentIsCompleted.value = isCompleted;
-    final assignedMemberData = assignToUser != null ? assignToUser["data"] as List : [];
+    final assignedMemberData =
+        assignToUser != null ? assignToUser["data"] as List : [];
     if (assignedMemberData.isNotEmpty) {
       assignedMembers = assignedMemberData.map((item) {
         return item as Map<String, dynamic>;
       }).toList();
     }
+    assignedMembersNotifier.value = assignedMemberData.map((item) {
+      return item as Map<String, dynamic>;
+    }).toList();
     onLoadingNotifier.value = false;
   }
 
@@ -220,13 +246,127 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
       if (response != null) {
         await onLoadValue();
-        // setState(() {});
+        setState(() {});
         General.showSnackBar(context, "cover added");
       }
     }
   }
 
-  void deteleTask(int taskId) async {
+  void deleteCover(int taskId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red, // Mengubah warna menjadi merah
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.delete, // Menambahkan ikon tong sampah
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Hapus Cover',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Apakah Anda yakin ingin menghapus cover untuk task ini?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                          Colors.grey[600], // Warna abu-abu untuk Cancel
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Batal',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      backgroundColor:
+                          Colors.red[800], // Warna merah untuk Delete
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Hapus',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirm == true) {
+      try {
+        final response = await ApiService.handleTask(
+          method: 'PUT',
+          data: {"delete_cover": true},
+          taskId: widget.taskId,
+        );
+        if (response != null) {
+          await onLoadValue();
+          setState(() {});
+          General.showSnackBar(context, "cover deleted");
+        }
+      } catch (e) {
+        General.showSnackBar(context, "cover error when delete, cause: $e");
+      }
+    }
+  }
+
+  void deleteTask(int taskId) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -409,44 +549,37 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
 
     _searchController.addListener(() {
-      _searchUserByName();
+      _searchUserByName(setState);
     });
   }
 
   void _showAddMemberDialog() {
+    _selectedUserIds =
+        assignedMembersNotifier.value.map((u) => u['id'] as int).toSet();
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
-          builder: (context, setState) {
+          builder: (context, dialogSetState) {
             return AlertDialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
               ),
-              contentPadding:
-                  EdgeInsets.all(0), // Remove extra padding around content
-              titlePadding:
-                  EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    "Add Member",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  Text("Add Member",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
                   IconButton(
                     icon: Icon(Icons.close),
-                    onPressed: () {
-                      Navigator.pop(
-                          context); // Menutup dialog ketika icon X ditekan
-                    },
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Search field for filtering users
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: TextField(
@@ -456,40 +589,56 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         prefixIcon: Icon(Icons.search),
                         border: OutlineInputBorder(),
                       ),
-                      onChanged: (value) {
-                        _searchUserByName();
-                      },
+                      onChanged: (value) => _searchUserByName(dialogSetState),
                     ),
                   ),
                   SizedBox(height: 10),
-                  // Loading indicator or list of users
                   _isLoading
                       ? Center(child: CircularProgressIndicator())
-                      : Expanded(
-                          child: ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: filteredUsers.length,
-                            itemBuilder: (context, index) {
-                              final user = filteredUsers[index];
-                              return ListTile(
-                                leading: CircleAvatar(
-                                  backgroundColor: General.getColorFromInitial(
-                                      General.getInitials(user['name'])),
-                                  child: Text(
-                                    General.getInitials(user['name']),
-                                    style: TextStyle(color: Colors.white),
-                                  ),
-                                ),
-                                title: Text(user['name']),
-                                subtitle: Text(user['email']),
-                                onTap: () {
-                                  // Tindakan ketika item user dipilih
-                                  print("Selected user: ${user['name']}");
+                      : filteredUsers.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(16.0),
+                              child: Text("No users found."),
+                            )
+                          : SizedBox(
+                              height: 200,
+                              child: ListView.builder(
+                                itemCount: filteredUsers.length,
+                                itemBuilder: (context, index) {
+                                  final user = filteredUsers[index];
+                                  final isSelected =
+                                      _selectedUserIds.contains(user['id']);
+
+                                  return ListTile(
+                                    leading: CircleAvatar(
+                                      backgroundColor:
+                                          General.getColorFromInitial(
+                                              General.getInitials(
+                                                  user['name'])),
+                                      child: Text(
+                                        General.getInitials(user['name']),
+                                        style: TextStyle(color: Colors.white),
+                                      ),
+                                    ),
+                                    title: Text(user['name']),
+                                    subtitle: Text(user['email']),
+                                    trailing: isSelected
+                                        ? Icon(Icons.check_circle,
+                                            color: Colors.green)
+                                        : null,
+                                    onTap: () {
+                                      dialogSetState(() {
+                                        if (isSelected) {
+                                          _selectedUserIds.remove(user['id']);
+                                        } else {
+                                          _selectedUserIds.add(user['id']);
+                                        }
+                                      });
+                                    },
+                                  );
                                 },
-                              );
-                            },
-                          ),
-                        ),
+                              ),
+                            ),
                 ],
               ),
               actions: [
@@ -497,25 +646,36 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: Size(100, 36), // Lebar dan tinggi minimum
-                      ),
-                      onPressed: () {
-                        Navigator.pop(context); // Menutup dialog
-                      },
                       child:
-                          Text('Cancel', style: TextStyle(color: Colors.red)),
+                          Text("Cancel", style: TextStyle(color: Colors.red)),
+                      onPressed: () => Navigator.pop(context),
                     ),
                     TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: Size(100, 36), // Lebar dan tinggi minimum
-                      ),
-                      onPressed: () {
-                        // Logika untuk melakukan tindakan Done
-                        Navigator.pop(context); // Menutup dialog
-                      },
                       child:
-                          Text('Done', style: TextStyle(color: Colors.green)),
+                          Text("Done", style: TextStyle(color: Colors.green)),
+                      onPressed: () async {
+                        try {
+                          final res = await ApiService.handleTask(
+                            method: "PUT",
+                            taskId: widget.taskId,
+                            data: {
+                              "assign_to_user": _selectedUserIds.toList(),
+                            },
+                          );
+
+                          if (res != null) {
+                            await onLoadValue();
+                            setState(() {});
+                            General.showSnackBar(
+                                context, "User berhasil di-assign");
+                          }
+
+                          Navigator.pop(context);
+                        } catch (e) {
+                          General.showSnackBar(
+                              context, "Gagal assign user: $e");
+                        }
+                      },
                     ),
                   ],
                 ),
@@ -527,63 +687,50 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
-  void _searchUserByName() {
-    String keyword = _searchController.text.toLowerCase();
+  void _searchUserByName(void Function(void Function()) dialogSetState) {
+    final keyword = _searchController.text.toLowerCase();
 
-    if (keyword.isEmpty) {
-      setState(() {
-        filteredUsers = users; // Reset to show all users
-      });
-      return;
-    }
-
-    setState(() {
-      filteredUsers = users
-          .where((user) => user['name'].toLowerCase().contains(keyword))
-          .toList();
+    dialogSetState(() {
+      filteredUsers = keyword.isEmpty
+          ? users
+          : users
+              .where((user) => user['name'].toLowerCase().contains(keyword))
+              .toList();
     });
   }
 
-  Widget _buildMember(List<dynamic> assignedMembers) {
-    return ExpansionPanelList(
-      elevation: 1,
-      expandedHeaderPadding: EdgeInsets.all(0),
-      expansionCallback: (int index, bool isExpanded) {
-        setState(() {
-          // Toggle expansion state when clicked
-          isExpanded = !isExpanded;
-        });
-      },
-      children: [
-        ExpansionPanel(
-          headerBuilder: (BuildContext context, bool isExpanded) {
-            return InkWell(
-              onTap: () {
-                setState(() {
-                  isExpanded = !isExpanded;
-                });
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Assigned Members', // Change the header title as needed
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-              ),
-            );
+  Widget _buildMemberSection() {
+    return ValueListenableBuilder2<List<Map<String, dynamic>>, bool>(
+      first: assignedMembersNotifier,
+      second: isMemberExpanded,
+      builder: (context, members, expanded, _) {
+        return ExpansionPanelList(
+          elevation: 1,
+          expandedHeaderPadding: EdgeInsets.all(0),
+          expansionCallback: (int index, bool isExpanded) {
+            isMemberExpanded.value = isExpanded;
           },
-          body: assignedMembers.isEmpty
-              ? Padding(
+          children: [
+            ExpansionPanel(
+              headerBuilder: (context, isExpanded) {
+                return Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Text('No members assigned yet.'),
-                )
-              : Wrap(
-                  children: assignedMembers.map<Widget>((member) {
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
+                  child: Text(
+                    'Assigned Members',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                );
+              },
+              isExpanded: expanded,
+              body: members.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text('No members assigned yet.'),
+                    )
+                  : Column(
+                      children: members.map((member) {
+                        return ListTile(
+                          leading: CircleAvatar(
                             backgroundColor: General.getColorFromInitial(
                                 General.getInitials(member['name'])),
                             child: Text(
@@ -591,35 +738,109 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                               style: TextStyle(color: Colors.white),
                             ),
                           ),
-                          SizedBox(width: 10),
-                          Text(
-                            member['name'],
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                          title: Text(member['name']),
+                          subtitle: Text(member['email']),
+                          trailing: IconButton(
+                            icon: Icon(Icons.close, color: Colors.red),
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (_) => AlertDialog(
+                                  title: Text("Konfirmasi"),
+                                  content: Text(
+                                      "Apakah yakin ingin menghapus user ini?"),
+                                  actions: [
+                                    TextButton(
+                                      child: Text("Batal"),
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(false),
+                                    ),
+                                    TextButton(
+                                      child: Text("Hapus"),
+                                      onPressed: () =>
+                                          Navigator.of(context).pop(true),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (confirm == true) {
+                                try {
+                                  // Buat array baru tanpa user yang dihapus
+                                  final remainingIds = assignedMembersNotifier
+                                      .value
+                                      .where((u) => u['id'] != member['id'])
+                                      .map((u) => u['id'] as int)
+                                      .toList();
+
+                                  final res = await ApiService.handleTask(
+                                    method: "PUT",
+                                    taskId: widget.taskId,
+                                    data: {
+                                      "assign_to_user": remainingIds,
+                                    },
+                                  );
+
+                                  if (res != null) {
+                                    await onLoadValue();
+                                    setState(() {});
+                                    General.showSnackBar(
+                                        context, "Berhasil menghapus user");
+                                  }
+                                } catch (e) {
+                                  General.showSnackBar(
+                                      context, "Gagal menghapus: $e");
+                                }
+                              }
+                            },
                           ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-          isExpanded: true, // Set this to true by default for expanded state
-        ),
-      ],
+                        );
+                      }).toList(),
+                    ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildAssignedAvatars() {
+    return ValueListenableBuilder<List<Map<String, dynamic>>>(
+      valueListenable: assignedMembersNotifier,
+      builder: (context, members, _) {
+        if (members.isEmpty) return SizedBox();
+
+        return Wrap(
+          spacing: 8,
+          children: members.map((member) {
+            return CircleAvatar(
+              radius: 18,
+              backgroundColor: General.getColorFromInitial(
+                General.getInitials(member['name']),
+              ),
+              child: Text(
+                General.getInitials(member['name']),
+                style: TextStyle(color: Colors.white, fontSize: 12),
+              ),
+            );
+          }).toList(),
+        );
+      },
     );
   }
 
   //end assogn to user==========================================================
 
+//=======================Widget Build===========================================
   @override
   Widget build(BuildContext context) {
     return PopScope(
       canPop: !titleFocusNode.hasFocus && !descFocusNode.hasFocus,
-      onPopInvokedWithResult: (didPop, result) {
-        if (titleFocusNode.hasFocus) {
-          titleFocusNode.unfocus();
-        }
-        if (descFocusNode.hasFocus) {
-          descFocusNode.unfocus();
-        }
+      onPopInvokedWithResult: (didPop, result) async {
+        if (titleFocusNode.hasFocus) titleFocusNode.unfocus();
+        if (descFocusNode.hasFocus) descFocusNode.unfocus();
+
+        if (didPop) return;
       },
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -677,11 +898,50 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               ),
               leading: IconButton(
                 icon: Icon(Icons.arrow_back),
-                onPressed: () {
-                  // Aksi ketika tombol back ditekan
-                  Navigator.pop(context); // Contoh aksi kembali
+                onPressed: () async {
+                  print("⬅️ Back button ditekan");
+                  final currentText = textDescController.text;
+                  final originalText = currentDesc ?? '';
+                  print("🔍 currentText: '$currentText'");
+                  print("📦 originalText: '$originalText'");
+
+                  if (currentText != originalText) {
+                    print("⚠️ Deskripsi berubah, tampilkan dialog");
+
+                    final shouldExit = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text("Perubahan Belum Disimpan"),
+                        content: Text(
+                            "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?"),
+                        actions: [
+                          TextButton(
+                            child: Text("Tidak"),
+                            onPressed: () {
+                              print("🚫 Batal keluar");
+                              Navigator.of(context).pop(false);
+                            },
+                          ),
+                          TextButton(
+                            child: Text("Iya"),
+                            onPressed: () {
+                              print("✅ Keluar tanpa simpan");
+                              Navigator.of(context).pop(true);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (shouldExit == true && context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  } else {
+                    print("🟢 Tidak ada perubahan, keluar langsung");
+                    Navigator.pop(context);
+                  }
                 },
-                color: Colors.white, // Menentukan warna tombol back
+                color: Colors.white,
               ),
               actions: [
                 Padding(
@@ -716,33 +976,43 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           _pickCover();
                           break;
                         case 'del_cover':
-                          final response = await ApiService.handleTask(
-                            method: 'PUT',
-                            data: {"delete_cover": true},
-                            taskId: widget.taskId,
-                          );
-                          if (response != null) {
-                            await onLoadValue();
-                            setState(() {});
-                            General.showSnackBar(context, "cover deleted");
-                          }
+                          deleteCover(widget.taskId);
                           break;
                         case 'move':
                           Map<String, int>? dataDialog = await _showMoveDialog(
-                              currentWorkspaceId.value, currentBoardId.value);
+                            currentWorkspaceId.value,
+                            currentBoardId.value,
+                          );
+
                           if (dataDialog != null) {
                             final data = {"board_id": dataDialog["board_id"]};
 
-                            await ApiService.handleTask(
+                            final response = await ApiService.handleTask(
                               method: 'PUT',
                               data: data,
                               taskId: widget.taskId,
                             );
+
+                            if (response != null) {
+                              General.showSnackBar(
+                                  context, "Task berhasil dipindahkan");
+                              // Kamu bisa tambahkan refresh data di sini kalau perlu:
+                              await onLoadValue();
+                              setState(() {});
+                            } else {
+                              General.showSnackBar(
+                                  context, "Gagal memindahkan task");
+                            }
+                          } else {
+                            print("❌ Aksi pindah dibatalkan user");
+                            // Tidak lakukan apa-apa, SnackBar tidak ditampilkan
                           }
-                          General.showSnackBar(context, "task moved");
                           break;
                         case 'delete':
-                          deteleTask(widget.taskId);
+                          deleteTask(widget.taskId);
+                          break;
+                        case 'member':
+                          _showAddMemberDialog();
                           break;
                       }
                     },
@@ -788,7 +1058,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         ),
                       ),
                       PopupMenuItem<String>(
-                        value: currentCover.value == null ? 'add_cover' : 'del_cover',
+                        value: currentCover.value == null
+                            ? 'add_cover'
+                            : 'del_cover',
                         child: Row(
                           children: [
                             Icon(currentCover.value == null
@@ -818,6 +1090,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             Icon(Icons.delete),
                             SizedBox(width: 8),
                             Text('Delete Task'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'member',
+                        child: Row(
+                          children: [
+                            Icon(Icons.person_add),
+                            SizedBox(width: 8),
+                            Text('Add Member'),
                           ],
                         ),
                       ),
@@ -852,17 +1134,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                   height: 120,
                                 )),
                       SizedBox(height: 20),
-
-                      _buildUserInfo(userProfileFuture),
+                      _buildAssignedAvatars(),
                       SizedBox(height: 20),
-
                       // Quick Actions
                       _buildQuickActions(onExpandableValue),
 
                       SizedBox(height: 20),
-
-                      // _buildMember(assignedMembers),
-                      // SizedBox(height: 20),
+                      _buildMemberSection(),
+                      SizedBox(height: 20),
 
                       // Add Card Description
                       Text("Description",
@@ -880,11 +1159,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           );
 
                           if (getUpdatedData != null && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content:
-                                      Text('Update Description: Berhasil')),
-                            );
+                            General.showSnackBar(
+                                context, 'Update Deskripsi: Berhasil');
+                            currentDesc = textDescController.text;
+                          } else {
+                            General.showSnackBar(
+                                context, 'Gagal Update Deskripsi ');
                             currentDesc = textDescController.text;
                           }
                         },
@@ -971,6 +1251,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
+//=======================End Widget Build===========================================
   Future<Map<String, int>?> _showMoveDialog(
       int workspaceId, int boardId) async {
     List<Map<String, dynamic>> workspaces = [];
@@ -988,9 +1269,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat workspace: $e')),
-        );
+        General.showSnackBar(context, 'Gagal memuat workspace: $e');
       }
     }
 
@@ -1093,6 +1372,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
+//================= Load File dan Comment======================================
   Future<void> loadFile() async {
     onLoadingFileNotifier.value = true;
     final getFileList = await ApiService.handleTaskFile(
@@ -1138,8 +1418,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     onLoadingCommentNotifier.value = false;
   }
+  //==============================End Load File dan Comment=====================
 
-  // Fungsi untuk onRefresh RefreshIndicator
+  // Fungsi untuk onRefresh RefreshIndicator==================================
   Future<void> _handleRefresh() async {
     await Future.wait([
       onLoadValue(),
@@ -1148,39 +1429,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     ]);
   }
 
-  Widget _buildUserInfo(Future<Map<String, String>> userProfileFuture) {
-    return FutureBuilder<Map<String, String>>(
-        future: userProfileFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Container();
-          }
-
-          final currentData = snapshot.data;
-          return Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: Colors.blue,
-                child: Text(currentData!["initials"].toString()),
-              ),
-              SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    currentData["name"].toString(),
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  Text(
-                    currentData["email"].toString(),
-                    style: TextStyle(fontSize: 14, color: Colors.grey),
-                  ),
-                ],
-              ),
-            ],
-          );
-        });
-  }
+//End Refresh Indicator======================================================
 
   Widget _buildQuickActions(ValueNotifier<bool> onExpandableValue) {
     return ValueListenableBuilder(
@@ -1268,7 +1517,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       SizedBox(width: 10),
                       ElevatedButton(
                           onPressed: _showAddMemberDialog,
-                          child: Text('Members')),
+                          child: Text('Add Members')),
                     ],
                   ),
                   isExpanded: expandletrue,
@@ -1289,23 +1538,27 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           controller: textDescController,
           focusNode: focusNode,
           decoration: InputDecoration(
-            hintText: 'Add card description',
+            hintText: 'Masukan Deskripsi',
             border: OutlineInputBorder(),
             contentPadding: EdgeInsets.all(10),
           ),
           maxLines: 3,
         ),
-        ValueListenableBuilder(
-          valueListenable: textDescController,
-          builder: (context, value, child) {
-            if (currentDesc != value.text) {
-              return ElevatedButton(
-                onPressed: onSubmitButton,
-                child: Text("Simpan"),
-              );
-            }
-
-            return Container();
+        SizedBox(height: 10),
+        ValueListenableBuilder<bool>(
+          valueListenable: showSaveDescButton,
+          builder: (context, show, child) {
+            return show
+                ? ElevatedButton(
+                    onPressed: () async {
+                      await onSubmitButton();
+                      // Setelah submit berhasil, reset currentDesc
+                      currentDesc = textDescController.text;
+                      showSaveDescButton.value = false;
+                    },
+                    child: Text("Simpan"),
+                  )
+                : SizedBox();
           },
         ),
       ],
@@ -1419,137 +1672,140 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
+//=========== Date dan Due Date===========================================
+
   Widget _buildDatePickers() {
-    return Row(
-      children: [
-        _buildDateField(),
-      ],
+    return ValueListenableBuilder<DateTime?>(
+      valueListenable: onEndDateNotifier,
+      builder: (context, selectedDate, child) {
+        final dateText = selectedDate != null
+            ? DateFormat('EEEE, dd MMMM yyyy - HH:mm WIB').format(selectedDate)
+            : 'Belum ada Deadline';
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Teks Deadline
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8.0),
+              child: Text(
+                dateText,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: selectedDate != null ? Colors.black : Colors.grey,
+                ),
+              ),
+            ),
+
+            // Tombol Pilih Tanggal & Hapus
+            Row(
+              children: [
+                ElevatedButton.icon(
+                  icon: Icon(Icons.calendar_today),
+                  label: Text("Pilih Tanggal"),
+                  onPressed: () => _pickDueDate(context),
+                ),
+                SizedBox(width: 10),
+                if (selectedDate != null)
+                  ElevatedButton.icon(
+                    icon: Icon(Icons.cancel),
+                    label: Text(
+                      "Hapus",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: () async {
+                      onLoadingNotifier.value = true;
+
+                      final getUpdatedData = await ApiService.handleTask(
+                        method: 'PUT',
+                        taskId: widget.taskId,
+                        boardId: widget.boardId,
+                        data: {'due_date': ''},
+                      );
+
+                      if (getUpdatedData != null) {
+                        onEndDateNotifier.value = null;
+                      }
+
+                      onLoadingNotifier.value = false;
+                    },
+                  ),
+              ],
+            ),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildDateField() {
-    return InkWell(
-      onTap: () async {
-        var datePicker = await showDatePicker(
-          context: context,
-          firstDate: DateTime(2000),
-          lastDate: DateTime(2500),
-          fieldLabelText: "Waktu Akhir Task",
+  Future<void> _pickDueDate(BuildContext context) async {
+    final initialDate = onEndDateNotifier.value ?? DateTime.now();
+
+    final datePicker = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2500),
+      fieldLabelText: "Waktu Akhir Task",
+    );
+
+    if (datePicker != null && context.mounted) {
+      final currentTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+      );
+
+      if (currentTime != null) {
+        final selectedDate = datePicker.copyWith(
+          hour: currentTime.hour,
+          minute: currentTime.minute,
         );
 
-        if (datePicker != null && mounted) {
-          final currentTime = await showTimePicker(
-            context: context,
-            initialTime: TimeOfDay.now(),
-          );
+        final now = DateTime.now();
 
-          if (currentTime != null) {
-            onLoadingNotifier.value = true;
-
-            datePicker = datePicker.copyWith(
-              hour: currentTime.hour,
-              minute: currentTime.minute,
-            );
-
-            final timeToLocal = datePicker.toLocal();
-            final dueDate =
-                DateFormat("yyyy-MM-dd HH:mm:ss").format(timeToLocal);
-
-            final getUpdatedData = await ApiService.handleTask(
-              method: 'PUT',
-              // workspaceId: widget.workspaceId,
-              taskId: widget.taskId,
-              boardId: widget.boardId,
-              data: {'due_date': dueDate},
-            );
-
-            if (getUpdatedData != null) {
-              onEndDateNotifier.value = datePicker;
-            }
-
-            onLoadingNotifier.value = false;
-          }
+        // ✅ VALIDASI: waktu tidak boleh di masa lalu
+        if (selectedDate.isBefore(now)) {
+          General.showSnackBar(context, "Waktu Deadline Tidak Valid");
+          return;
         }
-      },
-      child: ValueListenableBuilder(
-        valueListenable: onEndDateNotifier,
-        builder: (context, value, child) {
-          final currentDateTime = value != null
-              ? DateFormat('EEEE, dd MMMM yyyy - HH:mm WIB').format(value)
-              : null;
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                child: currentDateTime == null
-                    ? GestureDetector(
-                        child: Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 5), // Menambahkan padding
-                          decoration: BoxDecoration(
-                            color: Colors
-                                .transparent, // Bisa diganti warna background jika diperlukan
-                            border: Border.all(
-                                color: Colors
-                                    .blue), // Menambahkan border dengan warna biru
-                            borderRadius: BorderRadius.circular(
-                                50), // Membuat border dengan radius 50
-                          ),
-                          child: Text(
-                            'Select Due Date',
-                            style: TextStyle(), // Tidak ada underline kali ini
-                          ),
-                        ),
-                      )
-                    : Row(
-                        children: [
-                          Text(
-                            currentDateTime,
-                            style: TextStyle(decoration: TextDecoration.none),
-                          ),
-                          SizedBox(width: 10),
-                          GestureDetector(
-                            child: Icon(
-                              Icons.edit,
-                              color: const Color.fromARGB(255, 114, 114, 114),
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          GestureDetector(
-                            onTap: () async {
-                              onLoadingNotifier.value = true;
 
-                              final getUpdatedData =
-                                  await ApiService.handleTask(
-                                method: 'PUT',
-                                // workspaceId: widget.workspaceId,
-                                taskId: widget.taskId,
-                                boardId: widget.boardId,
-                                data: {'due_date': ''},
-                              );
+        final dueDate =
+            DateFormat("yyyy-MM-dd HH:mm:ss").format(selectedDate.toLocal());
 
-                              if (getUpdatedData != null) {
-                                onEndDateNotifier.value = null;
-                              }
+        onLoadingNotifier.value = true;
 
-                              onLoadingNotifier.value = false;
-                            },
-                            child: Icon(
-                              Icons.cancel,
-                              color: const Color.fromARGB(255, 114, 114, 114),
-                            ),
-                          ),
-                        ],
-                      ),
-              ),
-            ],
+        try {
+          final getUpdatedData = await ApiService.handleTask(
+            method: 'PUT',
+            taskId: widget.taskId,
+            boardId: widget.boardId,
+            data: {'due_date': dueDate},
           );
-        },
-      ),
-    );
+
+          if (getUpdatedData != null) {
+            onEndDateNotifier.value = selectedDate;
+            General.showSnackBar(
+                context, "Waktu Deadline berhasil ditambahkan");
+          } else {
+            General.showSnackBar(context, "Gagal Menambahkan Tanggal e");
+          }
+        } catch (e) {
+          General.showSnackBar(context, "Gagal Menambahkan Tanggal e: $e");
+        }
+
+        onLoadingNotifier.value = false;
+      }
+    }
   }
 
+  //============================================================================
+
+// =============== COMMENT =====================================================
   Widget _buildCommentList() {
     return ValueListenableBuilder(
       valueListenable: onCommentNotifier,
@@ -1646,23 +1902,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           ],
         ),
         SizedBox(height: 10),
-        // ValueListenableBuilder(
-        //   valueListenable: textCommentController,
-        //   builder: (context, value, child) {
-        //     if (textCommentController.text.isNotEmpty) {
-        //       return ElevatedButton(
-        //         onPressed: () async {
-        //           await _addComment(taskId);
-        //         },
-        //         child: Text("Kirim"),
-        //       );
-        //     }
-        //     return Container();
-        //   },
-        // ),
       ],
     );
   }
+  //===================================End Comment==============================
 
   Widget listFileWidget() {
     return Column(

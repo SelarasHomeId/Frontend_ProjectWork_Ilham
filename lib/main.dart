@@ -26,14 +26,22 @@ class _MyAppState extends State<MyApp> {
   Future<Map<String, dynamic>> _checkUserLoginStatus() async {
     await Future.delayed(Duration(seconds: 3));
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
+    final token = prefs.getString('token') ?? '';
     final roleId = prefs.getInt('roleId') ?? 0;
 
-    return {
-      'isLoggedIn': token != null && token.isNotEmpty,
-      'token': token ?? '',
-      'roleId': roleId,
-    };
+    if (token != '') {
+      return {
+        'isLoggedIn': true,
+        'token': token,
+        'roleId': roleId,
+      };
+    } else {
+      return {
+        'isLoggedIn': false,
+        'token': token,
+        'roleId': roleId,
+      };
+    }
   }
 
   @override

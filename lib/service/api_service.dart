@@ -121,9 +121,10 @@ class ApiService {
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final newToken = data['data']['token'];
+        General.editSharedPreferences('token', newToken);
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('token', newToken);
-        return newToken;
+        final token = prefs.getString('token');
+        return token;
       } else {
         return null;
       }
@@ -162,19 +163,18 @@ class ApiService {
 
       if (response != null && response['code'] == 200) {
         debugPrint("✅ Logout berhasil, menghapus sesi...");
-        await prefs.clear();
+        General.clearSharedPreferences();
       } else {
         debugPrint("❌ Logout API gagal atau code != 200: ${response?['code']}");
-        await prefs.clear(); // Tetap hapus sesi jika logout API gagal
+        General.clearSharedPreferences();
       }
     } catch (e) {
       debugPrint("🚨 Error saat logout: $e");
-      await prefs.clear();
     }
 
     // Pastikan context masih valid sebelum navigasi
     finally {
-      await prefs.clear();
+      General.clearSharedPreferences();
 
       if (context.mounted) {
         Navigator.of(context, rootNavigator: true).pushAndRemoveUntil(
