@@ -76,43 +76,59 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       try {
         final String currentBoardId = singleBoard["id"].toString();
         final getDataTask = await ApiService.handleTask(
-          method: 'GET',
-          boardId: int.parse(currentBoardId),
-        );
+            method: 'GET',
+            boardId: int.parse(currentBoardId),
+            params: {'no_paging': 'yes'});
 
         var taskAsList = <AppFlowyGroupItem>[];
         for (final singleTask in (getDataTask as List)) {
           taskAsList.add(
             TextItem(
-                singleTask["id"].toString(),
-                singleTask["board_id"],
-                singleTask["title"],
-                singleTask["is_completed"],
-                singleTask["description"],
-                singleTask["cover"] != null
-                    ? {
-                        "view": singleTask["cover"]?["view"] ?? "",
-                        "content": singleTask["cover"]?["content"] ?? "",
-                        "id": singleTask["cover"]?["id"] ?? "",
-                        "name": singleTask["cover"]?["name"] ?? "",
-                      }
-                    : {},
-                singleTask["due_date"],
-                singleTask["watch"],
-                singleTask["comment"],
-                singleTask["label"] != null
-                    ? {
-                        "count": singleTask["label"]?["count"] ?? "",
-                        "data": (singleTask["label"]?["data"] as List?)
-                                ?.map((item) => {
-                                      "color": item["color"],
-                                      "id": item["id"],
-                                      "title": item["title"]
-                                    })
-                                .toList() ??
-                            []
-                      }
-                    : {}),
+              singleTask["id"].toString(),
+              singleTask["board_id"],
+              singleTask["title"],
+              singleTask["is_completed"],
+              singleTask["description"],
+              singleTask["cover"] != null
+                  ? {
+                      "view": singleTask["cover"]?["view"] ?? "",
+                      "content": singleTask["cover"]?["content"] ?? "",
+                      "id": singleTask["cover"]?["id"] ?? "",
+                      "name": singleTask["cover"]?["name"] ?? "",
+                    }
+                  : {},
+              singleTask["due_date"],
+              singleTask["watch"],
+              singleTask["comment"],
+              singleTask["label"] != null
+                  ? {
+                      "count": singleTask["label"]?["count"] ?? "",
+                      "data": (singleTask["label"]?["data"] as List?)
+                              ?.map((item) => {
+                                    "color": item["color"],
+                                    "id": item["id"],
+                                    "title": item["title"]
+                                  })
+                              .toList() ??
+                          []
+                    }
+                  : {},
+              singleTask["checklist"],
+              singleTask["assign_to_user"] != null
+                  ? {
+                      "count": singleTask["assign_to_user"]?["count"] ?? "",
+                      "data": (singleTask["assign_to_user"]?["data"] as List?)
+                              ?.map((item) => {
+                                    "email": item["email"],
+                                    "id": item["id"],
+                                    "name": item["name"]
+                                  })
+                              .toList() ??
+                          []
+                    }
+                  : {},
+              singleTask["file"],
+            ),
           );
         }
 
@@ -175,6 +191,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
               final getDataTask = await ApiService.handleTask(
                 method: 'GET',
                 boardId: int.parse(groupId),
+                params: {'no_paging': 'yes'},
               );
 
               List<Map<String, dynamic>> tasks =
@@ -195,8 +212,9 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                     sortNumber: i + 1,
                   ));
                 }
+                await Future.wait(updateFutures);
+                await onLoadListBoard();
               }
-              onLoadListBoard();
             } catch (e) {
               debugPrint('Error updating task order: $e');
             }
@@ -208,6 +226,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
               final fromTasks = await ApiService.handleTask(
                 method: 'GET',
                 boardId: int.parse(fromGroupId),
+                params: {'no_paging': 'yes'},
               );
 
               List<Map<String, dynamic>> tasksFrom =
@@ -216,6 +235,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
               final toTasks = await ApiService.handleTask(
                 method: 'GET',
                 boardId: int.parse(toGroupId),
+                params: {'no_paging': 'yes'},
               );
 
               List<Map<String, dynamic>> tasksTo =
@@ -243,7 +263,9 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                   sortNumber: i + 1,
                 ));
               }
-              onLoadListBoard();
+
+              await Future.wait([...updateFuturesFrom, ...updateFuturesTo]);
+              await onLoadListBoard();
             } catch (e) {
               debugPrint('Error moving task: $e');
             }
@@ -253,6 +275,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
+        params: {'no_paging': 'yes'},
       );
       setState(() {
         _boards = boards;
@@ -275,6 +298,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
+        params: {'no_paging': 'yes'},
       );
       setState(() {
         _boards = boards;
@@ -297,6 +321,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
+        params: {'no_paging': 'yes'},
       );
       setState(() {
         _boards = boards;
@@ -319,6 +344,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
+        params: {'no_paging': 'yes'},
       );
       setState(() {
         _boards = boards;
@@ -355,6 +381,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
+        params: {'no_paging': 'yes'},
       );
       setState(() {
         _boards = boards;
@@ -391,6 +418,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       final boards = await ApiService.handleBoard(
         method: 'GET',
         workspaceId: widget.workspaceId,
+        params: {'no_paging': 'yes'},
       );
       setState(() {
         _boards = boards;
@@ -402,34 +430,31 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
     }
   }
 
-  void _updateSortNumbers(int fromIndex, int toIndex) {
+  void _updateSortNumbers(int fromIndex, int toIndex) async {
     if (!isMovingGroup || fromIndex == toIndex) return;
-    var movedBoard = _boards[fromIndex];
-    int movedBoardId = movedBoard['id'];
-    int movedBoardSortNumber = movedBoard['sort_number'];
 
-    int minSort = fromIndex < toIndex
-        ? movedBoardSortNumber
-        : _boards[toIndex]['sort_number'];
-    int maxSort = fromIndex < toIndex
-        ? _boards[toIndex]['sort_number']
-        : movedBoardSortNumber;
-    for (var board in _boards) {
-      int currentSort = board['sort_number'];
+    final movedBoard = _boards.removeAt(fromIndex);
+    _boards.insert(toIndex, movedBoard);
 
-      if (currentSort >= minSort && currentSort <= maxSort) {
-        int newSortNumber;
-        if (board['id'] == movedBoardId) {
-          newSortNumber = toIndex + 1;
-        } else {
-          newSortNumber =
-              fromIndex < toIndex ? currentSort - 1 : currentSort + 1;
-        }
-        _editBoard(
+    List<Future<void>> updateFutures = [];
+
+    for (int i = 0; i < _boards.length; i++) {
+      final board = _boards[i];
+      final newSortNumber = i + 1;
+
+      if (board['sort_number'] != newSortNumber) {
+        board['sort_number'] = newSortNumber;
+        updateFutures.add(_editBoard(
           boardId: board['id'],
           sortNumber: newSortNumber,
-        );
+        ));
       }
+    }
+
+    try {
+      await Future.wait(updateFutures);
+    } catch (e) {
+      debugPrint('Error updating board sort numbers: $e');
     }
   }
 

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:math';
 
 class General {
   static Future<void> saveToSharedPreferences(Map<String, dynamic> data) async {
@@ -55,16 +54,6 @@ class General {
     }
   }
 
-  static Color _generateRandomColor() {
-    Random random = Random();
-    return Color.fromARGB(
-      255, // Opacity full
-      100 + random.nextInt(156), // Red (100-255)
-      100 + random.nextInt(156), // Green (100-255)
-      100 + random.nextInt(156), // Blue (100-255)
-    );
-  }
-
   static Future<Map<String, String>> getUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('name') ?? 'User Name';
@@ -72,17 +61,6 @@ class General {
     final roleName = prefs.getString('roleName') ?? ' - ';
     final divisiName = prefs.getString('divisiName') ?? ' - ';
     final initials = General.getInitials(name);
-
-    // Generate warna unik untuk user jika belum ada
-    String colorKey =
-        'color_$initials'; // Gunakan inisial sebagai kunci penyimpanan warna
-    int? storedColor = prefs.getInt(colorKey);
-
-    if (storedColor == null) {
-      // Jika belum ada, buat warna baru dan simpan
-      storedColor = _generateRandomColor().value;
-      await prefs.setInt(colorKey, storedColor);
-    }
 
     return {
       'name': name,
@@ -107,6 +85,11 @@ class General {
   static String buildQueryParams(Map<String, String>? params) {
     if (params == null || params.isEmpty) return '';
     return '?${Uri(queryParameters: params).query}';
+  }
+
+  static String justBuildQuery(Map<String, String>? params) {
+    if (params == null || params.isEmpty) return '';
+    return Uri(queryParameters: params).query;
   }
 
   static String getDateFilter(String filter) {
@@ -290,6 +273,13 @@ class General {
     } else {
       return words[0][0].toUpperCase();
     }
+  }
+
+  static bool checkChecklistCompleted(String checklist) {
+    List<String> parts = checklist.split('/');
+    int x = int.parse(parts[0]);
+    int y = int.parse(parts[1]);
+    return x == y;
   }
 }
 

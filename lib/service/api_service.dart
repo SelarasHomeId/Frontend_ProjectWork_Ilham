@@ -433,6 +433,7 @@ class ApiService {
     required int workspaceId, // Tidak boleh null dan wajib diisi
     int? boardId, // Diperlukan untuk Update dan Delete
     Map<String, dynamic>? data, // Body data untuk Create atau Update
+    Map<String, String>? params,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -440,7 +441,8 @@ class ApiService {
     // Tentukan endpoint berdasarkan metode
     String endpoint;
     if (method == 'GET') {
-      endpoint = '/board/$workspaceId?order=sort_number&order_by=asc';
+      endpoint =
+          '/board/$workspaceId?order=sort_number&order_by=asc${params != null ? '&${General.justBuildQuery(params)}' : ""}';
     } else if (method == 'POST') {
       endpoint = '/board'; // Endpoint untuk create board
     } else if (method == 'PUT' && boardId != null) {
@@ -482,6 +484,7 @@ class ApiService {
     String? search,
     String? contentType,
     List<http.MultipartFile> listFile = const [],
+    Map<String, String>? params,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -489,9 +492,11 @@ class ApiService {
     // Tentukan endpoint berdasarkan metode
     String endpoint;
     if (method == 'GET') {
-      endpoint = '/task/$boardId?order=sort_number&order_by=asc';
+      endpoint =
+          '/task/$boardId?order=sort_number&order_by=asc${params != null ? '&${General.justBuildQuery(params)}' : ""}';
       if (search != null && search.isNotEmpty) {
-        endpoint = '/task?search=$search';
+        endpoint =
+            '/task?search=$search${params != null ? '&${General.justBuildQuery(params)}' : ""}';
       }
     } else if (method == 'POST') {
       endpoint = '/task'; // Endpoint untuk create board
@@ -538,6 +543,7 @@ class ApiService {
     int? fileId,
     Map<String, dynamic>? data, // Body data untuk Create atau Update
     List<http.MultipartFile> listFile = const [],
+    Map<String, String>? params,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -545,7 +551,8 @@ class ApiService {
     // Tentukan endpoint berdasarkan metode
     String endpoint;
     if (method == 'GET') {
-      endpoint = '/task/file/$taskId';
+      endpoint =
+          '/task/file/$taskId${params != null ? General.buildQueryParams(params) : ""}';
     } else if (method == 'POST') {
       endpoint = '/task/file'; // Endpoint untuk create board
     } else if (method == 'PUT' && fileId != null) {
@@ -669,6 +676,62 @@ class ApiService {
       token: token,
       contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
     );
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      if (method == 'GET') {
+        final currentData = response['data']['data'] ?? [];
+        return List<Map<String, dynamic>>.from(currentData);
+      } else {
+        return response['data']; // Return hasil operasi selain GET
+      }
+    } else {
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
+
+  static Future<dynamic> handleChecklist({
+    required String method,
+    int? checklistId,
+    int? taskId,
+    Map<String, dynamic>? data,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint =
+          '/task/checklist/${checklistId != null ? "/$checklistId" : ""}';
+    } else if (method == 'POST') {
+      endpoint = '/task/checklist';
+    } else if (method == 'PUT' && checklistId != null) {
+      endpoint = '/task/checklist/$checklistId';
+    } else if (method == 'DELETE' && checklistId != null) {
+      endpoint = '/task/checklist/$checklistId';
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: {
+        if (taskId != null) ...{
+          "task_id": taskId,
+        },
+        ...(data ?? {}),
+      },
+      token: token,
+      contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
+    );
+
     try {
       final encodeValue = json.encode(response);
       log(encodeValue, name: endpoint);

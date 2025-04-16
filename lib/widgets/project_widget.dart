@@ -79,7 +79,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
               ),
               SizedBox(height: 20),
               Text(
-                'Hapus Pengguna',
+                'Hapus Project',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -95,6 +95,19 @@ class _ProjectWidgetState extends State<ProjectWidget>
                   style: TextStyle(
                     fontSize: 16,
                     color: Colors.black54,
+                  ),
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  "Menghapus project akan menghapus semua board & task di dalamnya.",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.red,
+                    fontStyle: FontStyle.italic,
                   ),
                 ),
               ),

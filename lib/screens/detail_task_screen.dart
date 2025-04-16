@@ -11,6 +11,8 @@ import 'package:selarashomeid/utils/file_picker.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:selarashomeid/widgets/loading_screen_widget.dart';
 import 'package:selarashomeid/widgets/workspace_widget.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DetailTaskScreen extends StatefulWidget {
   final int boardId;
@@ -38,6 +40,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late TextEditingController textDescController;
   late TextEditingController textTitleController;
   late TextEditingController textCommentController;
+  late TextEditingController textChecklistController;
+  late TextEditingController _itemTextController = TextEditingController();
 
   late FocusNode focusNode;
   late FocusNode titleFocusNode;
@@ -47,7 +51,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late ValueNotifier<List<Map<String, dynamic>>> onFileNotifier;
   late ValueNotifier<bool> onLoadingFileNotifier;
   late ValueNotifier<List<Map<String, dynamic>>> onCommentNotifier;
+  late ValueNotifier<List<Map<String, dynamic>>> onChecklistNotifier;
+  late ValueNotifier<Map<int, List<Map<String, dynamic>>>> checklistItems;
+
   late ValueNotifier<bool> onLoadingCommentNotifier;
+  late ValueNotifier<bool> onLoadingChecklistNotifier;
 
   late ValueNotifier<List<(String labelName, Color color, int id)>>
       notifierLabelColor;
@@ -100,11 +108,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onFileNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
     onLoadingFileNotifier = ValueNotifier<bool>(false);
     onCommentNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
+    onChecklistNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
+    checklistItems = ValueNotifier<Map<int, List<Map<String, dynamic>>>>({});
     onLoadingCommentNotifier = ValueNotifier<bool>(false);
+    onLoadingChecklistNotifier = ValueNotifier<bool>(false);
+    _itemTextController = TextEditingController();
 
     textDescController = TextEditingController();
     textTitleController = TextEditingController();
     textCommentController = TextEditingController();
+    textChecklistController = TextEditingController();
     currentWatch = ValueNotifier<bool>(false);
     currentIsCompleted = ValueNotifier<bool>(false);
     currentCover = ValueNotifier<String?>(null);
@@ -166,7 +179,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     workspaceId = workspaceData["id"];
     workspaceName = workspaceData["name"];
 
-    final labelData = label != null ? label["data"] as List : [];
+    final labelData =
+        (label != null && label["data"] != null) ? label["data"] as List : [];
     if (labelData.isNotEmpty) {
       currentLabelIds =
           labelData.map<int>((item) => item["id"] as int).toList();
@@ -183,6 +197,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
 
     await loadComments();
+    await loadChecklists();
 
     textTitleController.text = General.capitalizeEachWord(title ?? "");
     currentTitle = title;
@@ -214,6 +229,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textDescController.dispose();
     textTitleController.dispose();
     textCommentController.dispose();
+    textChecklistController.dispose();
+    _itemTextController.dispose();
     // focusNode.dispose();
     titleFocusNode.dispose();
     descFocusNode.dispose();
@@ -699,6 +716,24 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     });
   }
 
+  void showPDFPreview(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: EdgeInsets.all(16),
+        child: Container(
+          width: double.infinity,
+          height: MediaQuery.of(context).size.height * 0.8,
+          child: SfPdfViewer.network(
+            url,
+            canShowScrollHead: true,
+            canShowScrollStatus: true,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildMemberSection() {
     return ValueListenableBuilder2<List<Map<String, dynamic>>, bool>(
       first: assignedMembersNotifier,
@@ -799,31 +834,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     ),
             ),
           ],
-        );
-      },
-    );
-  }
-
-  Widget _buildAssignedAvatars() {
-    return ValueListenableBuilder<List<Map<String, dynamic>>>(
-      valueListenable: assignedMembersNotifier,
-      builder: (context, members, _) {
-        if (members.isEmpty) return SizedBox();
-
-        return Wrap(
-          spacing: 8,
-          children: members.map((member) {
-            return CircleAvatar(
-              radius: 18,
-              backgroundColor: General.getColorFromInitial(
-                General.getInitials(member['name']),
-              ),
-              child: Text(
-                General.getInitials(member['name']),
-                style: TextStyle(color: Colors.white, fontSize: 12),
-              ),
-            );
-          }).toList(),
         );
       },
     );
@@ -1118,6 +1128,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Cover
                       Padding(
                           padding: const EdgeInsets.only(bottom: 8),
                           child: currentCover.value == null
@@ -1134,16 +1145,18 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                   height: 120,
                                 )),
                       SizedBox(height: 20),
-                      _buildAssignedAvatars(),
-                      SizedBox(height: 20),
+
+                      //Show Workspace and Board Data
+
                       // Quick Actions
                       _buildQuickActions(onExpandableValue),
-
                       SizedBox(height: 20),
+
+                      // Assigned Member/user
                       _buildMemberSection(),
                       SizedBox(height: 20),
 
-                      // Add Card Description
+                      // Description
                       Text("Description",
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold)),
@@ -1169,7 +1182,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           }
                         },
                       ),
-
                       SizedBox(height: 20),
 
                       // Labels
@@ -1197,10 +1209,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           }
                         },
                       ),
-
                       SizedBox(height: 20),
 
-                      // Start and Due Dates
+                      // Due Dates
                       Text("Due Date",
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold)),
@@ -1208,17 +1219,64 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         height: 10,
                       ),
                       _buildDatePickers(),
-
                       SizedBox(height: 20),
 
-                      // Comments Section
+                      // Attachment
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Text(
+                            "Attachment",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            "(hold to preview & click to download)",
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ],
+                      ),
+                      listFileWidget(),
+                      SizedBox(height: 20),
+
+                      // Checklist
+                      Text("Checklist",
+                          style: TextStyle(
+                              fontSize: 16, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 10),
+                      _buildAddChecklistSection(widget
+                          .taskId), // Menggunakan widget untuk menambah checklist
+                      ValueListenableBuilder(
+                        valueListenable:
+                            onLoadingChecklistNotifier, // Gunakan notifikasi loading untuk checklist
+                        builder: (context, value, child) {
+                          return Container(
+                            constraints: BoxConstraints(maxHeight: 300),
+                            padding: EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            // Menampilkan daftar checklist
+                            child: _buildChecklistList(),
+                          );
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Comments
                       Text("Comments",
                           style: TextStyle(
                               fontSize: 16, fontWeight: FontWeight.bold)),
                       SizedBox(height: 10),
                       _buildAddCommentSection(widget.taskId),
-
-                      // **Gunakan ValueListenableBuilder untuk update komentar tanpa fetch ulang**
                       ValueListenableBuilder(
                         valueListenable: onLoadingNotifier,
                         builder: (context, value, child) {
@@ -1229,17 +1287,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                               color: Colors.grey[200],
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            // **Menampilkan daftar komentar**
                             child: _buildCommentList(),
                           );
                         },
                       ),
-
-                      SizedBox(height: 30),
-                      Text("Attachment",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                      listFileWidget(),
                     ],
                   ),
                 ),
@@ -1376,9 +1427,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Future<void> loadFile() async {
     onLoadingFileNotifier.value = true;
     final getFileList = await ApiService.handleTaskFile(
-      method: "GET",
-      taskId: widget.taskId,
-    );
+        method: "GET", taskId: widget.taskId, params: {'no_paging': 'yes'});
 
     onFileNotifier.value = (getFileList is List
         ? getFileList.map((e) {
@@ -1386,6 +1435,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               "id": e["id"],
               "fileName": e["file"]["name"],
               "filePath": e["file"]["view"],
+              "fileExt": e["file"]["ext"],
+              "fileDownload": e["file"]["content"],
             };
           }).toList()
         : <Map<String, dynamic>>[]);
@@ -1418,6 +1469,39 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     onLoadingCommentNotifier.value = false;
   }
+
+  Future<void> loadChecklists() async {
+    onLoadingChecklistNotifier.value = true;
+
+    final response = await ApiService.handleDetailTask(widget.taskId);
+
+    final getChecklist = response['checklist'];
+    if (response != null && getChecklist != null) {
+      final getChecklistData = getChecklist['data'];
+      final checklistData = getChecklistData != null && getChecklistData is List
+          ? getChecklistData
+          : [];
+
+      checklistItems.value.clear(); // Reset checklistItems dulu
+
+      for (final checklist in checklistData) {
+        checklistItems.value[checklist["id"]] = List<Map<String, dynamic>>.from(
+          checklist["item"]?["data"] ?? [],
+        );
+      }
+
+      onChecklistNotifier.value = checklistData.map((checklist) {
+        return {
+          "id": checklist["id"],
+          "title": checklist["title"],
+          "is_completed": checklist["is_completed"] ?? false,
+        };
+      }).toList();
+    }
+
+    onLoadingChecklistNotifier.value = false;
+  }
+
   //==============================End Load File dan Comment=====================
 
   // Fungsi untuk onRefresh RefreshIndicator==================================
@@ -1425,6 +1509,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     await Future.wait([
       onLoadValue(),
       loadComments(),
+      loadChecklists(),
       loadFile(),
     ]);
   }
@@ -1509,7 +1594,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                 },
                               );
                             }
-
+                            loadFile();
                             onLoadingNotifier.value = false;
                             onLoadingFileNotifier.value = false;
                           },
@@ -1907,6 +1992,245 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
   //===================================End Comment==============================
 
+//======================Start Checklist=========================================
+  Widget _buildChecklistList() {
+    return ValueListenableBuilder(
+      valueListenable:
+          onChecklistNotifier, // Memastikan onChecklistNotifier yang berisi data checklist
+      builder: (context, checklistList, child) {
+        if (checklistList.isEmpty) {
+          return Center(child: Text('Belum ada checklist'));
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          itemCount: checklistList.length,
+          itemBuilder: (context, index) {
+            final checklist = checklistList[index];
+            bool isCompleted = checklist['is_completed'] ?? false;
+
+            return Card(
+              margin: EdgeInsets.symmetric(vertical: 8),
+              child: ListTile(
+                title: Row(
+                  children: [
+                    // Menampilkan judul checklist
+                    Text(
+                      checklist['title'] ?? 'No title',
+                      style: TextStyle(
+                        decoration:
+                            isCompleted ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    Spacer(),
+                    // Button untuk menambah item pada checklist
+                    IconButton(
+                      icon: Icon(Icons.add),
+                      onPressed: () {
+                        _showAddItemDialog(checklist[
+                            'id']); // Menampilkan dialog untuk menambah item
+                      },
+                    ),
+                    // Button untuk menghapus checklist
+                    IconButton(
+                      icon: Icon(Icons.remove_circle),
+                      onPressed: () async {
+                        // Menghapus checklist
+                        await _removeChecklist(checklist['id']);
+                      },
+                    ),
+                  ],
+                ),
+                subtitle: Column(
+                  children: [
+                    // Tampilkan item checklist
+                    _buildItemList(checklist[
+                        'id']), // Tampilkan item berdasarkan ID checklist
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildItemList(int checklistId) {
+    // Ambil daftar item untuk checklist tertentu
+    final items = checklistItems.value[checklistId] ??
+        []; // Menggunakan checklistItems.value
+
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        bool isChecked = item['is_completed'] ?? false;
+
+        return ListTile(
+          title: Text(
+            item['title'] ?? 'No item',
+            style: TextStyle(
+              decoration: isChecked
+                  ? TextDecoration.lineThrough
+                  : null, // Menandai teks yang sudah dicentang
+            ),
+          ),
+          trailing: Checkbox(
+            value: isChecked,
+            onChanged: (bool? value) {
+              // Update status item checklist saat diubah
+              _toggleItemCompletion(checklistId, item['id'], value!);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showAddItemDialog(int checklistId) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Add Item'),
+          content: TextField(
+            controller: _itemTextController,
+            decoration: InputDecoration(hintText: 'Enter item title'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final itemTitle = _itemTextController.text.trim();
+                if (itemTitle.isNotEmpty) {
+                  await _addItemToChecklist(checklistId, itemTitle);
+                  _itemTextController.clear();
+                  Navigator.pop(context);
+                }
+              },
+              child: Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _addItemToChecklist(int checklistId, String itemTitle) async {
+    final data = {
+      'title': itemTitle,
+      'is_completed': false, // default item is not completed
+    };
+
+    final response = await ApiService.handleChecklist(
+      method: 'POST',
+      checklistId: checklistId,
+      data: data,
+    );
+
+    if (response != null) {
+      await loadChecklists(); // Refresh checklist setelah menambah item
+    }
+  }
+
+  Future<void> _toggleItemCompletion(
+      int checklistId, int itemId, bool isCompleted) async {
+    final data = {'is_completed': isCompleted};
+
+    final response = await ApiService.handleChecklist(
+      method: 'PUT',
+      checklistId: checklistId,
+      data: data,
+    );
+
+    if (response != null) {
+      // Setelah update, refresh checklist
+      await loadChecklists(); // Refresh checklist setelah mengupdate status item
+    }
+  }
+
+  Future<void> _removeChecklist(int checklistId) async {
+    final response = await ApiService.handleChecklist(
+      method: 'DELETE',
+      checklistId: checklistId,
+    );
+
+    if (response != null) {
+      await loadChecklists(); // Refresh checklist setelah menghapus checklist
+    }
+  }
+
+  Future<void> _toggleChecklistStatus(int checklistId, bool newStatus) async {
+    final data = {"is_completed": newStatus};
+
+    final response = await ApiService.handleChecklist(
+      method: 'PUT',
+      checklistId: checklistId,
+      data: data,
+    );
+
+    if (response != null) {
+      await loadChecklists(); // Refresh checklist setelah update
+    }
+  }
+
+  Widget _buildAddChecklistSection(int taskId) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: 6,
+              child: TextField(
+                controller: textChecklistController,
+                decoration: InputDecoration(
+                  hintText: 'Add checklist item',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(10),
+                ),
+              ),
+            ),
+            Expanded(
+              child: InkWell(
+                onTap: () async {
+                  await _addChecklist(taskId);
+                },
+                child: Icon(Icons.send),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 10),
+      ],
+    );
+  }
+
+  Future<void> _addChecklist(int taskId) async {
+    if (textChecklistController.text.isEmpty) return;
+
+    final data = {"title": textChecklistController.text, "is_completed": false};
+
+    final response = await ApiService.handleChecklist(
+      method: 'POST',
+      taskId: taskId,
+      data: data,
+    );
+
+    if (response != null) {
+      textChecklistController.clear();
+      await loadChecklists(); // Load checklist setelah berhasil ditambahkan
+    }
+  }
+
+//======================End Checklist===========================================
   Widget listFileWidget() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1915,31 +2239,114 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           valueListenable: onFileNotifier,
           builder: (context, listFile, child) {
             return SizedBox(
-              height: 150,
+              height: 200,
               child: ListView.builder(
                 scrollDirection: Axis.horizontal,
                 itemCount: listFile.length,
                 itemBuilder: (context, index) {
+                  final fileName =
+                      (listFile[index]["fileName"] ?? "").toString();
                   final fileType =
-                      (listFile[index]["name"] ?? "").toString().split(".");
+                      (listFile[index]["fileExt"] ?? "").toString();
                   final filePath =
                       (listFile[index]["filePath"] ?? "").toString();
+                  final fileDownload =
+                      (listFile[index]["fileDownload"] ?? "").toString();
 
-                  return Container(
-                    width: 150,
-                    height: 150,
-                    margin: EdgeInsets.only(right: 10),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFC4C4C4),
-                      border: Border.all(
-                        color: Colors.transparent,
-                        width: 5,
-                      ),
-                      borderRadius: BorderRadius.circular(5),
-                      image: DecorationImage(
-                        // image: NetworkImage(fileDoc.file_url),
-                        image: getImage(fileType.last, filePath),
-                        fit: BoxFit.cover,
+                  return GestureDetector(
+                    onTap: () async {
+                      if (await canLaunchUrl(Uri.parse(fileDownload))) {
+                        await launchUrl(Uri.parse(fileDownload),
+                            mode: LaunchMode.externalApplication);
+                      } else {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Tidak dapat membuka tautan")),
+                        );
+                      }
+                    },
+                    onLongPress: () {
+                      if (fileType.toLowerCase() == "pdf") {
+                        showPDFPreview(context, fileDownload);
+                      } else {
+                        showDialog(
+                          context: context,
+                          builder: (_) => Dialog(
+                            insetPadding: EdgeInsets.all(20),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    padding: EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Column(
+                                      children: [
+                                        Container(
+                                          height: 300,
+                                          width: double.infinity,
+                                          decoration: BoxDecoration(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            image: DecorationImage(
+                                              image:
+                                                  getImage(fileType, filePath),
+                                              fit: BoxFit.contain,
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(height: 10),
+                                        Text(
+                                          fileName,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.bold),
+                                          overflow: TextOverflow.ellipsis,
+                                          maxLines: 2,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text("Tutup"),
+                                  )
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+                    },
+                    child: Container(
+                      width: 150,
+                      margin: EdgeInsets.only(right: 10),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 150,
+                            height: 150,
+                            decoration: BoxDecoration(
+                              color: Color(0xFFC4C4C4),
+                              border: Border.all(
+                                color: Colors.transparent,
+                                width: 5,
+                              ),
+                              borderRadius: BorderRadius.circular(5),
+                              image: DecorationImage(
+                                image: getImage(fileType, filePath),
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            fileName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ],
                       ),
                     ),
                   );
@@ -1956,9 +2363,21 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 ImageProvider getImage(String fileFormat, String path) {
   switch (fileFormat) {
     case "pdf":
-      return AssetImage("assets/pdf_icon.jpg");
+      return AssetImage("assets/pdf.png");
     case "docx":
-      return AssetImage("assets/doc_icon.jpg");
+      return AssetImage("assets/docx.png");
+    case "pptx":
+      return AssetImage("assets/pptx.png");
+    case "csv":
+      return AssetImage("assets/csv.png");
+    case "mp3":
+      return AssetImage("assets/mp3.png");
+    case "mp4":
+      return AssetImage("assets/mp4.png");
+    case "txt":
+      return AssetImage("assets/txt.png");
+    case "xlsx":
+      return AssetImage("assets/xlsx.png");
     default:
       return NetworkImage(path);
   }

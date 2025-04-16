@@ -201,7 +201,8 @@ class _SidebarState extends State<Sidebar> {
                           children: [
                             CircleAvatar(
                               radius: screenWidth * 0.09,
-                              backgroundColor: Colors.white,
+                              backgroundColor:
+                                  General.getColorFromInitial(user['initials']),
                               child: Text(
                                 user['initials']!,
                                 style: TextStyle(

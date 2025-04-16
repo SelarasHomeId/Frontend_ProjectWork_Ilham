@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 2.0.20
+version: 2.0.21
 
 environment:
   sdk: ^3.5.4
@@ -50,10 +50,8 @@ dependencies:
   permission_handler: ^11.4.0
   path_provider: ^2.0.15
   font_awesome_flutter: '>= 4.7.0'
+  syncfusion_flutter_pdfviewer: ^24.2.6
  
-  
-
-
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
 flutter_native_splash:
@@ -87,8 +85,14 @@ flutter:
     - assets/background.jpg 
     - assets/profil_bg.png 
     - assets/no_cover.png
-    - assets/doc_icon.jpg
-    - assets/pdf_icon.jpg
+    - assets/docx.png
+    - assets/pdf.png
+    - assets/pptx.png
+    - assets/csv.png
+    - assets/mp3.png
+    - assets/mp4.png
+    - assets/txt.png
+    - assets/xlsx.png
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
   # the material Icons class.

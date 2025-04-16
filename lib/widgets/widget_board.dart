@@ -74,7 +74,22 @@ class _WidgetBoardState extends State<WidgetBoard> {
           builder: (BuildContext context) {
             return AlertDialog(
               title: Text("Konfirmasi Hapus"),
-              content: Text("Kamu yakin ingin menghapus board?"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Kamu yakin ingin menghapus board?"),
+                  SizedBox(height: 5),
+                  Text(
+                    "Menghapus board akan menghapus semua task di dalamnya.",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
               actions: [
                 TextButton(
                   onPressed: () =>
@@ -233,8 +248,8 @@ class _WidgetBoardState extends State<WidgetBoard> {
                   '${columnData.headerData.groupName} (${columnData.headerData.groupTaskTotal})')),
           moreIcon: PopupMenuButton<String>(
             icon: const Icon(Icons.more_horiz, size: 20), // Icon More
-            onSelected: (String value) =>
-                onMenuSelected(value, columnData), // Handle menu click
+            onSelected: (String value) => onMenuSelected(value, columnData),
+            offset: Offset(0, 40),
             itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
               PopupMenuItem<String>(
                 value: 'move',
@@ -333,7 +348,7 @@ class _WidgetBoardState extends State<WidgetBoard> {
                       ],
                     ),
                   ],
-
+                  SizedBox(height: 3),
                   // Title
                   Text(
                     General.capitalizeEachWord(item.title),
@@ -341,11 +356,14 @@ class _WidgetBoardState extends State<WidgetBoard> {
                       color: item.isCompleted ? Colors.grey : Colors.black,
                       decoration:
                           item.isCompleted ? TextDecoration.lineThrough : null,
+                      fontSize: 16,
                     ),
                   ),
-
+                  SizedBox(height: 5),
                   // Row untuk menampilkan ikon description dan ikon alarm bersama dengan teks jika ada
-                  Row(
+                  Wrap(
+                    spacing: 5,
+                    runSpacing: 3,
                     children: [
                       if (item.watch == true) ...[
                         Icon(
@@ -353,9 +371,6 @@ class _WidgetBoardState extends State<WidgetBoard> {
                           size: 20, // Ukuran ikon
                           color: Colors.grey, // Warna ikon
                         ),
-                        SizedBox(
-                            width:
-                                5), // Memberikan jarak antara ikon deskripsi dan ikon lainnya
                       ],
                       // Ikon description jika item.description = true
                       if (item.description == true) ...[
@@ -364,12 +379,10 @@ class _WidgetBoardState extends State<WidgetBoard> {
                           size: 20, // Ukuran ikon
                           color: Colors.grey, // Warna ikon
                         ),
-                        SizedBox(
-                            width:
-                                5), // Memberikan jarak antara ikon deskripsi dan ikon lainnya
                       ],
                       if (item.comment != 0) ...[
                         Row(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.comment, // Ikon komentar
@@ -386,15 +399,34 @@ class _WidgetBoardState extends State<WidgetBoard> {
                             ),
                           ],
                         ),
-                        SizedBox(width: 5),
+                      ],
+
+                      if (item.file != 0) ...[
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.attachment, // Ikon komentar
+                              size: 20, // Ukuran ikon
+                              color: Colors.grey, // Warna ikon
+                            ),
+                            SizedBox(width: 3),
+                            Text(
+                              '${item.file}', // Menampilkan jumlah komentar
+                              style: TextStyle(
+                                fontSize: 14, // Ukuran teks
+                                color: Colors.grey, // Warna teks
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
                       // Ikon alarm dan due date jika ada
                       if (item.dueDate != null) ...[
-                        // Memberikan jarak antara icon description dan icon alarm
                         Container(
                           padding: EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 6), // Padding untuk ikon dan teks
+                              horizontal: 5,
+                              vertical: 3), // Padding untuk ikon dan teks
                           decoration: BoxDecoration(
                             color: item.isCompleted
                                 ? Colors.green.withOpacity(
@@ -440,12 +472,80 @@ class _WidgetBoardState extends State<WidgetBoard> {
                                               .black), // Menentukan warna teks berdasarkan kondisi
                                 ),
                               ),
+                              SizedBox(width: 8),
+                            ],
+                          ),
+                        ),
+                      ],
+                      if (item.checklist != null) ...[
+                        // Memberikan jarak antara icon description dan icon alarm
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 5,
+                              vertical: 3), // Padding untuk ikon dan teks
+                          decoration: BoxDecoration(
+                            color: General.checkChecklistCompleted(
+                                    item.checklist!)
+                                ? Colors.green.withOpacity(
+                                    0.2) // Background hijau jika completed
+                                : Colors.black.withOpacity(
+                                    0.1), // Background hitam jika belum overdue
+                            borderRadius: BorderRadius.circular(50),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.checklist, // Ikon jam
+                                size: 20, // Ukuran ikon
+                                color: General.checkChecklistCompleted(
+                                        item.checklist!)
+                                    ? Colors.green
+                                    : Colors.black, // Menentukan warna ikon
+                              ),
+                              SizedBox(width: 8),
+                              Text(
+                                item.checklist!,
+                                style: TextStyle(
+                                  color: General.checkChecklistCompleted(
+                                          item.checklist!)
+                                      ? Colors.green
+                                      : Colors
+                                          .black, // Menentukan warna teks berdasarkan kondisi
+                                ),
+                              ),
                             ],
                           ),
                         ),
                       ],
                     ],
                   ),
+                  SizedBox(height: 8),
+                  if (item.assignToUser.isNotEmpty) ...[
+                    Wrap(
+                      spacing: 5, // Jarak antar ikon
+                      runSpacing:
+                          3, // Jarak antar baris jika ikon terlalu banyak
+                      children: [
+                        for (var member in item.assignToUser["data"] as List)
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: General.getColorFromInitial(
+                                    General.getInitials(member['name'])),
+                                child: Text(
+                                  General.getInitials(member['name']),
+                                  style: TextStyle(
+                                      fontSize: 12, color: Colors.black),
+                                ),
+                              ),
+                            ],
+                          ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -469,6 +569,9 @@ class TextItem extends AppFlowyGroupItem {
   final bool watch;
   final int comment;
   final Map<String, dynamic> label;
+  final String? checklist;
+  final Map<String, dynamic> assignToUser;
+  final int file;
 
   TextItem(
     this.currentId,
@@ -481,6 +584,9 @@ class TextItem extends AppFlowyGroupItem {
     this.watch,
     this.comment,
     this.label,
+    this.checklist,
+    this.assignToUser,
+    this.file,
   );
 
   @override
