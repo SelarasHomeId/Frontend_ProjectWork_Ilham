@@ -285,6 +285,12 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
     await fetchUsers();
   }
 
+  Future<void> _needRefresh(bool? need) async {
+    if (need != null) {
+      await fetchUsers();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -328,10 +334,11 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
               child: IconButton(
                 icon: Icon(Icons.add),
                 color: Colors.white, // Set the icon color
-                onPressed: () {
-                  Navigator.of(context).push(
+                onPressed: () async {
+                  await Navigator.of(context).push(
                     _createRoute(AddUserWidget()),
                   );
+                  await _needRefresh(true);
                 },
                 padding:
                     EdgeInsets.zero, // Remove padding inside the CircleAvatar
@@ -423,6 +430,7 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
                                       _rowsPerPage,
                                       context,
                                       _deleteUser,
+                                      _needRefresh,
                                     ),
                                   ),
                                 ),
@@ -444,6 +452,7 @@ class MyDataSource extends DataTableSource {
   final int rowsPerPage;
   final BuildContext context;
   final Function onDeletePressed;
+  final Future<void> Function(bool) needRefresh;
 
   MyDataSource(
     this.users,
@@ -451,6 +460,7 @@ class MyDataSource extends DataTableSource {
     this.rowsPerPage,
     this.context,
     this.onDeletePressed,
+    this.needRefresh,
   );
 
   @override
@@ -476,13 +486,14 @@ class MyDataSource extends DataTableSource {
               width: 30, // Tetapkan width yang lebih kecil agar tidak melebar
               child: IconButton(
                 icon: Icon(Icons.edit),
-                onPressed: () {
+                onPressed: () async {
                   int userId = user['id'];
-                  Navigator.of(context).push(
+                  await Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => UpdateUserWidget(userId: userId),
                     ),
                   );
+                  await needRefresh(true);
                 },
               ),
             ),

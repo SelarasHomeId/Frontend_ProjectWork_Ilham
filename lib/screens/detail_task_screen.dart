@@ -5,14 +5,16 @@ import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:mime/mime.dart';
+import 'package:selarashomeid/screens/home_screen.dart';
 import 'package:selarashomeid/screens/label_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/utils/file_picker.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:selarashomeid/widgets/loading_screen_widget.dart';
-import 'package:selarashomeid/widgets/workspace_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:just_audio/just_audio.dart';
 
 class DetailTaskScreen extends StatefulWidget {
   final int boardId;
@@ -80,6 +82,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
   late int workspaceId;
   late String workspaceName;
+  late String boardName;
+  late String latestUpdatedAt;
+  late String latestUpdatedBy;
 
   bool imageLoaded = false;
   bool _isLoading = true;
@@ -133,6 +138,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     showSaveDescButton = ValueNotifier<bool>(false);
     _selectedUserIds = {};
 
+    workspaceName = "";
+    boardName = "";
+    latestUpdatedAt = "";
+    latestUpdatedBy = "";
+
     textDescController.addListener(() {
       final now = textDescController.text.trim();
       final original = (currentDesc ?? '').trim();
@@ -167,6 +177,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     final workspaceIdCurrent = getUpdatedData["workspace"]["id"];
     final boardId = getUpdatedData["board_id"];
     final cover = getUpdatedData["cover"];
+    final updatedAt = getUpdatedData["updated_at"];
+    final updatedBy = getUpdatedData["updated_by"]["name"] != ""
+        ? getUpdatedData["updated_by"]["name"]
+        : getUpdatedData["created_by"]["name"];
 
     final date = getUpdatedData["due_date"];
     if (date != null && date.isNotEmpty) {
@@ -178,6 +192,19 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     final workspaceData = getUpdatedData["workspace"];
     workspaceId = workspaceData["id"];
     workspaceName = workspaceData["name"];
+    final response =
+        await ApiService.handleBoard(method: "GET", workspaceId: workspaceId);
+    if (response.isNotEmpty) {
+      List<Map<String, dynamic>> dataBoard =
+          List<Map<String, dynamic>>.from(response);
+      if (dataBoard.any((b) => b['id'] == boardId)) {
+        final matchedBoard = dataBoard.firstWhere((b) => b['id'] == boardId);
+        boardName = matchedBoard['name'];
+      }
+    }
+
+    latestUpdatedAt = updatedAt;
+    latestUpdatedBy = updatedBy;
 
     final labelData =
         (label != null && label["data"] != null) ? label["data"] as List : [];
@@ -497,11 +524,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           await Future.delayed(Duration(milliseconds: 500));
 
           print('[DELETE_TASK] Navigasi ke WorkspaceWidget');
+          final prefs = await SharedPreferences.getInstance();
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
-              builder: (_) => WorkspaceWidget(
-                workspace: workspaceName,
-                workspaceId: workspaceId,
+              builder: (_) => HomeScreen(
+                roleId: prefs.getInt("roleId")!,
+                token: prefs.getString("token")!,
+                toWorkspaceName: workspaceName,
+                toWorkspaceId: workspaceId,
               ),
             ),
             (route) => false,
@@ -716,24 +746,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     });
   }
 
-  void showPDFPreview(BuildContext context, String url) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        insetPadding: EdgeInsets.all(16),
-        child: Container(
-          width: double.infinity,
-          height: MediaQuery.of(context).size.height * 0.8,
-          child: SfPdfViewer.network(
-            url,
-            canShowScrollHead: true,
-            canShowScrollStatus: true,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildMemberSection() {
     return ValueListenableBuilder2<List<Map<String, dynamic>>, bool>(
       first: assignedMembersNotifier,
@@ -774,7 +786,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             ),
                           ),
                           title: Text(member['name']),
-                          subtitle: Text(member['email']),
+                          subtitle:
+                              Text(member['role'] + ' - ' + member['divisi']),
                           trailing: IconButton(
                             icon: Icon(Icons.close, color: Colors.red),
                             onPressed: () async {
@@ -839,7 +852,95 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
-  //end assogn to user==========================================================
+//end assogn to user==========================================================
+
+//==================Start File Preview=========================================
+  void showPDFPreview(BuildContext context, String url) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        insetPadding: EdgeInsets.all(16),
+        child: Container(
+          width: double.infinity,
+          height: MediaQuery.of(context).size.height * 0.8,
+          child: SfPdfViewer.network(
+            url,
+            canShowScrollHead: true,
+            canShowScrollStatus: true,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void showAudioPreview(BuildContext context, String url) {
+    final player = AudioPlayer();
+    player.setUrl(url);
+    showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          insetPadding: EdgeInsets.all(16),
+          child: Container(
+            width: double.infinity,
+            padding: EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Preview Audio",
+                    style:
+                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                SizedBox(height: 16),
+                StreamBuilder<PlayerState>(
+                  stream: player.playerStateStream,
+                  builder: (context, snapshot) {
+                    final playerState = snapshot.data;
+                    final playing = playerState?.playing ?? false;
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          icon: Icon(playing
+                              ? Icons.pause_circle_filled
+                              : Icons.play_circle_fill),
+                          iconSize: 48,
+                          onPressed: () {
+                            if (playing) {
+                              player.pause();
+                            } else {
+                              player.play();
+                            }
+                          },
+                        ),
+                        IconButton(
+                          icon: Icon(Icons.stop_circle),
+                          iconSize: 48,
+                          onPressed: () {
+                            player.stop();
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+                SizedBox(height: 16),
+                TextButton(
+                  onPressed: () {
+                    player.dispose();
+                    Navigator.of(context).pop();
+                  },
+                  child: Text("Tutup"),
+                )
+              ],
+            ),
+          ),
+        );
+      },
+    ).then((_) {
+      player.dispose(); // pastikan dispose saat keluar dialog
+    });
+  }
+//===================End File Preview==========================================
 
 //=======================Widget Build===========================================
   @override
@@ -988,36 +1089,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         case 'del_cover':
                           deleteCover(widget.taskId);
                           break;
-                        case 'move':
-                          Map<String, int>? dataDialog = await _showMoveDialog(
-                            currentWorkspaceId.value,
-                            currentBoardId.value,
-                          );
-
-                          if (dataDialog != null) {
-                            final data = {"board_id": dataDialog["board_id"]};
-
-                            final response = await ApiService.handleTask(
-                              method: 'PUT',
-                              data: data,
-                              taskId: widget.taskId,
-                            );
-
-                            if (response != null) {
-                              General.showSnackBar(
-                                  context, "Task berhasil dipindahkan");
-                              // Kamu bisa tambahkan refresh data di sini kalau perlu:
-                              await onLoadValue();
-                              setState(() {});
-                            } else {
-                              General.showSnackBar(
-                                  context, "Gagal memindahkan task");
-                            }
-                          } else {
-                            print("❌ Aksi pindah dibatalkan user");
-                            // Tidak lakukan apa-apa, SnackBar tidak ditampilkan
-                          }
-                          break;
                         case 'delete':
                           deleteTask(widget.taskId);
                           break;
@@ -1084,16 +1155,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         ),
                       ),
                       PopupMenuItem<String>(
-                        value: 'move',
-                        child: Row(
-                          children: [
-                            Icon(Icons.move_to_inbox),
-                            SizedBox(width: 8),
-                            Text('Pindah Board'),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<String>(
                         value: 'delete',
                         child: Row(
                           children: [
@@ -1130,7 +1191,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     children: [
                       // Cover
                       Padding(
-                          padding: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.only(bottom: 3),
                           child: currentCover.value == null
                               ? Image.asset(
                                   'assets/no_cover.png', // Gambar default dari assets
@@ -1147,7 +1208,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       SizedBox(height: 20),
 
                       //Show Workspace and Board Data
-
+                      _buildShowSummaryTask(),
+                      SizedBox(height: 20),
                       // Quick Actions
                       _buildQuickActions(onExpandableValue),
                       SizedBox(height: 20),
@@ -1513,8 +1575,102 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       loadFile(),
     ]);
   }
-
 //End Refresh Indicator======================================================
+
+//Start Summary And Quick Aactions
+  Widget _buildShowSummaryTask() {
+    return Card(
+      elevation: 5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: EdgeInsets.all(5),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Kiri: Informasi workspace dan board
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (workspaceName != "") ...[
+                    Text(
+                      workspaceName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                  if (boardName != "") ...[
+                    SizedBox(height: 4),
+                    Text(
+                      boardName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                  if (latestUpdatedAt != "" || latestUpdatedBy != "") ...[
+                    SizedBox(height: 12),
+                    Text(
+                      'Latest Update: ${DateFormat('yyyy-MM-dd hh:mm:ss').format(DateTime.parse(latestUpdatedAt).toLocal())}\nBy $latestUpdatedBy',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+
+            // Kanan: Tombol "Move"
+            ElevatedButton(
+              onPressed: () async {
+                Map<String, int>? dataDialog = await _showMoveDialog(
+                  currentWorkspaceId.value,
+                  currentBoardId.value,
+                );
+
+                if (dataDialog != null) {
+                  final data = {"board_id": dataDialog["board_id"]};
+
+                  final response = await ApiService.handleTask(
+                    method: 'PUT',
+                    data: data,
+                    taskId: widget.taskId,
+                  );
+
+                  if (response != null) {
+                    General.showSnackBar(context, "Task berhasil dipindahkan");
+                    await onLoadValue();
+                    setState(() {});
+                  } else {
+                    General.showSnackBar(context, "Gagal memindahkan task");
+                  }
+                } else {
+                  print("❌ Aksi pindah dibatalkan user");
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text("Move"),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _buildQuickActions(ValueNotifier<bool> onExpandableValue) {
     return ValueListenableBuilder(
@@ -1610,6 +1766,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               ]);
         });
   }
+// end quick actions and summary========================================
 
   Widget _buildCardDescription({
     required TextEditingController textDescController,
@@ -2267,6 +2424,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     onLongPress: () {
                       if (fileType.toLowerCase() == "pdf") {
                         showPDFPreview(context, fileDownload);
+                      } else if (fileType.toLowerCase() == "mp3") {
+                        showAudioPreview(context, fileDownload);
                       } else {
                         showDialog(
                           context: context,

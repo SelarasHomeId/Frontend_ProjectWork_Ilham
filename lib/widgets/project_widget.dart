@@ -277,6 +277,12 @@ class _ProjectWidgetState extends State<ProjectWidget>
     await fetchProjects();
   }
 
+  Future<void> _needRefresh(bool? need) async {
+    if (need != null) {
+      await fetchProjects();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -320,10 +326,11 @@ class _ProjectWidgetState extends State<ProjectWidget>
               child: IconButton(
                 icon: Icon(Icons.add),
                 color: Colors.white, // Set the icon color
-                onPressed: () {
-                  Navigator.of(context).push(
+                onPressed: () async {
+                  await Navigator.of(context).push(
                     _createRoute(AddProjectWidget()),
                   );
+                  await _needRefresh(true);
                 },
                 padding:
                     EdgeInsets.zero, // Remove padding inside the CircleAvatar
@@ -418,6 +425,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
                                     _rowsPerPage,
                                     context,
                                     _deleteProject,
+                                    _needRefresh,
                                   ),
                                 ),
                               ),
@@ -439,9 +447,10 @@ class MyDataSource extends DataTableSource {
   final int rowsPerPage;
   final BuildContext context;
   final Function onDeletePressed;
+  final Future<void> Function(bool) needRefresh;
 
   MyDataSource(this.projects, this.pageIndex, this.rowsPerPage, this.context,
-      this.onDeletePressed);
+      this.onDeletePressed, this.needRefresh);
 
   @override
   DataRow? getRow(int index) {
@@ -488,14 +497,15 @@ class MyDataSource extends DataTableSource {
           children: [
             IconButton(
               icon: Icon(Icons.edit),
-              onPressed: () {
+              onPressed: () async {
                 int projectId = project['id'];
-                Navigator.of(context).push(
+                await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) =>
                         UpdateProjectWidget(projectId: projectId),
                   ),
                 );
+                await needRefresh(true);
               },
               visualDensity:
                   VisualDensity.compact, // Memperkecil padding default

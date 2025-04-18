@@ -339,7 +339,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                     return {
                       "count_task": board["count_task"], // Ambil jumlah task
                       "name": board["name"], // Ambil nama board
-                      "has_new": board["has_new"]
+                      "has_new": board["has_new"],
+                      "updated_at": board["updated_at"],
                     };
                   }).toList()
                 : [], // Jika null, set default list kosong
@@ -667,6 +668,19 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                                               SizedBox(height: 5),
                                               Text(
                                                 '${board['count_task']} tasks', // Jumlah tugas
+                                                textAlign: TextAlign.center,
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                              SizedBox(height: 5),
+                                              Text(
+                                                DateFormat(
+                                                        'yyyy-MM-dd hh-MM-ss')
+                                                    .format(DateTime.parse(
+                                                            board['updated_at'])
+                                                        .toLocal()),
                                                 textAlign: TextAlign.center,
                                                 style: TextStyle(
                                                   fontSize: 12,

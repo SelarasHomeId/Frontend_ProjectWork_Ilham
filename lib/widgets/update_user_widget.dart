@@ -257,10 +257,7 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
                               FutureBuilder(
                                 future: ApiService.getRoles(),
                                 builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return CircularProgressIndicator();
-                                  } else if (snapshot.hasError) {
+                                  if (snapshot.hasError) {
                                     return Text('Gagal memuat data role');
                                   } else {
                                     roles = List<Map<String, dynamic>>.from(
@@ -337,10 +334,7 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
                                 future:
                                     ApiService.handleDivision(method: 'GET'),
                                 builder: (context, snapshot) {
-                                  if (snapshot.connectionState ==
-                                      ConnectionState.waiting) {
-                                    return CircularProgressIndicator();
-                                  } else if (snapshot.hasError) {
+                                  if (snapshot.hasError) {
                                     return Text('Gagal memuat data divisi');
                                   } else {
                                     divisions = List<Map<String, dynamic>>.from(

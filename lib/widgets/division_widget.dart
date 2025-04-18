@@ -329,7 +329,10 @@ class _DivisionWidgetState extends State<DivisionWidget>
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
+                    onPressed: () {
+                      nameController.text = '';
+                      Navigator.of(context).pop(false);
+                    },
                     style: TextButton.styleFrom(
                       backgroundColor: Colors.grey[600],
                       padding:

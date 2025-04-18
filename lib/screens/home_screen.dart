@@ -13,8 +13,14 @@ import 'package:flutter/services.dart';
 class HomeScreen extends StatefulWidget {
   final int roleId;
   final String token;
+  final String? toWorkspaceName;
+  final int? toWorkspaceId;
 
-  HomeScreen({required this.roleId, required this.token});
+  HomeScreen(
+      {required this.roleId,
+      required this.token,
+      this.toWorkspaceId,
+      this.toWorkspaceName});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -30,6 +36,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _currentWidget =
         DashboardWidget(roleId: widget.roleId, token: widget.token);
+
+    if (widget.toWorkspaceName != null && widget.toWorkspaceId != null) {
+      _currentWidget = WorkspaceWidget(
+          workspace: widget.toWorkspaceName!,
+          workspaceId: widget.toWorkspaceId!);
+    }
   }
 
   /// Fungsi untuk mengganti widget berdasarkan menu yang dipilih

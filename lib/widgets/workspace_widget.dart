@@ -689,41 +689,44 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
             // Konten utama dengan scroll vertikal
             SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
-              child: SizedBox(
-                height: MediaQuery.of(context).size.height,
-                child: ScrollConfiguration(
-                  key: ValueKey('list'),
-                  behavior: ScrollBehavior().copyWith(overscroll: false),
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [
-                      WidgetBoard(
-                        controller: controller,
-                        boardController: boardController,
-                        addTask: (boardId) async {
-                          _showCreateTaskDialog(boardId);
-                        },
-                        onLoadBoard: () async {
-                          return onLoadListBoard();
-                        },
-                        deleteBoard: (boardId) async {
-                          _deleteBoard(boardId);
-                        },
-                        renameBoard: (boardId, newName) async {
-                          _editBoard(boardId: boardId, name: newName);
-                        },
-                        moveBoard: (boardId, newWorkspaceId) async {
-                          _editBoard(
-                              boardId: boardId, workspaceId: newWorkspaceId);
-                        },
-                        completedChange: (taskId, isCompleted) async {
-                          await _editTask(
-                              taskId: taskId, isCompleted: isCompleted);
-                          onLoadListBoard();
-                        },
-                      ),
-                    ],
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: SizedBox(
+                  height: MediaQuery.of(context).size.height,
+                  child: ScrollConfiguration(
+                    key: ValueKey('list'),
+                    behavior: ScrollBehavior().copyWith(overscroll: false),
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [
+                        WidgetBoard(
+                          controller: controller,
+                          boardController: boardController,
+                          addTask: (boardId) async {
+                            _showCreateTaskDialog(boardId);
+                          },
+                          onLoadBoard: () async {
+                            await onLoadListBoard();
+                          },
+                          deleteBoard: (boardId) async {
+                            await _deleteBoard(boardId);
+                          },
+                          renameBoard: (boardId, newName) async {
+                            await _editBoard(boardId: boardId, name: newName);
+                          },
+                          moveBoard: (boardId, newWorkspaceId) async {
+                            await _editBoard(
+                                boardId: boardId, workspaceId: newWorkspaceId);
+                          },
+                          completedChange: (taskId, isCompleted) async {
+                            await _editTask(
+                                taskId: taskId, isCompleted: isCompleted);
+                            await onLoadListBoard();
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
