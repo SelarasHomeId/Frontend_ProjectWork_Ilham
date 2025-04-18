@@ -19,15 +19,11 @@ import 'package:just_audio/just_audio.dart';
 class DetailTaskScreen extends StatefulWidget {
   final int boardId;
   final int taskId;
-  // final String workspace;
-  // final int workspaceId;
 
   const DetailTaskScreen({
     super.key,
     required this.boardId,
     required this.taskId,
-    // required this.workspace,
-    // required this.workspaceId,
   });
 
   @override
@@ -44,6 +40,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late TextEditingController textCommentController;
   late TextEditingController textChecklistController;
   late TextEditingController _itemTextController = TextEditingController();
+  late TextEditingController _checklistEditTextController =
+      TextEditingController();
 
   late FocusNode focusNode;
   late FocusNode titleFocusNode;
@@ -118,6 +116,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onLoadingCommentNotifier = ValueNotifier<bool>(false);
     onLoadingChecklistNotifier = ValueNotifier<bool>(false);
     _itemTextController = TextEditingController();
+    _checklistEditTextController = TextEditingController();
 
     textDescController = TextEditingController();
     textTitleController = TextEditingController();
@@ -258,12 +257,13 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textCommentController.dispose();
     textChecklistController.dispose();
     _itemTextController.dispose();
-    // focusNode.dispose();
+    _checklistEditTextController.dispose();
     titleFocusNode.dispose();
     descFocusNode.dispose();
     super.dispose();
   }
 
+//Start Cover=========================================================
   Future<void> _pickCover() async {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedImage =
@@ -297,99 +297,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   void deleteCover(int taskId) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await General.showDialogDelete(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.red, // Mengubah warna menjadi merah
-                  shape: BoxShape.rectangle,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.delete, // Menambahkan ikon tong sampah
-                    size: 80,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Hapus Cover',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Apakah Anda yakin ingin menghapus cover untuk task ini?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: TextButton.styleFrom(
-                      backgroundColor:
-                          Colors.grey[600], // Warna abu-abu untuk Cancel
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Batal',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    style: TextButton.styleFrom(
-                      backgroundColor:
-                          Colors.red[800], // Warna merah untuk Delete
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Hapus',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
+      title: 'Hapus Cover',
+      message: 'Apakah Anda yakin ingin menghapus cover untuk task ini?',
+      confirmButtonText: 'Hapus',
+      cancelButtonText: 'Batal',
     );
 
     if (confirm == true) {
@@ -397,113 +310,27 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         final response = await ApiService.handleTask(
           method: 'PUT',
           data: {"delete_cover": true},
-          taskId: widget.taskId,
+          taskId: taskId,
         );
         if (response != null) {
           await onLoadValue();
           setState(() {});
-          General.showSnackBar(context, "cover deleted");
+          General.showSnackBar(context, "Cover deleted");
         }
       } catch (e) {
-        General.showSnackBar(context, "cover error when delete, cause: $e");
+        General.showSnackBar(context, "Cover error when delete, cause: $e");
       }
     }
   }
 
+//========end Cover===================================================
   void deleteTask(int taskId) async {
-    final confirm = await showDialog<bool>(
+    final confirm = await General.showDialogDelete(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.red, // Mengubah warna menjadi merah
-                  shape: BoxShape.rectangle,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.delete, // Menambahkan ikon tong sampah
-                    size: 80,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Hapus Task',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Apakah Anda yakin ingin menghapus task ini?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: TextButton.styleFrom(
-                      backgroundColor:
-                          Colors.grey[600], // Warna abu-abu untuk Cancel
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Batal',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    style: TextButton.styleFrom(
-                      backgroundColor:
-                          Colors.red[800], // Warna merah untuk Delete
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Hapus',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
+      title: 'Hapus Task',
+      message: 'Apakah Anda yakin ingin menghapus task ini?',
+      confirmButtonText: 'Hapus',
+      cancelButtonText: 'Batal',
     );
 
     if (confirm == true) {
@@ -624,69 +451,72 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   ),
                 ],
               ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        hintText: "Search User...",
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 500, // <-- batasi tinggi dialog
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: "Search User...",
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) => _searchUserByName(dialogSetState),
                       ),
-                      onChanged: (value) => _searchUserByName(dialogSetState),
                     ),
-                  ),
-                  SizedBox(height: 10),
-                  _isLoading
-                      ? Center(child: CircularProgressIndicator())
-                      : filteredUsers.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Text("No users found."),
-                            )
-                          : SizedBox(
-                              height: 200,
-                              child: ListView.builder(
-                                itemCount: filteredUsers.length,
-                                itemBuilder: (context, index) {
-                                  final user = filteredUsers[index];
-                                  final isSelected =
-                                      _selectedUserIds.contains(user['id']);
+                    SizedBox(height: 10),
+                    _isLoading
+                        ? Center(child: CircularProgressIndicator())
+                        : filteredUsers.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Text("No users found."),
+                              )
+                            : Expanded(
+                                child: ListView.builder(
+                                  itemCount: filteredUsers.length,
+                                  itemBuilder: (context, index) {
+                                    final user = filteredUsers[index];
+                                    final isSelected =
+                                        _selectedUserIds.contains(user['id']);
 
-                                  return ListTile(
-                                    leading: CircleAvatar(
-                                      backgroundColor:
-                                          General.getColorFromInitial(
-                                              General.getInitials(
-                                                  user['name'])),
-                                      child: Text(
-                                        General.getInitials(user['name']),
-                                        style: TextStyle(color: Colors.white),
+                                    return ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor:
+                                            General.getColorFromInitial(
+                                                General.getInitials(
+                                                    user['name'])),
+                                        child: Text(
+                                          General.getInitials(user['name']),
+                                          style: TextStyle(color: Colors.white),
+                                        ),
                                       ),
-                                    ),
-                                    title: Text(user['name']),
-                                    subtitle: Text(user['email']),
-                                    trailing: isSelected
-                                        ? Icon(Icons.check_circle,
-                                            color: Colors.green)
-                                        : null,
-                                    onTap: () {
-                                      dialogSetState(() {
-                                        if (isSelected) {
-                                          _selectedUserIds.remove(user['id']);
-                                        } else {
-                                          _selectedUserIds.add(user['id']);
-                                        }
-                                      });
-                                    },
-                                  );
-                                },
+                                      title: Text(user['name']),
+                                      subtitle: Text(
+                                          '${user['role']['name']} - ${user['divisi']['name']}'),
+                                      trailing: isSelected
+                                          ? Icon(Icons.check_circle,
+                                              color: Colors.green)
+                                          : null,
+                                      onTap: () {
+                                        dialogSetState(() {
+                                          if (isSelected) {
+                                            _selectedUserIds.remove(user['id']);
+                                          } else {
+                                            _selectedUserIds.add(user['id']);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  },
+                                ),
                               ),
-                            ),
-                ],
+                  ],
+                ),
               ),
               actions: [
                 Row(
@@ -791,26 +621,13 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           trailing: IconButton(
                             icon: Icon(Icons.close, color: Colors.red),
                             onPressed: () async {
-                              final confirm = await showDialog<bool>(
-                                context: context,
-                                builder: (_) => AlertDialog(
-                                  title: Text("Konfirmasi"),
-                                  content: Text(
-                                      "Apakah yakin ingin menghapus user ini?"),
-                                  actions: [
-                                    TextButton(
-                                      child: Text("Batal"),
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(false),
-                                    ),
-                                    TextButton(
-                                      child: Text("Hapus"),
-                                      onPressed: () =>
-                                          Navigator.of(context).pop(true),
-                                    ),
-                                  ],
-                                ),
-                              );
+                              final confirm = await General.showDialogDelete(
+                                  context: context,
+                                  title: "Hapus User",
+                                  message:
+                                      "Apakah Yakin Ingin Menghapus User ini?",
+                                  confirmButtonText: "Hapus",
+                                  cancelButtonText: "Batal");
 
                               if (confirm == true) {
                                 try {
@@ -940,6 +757,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       player.dispose(); // pastikan dispose saat keluar dialog
     });
   }
+
 //===================End File Preview==========================================
 
 //=======================Widget Build===========================================
@@ -1535,16 +1353,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Future<void> loadChecklists() async {
     onLoadingChecklistNotifier.value = true;
 
-    final response = await ApiService.handleDetailTask(widget.taskId);
+    final checklistData = await ApiService.handleChecklist(
+        method: 'GET', taskId: widget.taskId, params: {'no_paging': 'yes'});
 
-    final getChecklist = response['checklist'];
-    if (response != null && getChecklist != null) {
-      final getChecklistData = getChecklist['data'];
-      final checklistData = getChecklistData != null && getChecklistData is List
-          ? getChecklistData
-          : [];
-
-      checklistItems.value.clear(); // Reset checklistItems dulu
+    if (checklistData != null) {
+      checklistItems.value.clear();
 
       for (final checklist in checklistData) {
         checklistItems.value[checklist["id"]] = List<Map<String, dynamic>>.from(
@@ -1552,11 +1365,15 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         );
       }
 
-      onChecklistNotifier.value = checklistData.map((checklist) {
+      onChecklistNotifier.value =
+          (checklistData as List).map<Map<String, dynamic>>((checklist) {
+        final map = checklist as Map<String, dynamic>;
         return {
-          "id": checklist["id"],
-          "title": checklist["title"],
-          "is_completed": checklist["is_completed"] ?? false,
+          "id": map["id"],
+          "title": map["title"],
+          "task_id": map["task_id"],
+          "check_persentase": map["check_persentase"],
+          "item_count": map["item"]["count"],
         };
       }).toList();
     }
@@ -1839,25 +1656,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     children: value.map((label) {
                       return GestureDetector(
                         onTap: () async {
-                          final confirmDelete = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: Text("Hapus Label?"),
-                              content: Text(
-                                  "Apakah Anda yakin ingin menghapus label '${label.$1}'?"),
-                              actions: [
-                                TextButton(
-                                  onPressed: () =>
-                                      Navigator.pop(context, false),
-                                  child: Text("Batal"),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: Text("Hapus"),
-                                ),
-                              ],
-                            ),
-                          );
+                          final confirmDelete = await General.showDialogDelete(
+                              context: context,
+                              title: "Hapus Label",
+                              message: "Apakah Yakin Menghapus Label ?",
+                              confirmButtonText: "Hapus",
+                              cancelButtonText: "Batal");
 
                           if (confirmDelete == true) {
                             // Hapus label dari daftar
@@ -1879,10 +1683,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             );
 
                             if (getUpdatedData != null && context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                    content: Text('Label berhasil dihapus')),
-                              );
+                              General.showSnackBar(
+                                  context, 'Label berhasil dihapus');
                             }
                             onLoadingNotifier.value = false;
                           }
@@ -2164,37 +1966,81 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           itemCount: checklistList.length,
           itemBuilder: (context, index) {
             final checklist = checklistList[index];
-            bool isCompleted = checklist['is_completed'] ?? false;
 
             return Card(
-              margin: EdgeInsets.symmetric(vertical: 8),
+              margin: EdgeInsets.symmetric(vertical: 5),
               child: ListTile(
-                title: Row(
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Menampilkan judul checklist
-                    Text(
-                      checklist['title'] ?? 'No title',
-                      style: TextStyle(
-                        decoration:
-                            isCompleted ? TextDecoration.lineThrough : null,
-                      ),
+                    Row(
+                      children: [
+                        // Menampilkan judul checklist dengan scroll horizontal + onTap
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: GestureDetector(
+                              onTap: () {
+                                _showEditChecklistDialog(
+                                    checklist['id'], checklist['title']);
+                              },
+                              child: Row(
+                                children: [
+                                  Text(
+                                    checklist['title'] ?? 'No title',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Tombol tambah item
+                        IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: () {
+                            _showAddItemDialog(checklist['id']);
+                          },
+                        ),
+                        // Tombol hapus checklist
+                        IconButton(
+                          icon: Icon(Icons.remove_circle),
+                          onPressed: () async {
+                            await _removeChecklist(checklist['id']);
+                          },
+                        ),
+                      ],
                     ),
-                    Spacer(),
-                    // Button untuk menambah item pada checklist
-                    IconButton(
-                      icon: Icon(Icons.add),
-                      onPressed: () {
-                        _showAddItemDialog(checklist[
-                            'id']); // Menampilkan dialog untuk menambah item
-                      },
-                    ),
-                    // Button untuk menghapus checklist
-                    IconButton(
-                      icon: Icon(Icons.remove_circle),
-                      onPressed: () async {
-                        // Menghapus checklist
-                        await _removeChecklist(checklist['id']);
-                      },
+                    SizedBox(height: 4),
+                    // Progress bar & label persentase
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            begin: 0,
+                            end: double.tryParse(checklist['check_persentase']
+                                        ?.replaceAll('%', '') ??
+                                    '0')! /
+                                100,
+                          ),
+                          duration: Duration(milliseconds: 800),
+                          builder: (context, value, child) {
+                            return LinearProgressIndicator(
+                              value: value,
+                              minHeight: 6,
+                              color: Colors.green,
+                              backgroundColor: Colors.grey[300],
+                            );
+                          },
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          checklist['check_persentase'] ?? '0%',
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[700]),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -2213,6 +2059,43 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
+  Future<void> _showEditChecklistDialog(
+      int checklistId, String currentTitle) async {
+    _checklistEditTextController.text = currentTitle;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Checklist'),
+          content: TextField(
+            controller: _checklistEditTextController,
+            decoration: InputDecoration(hintText: 'Enter checklist title'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _checklistEditTextController.clear();
+                Navigator.pop(context);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final itemTitle = _checklistEditTextController.text.trim();
+                if (itemTitle.isNotEmpty) {
+                  await _editChecklist(checklistId, itemTitle);
+                  _checklistEditTextController.clear();
+                  Navigator.pop(context);
+                }
+              },
+              child: Text('Edit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildItemList(int checklistId) {
     // Ambil daftar item untuk checklist tertentu
     final items = checklistItems.value[checklistId] ??
@@ -2226,20 +2109,241 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         bool isChecked = item['is_completed'] ?? false;
 
         return ListTile(
-          title: Text(
-            item['title'] ?? 'No item',
-            style: TextStyle(
-              decoration: isChecked
-                  ? TextDecoration.lineThrough
-                  : null, // Menandai teks yang sudah dicentang
-            ),
+          leading: Icon(Icons.subdirectory_arrow_right),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  _showEditChecklistItemDialog(item['id'], item['title']);
+                },
+                child: Row(
+                  children: [
+                    Text(
+                      item['title'] ?? 'No item',
+                      style: TextStyle(
+                        decoration: isChecked
+                            ? TextDecoration.lineThrough
+                            : null, // Menandai teks yang sudah dicentang
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (item['due_date'] != null) ...[
+                SizedBox(height: 5),
+                Wrap(
+                  spacing: 5,
+                  runSpacing: 3,
+                  children: [
+                    Container(
+                      padding: EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 3), // Padding untuk ikon dan teks
+                      decoration: BoxDecoration(
+                        color: isChecked
+                            ? Colors.green.withOpacity(
+                                0.2) // Background hijau jika completed
+                            : (DateTime.parse(item['due_date'])
+                                    .isBefore(DateTime.now())
+                                ? Colors.red.withOpacity(
+                                    0.2) // Background merah jika overdue
+                                : Colors.black.withOpacity(
+                                    0.1)), // Background hitam jika belum overdue
+                        borderRadius: BorderRadius.circular(
+                            50), // Membuat sudut melengkung pada background
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.alarm, // Ikon jam
+                            size: 20, // Ukuran ikon
+                            color: isChecked
+                                ? Colors.green
+                                : (DateTime.parse(item['due_date'])
+                                        .isBefore(DateTime.now())
+                                    ? Colors.red
+                                    : Colors.black), // Menentukan warna ikon
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            // Format tanggal sesuai kondisi
+                            DateFormat(item['due_date'].substring(0, 4) !=
+                                        DateTime.now().year.toString()
+                                    ? 'MMM dd, yyyy'
+                                    : 'MMM dd')
+                                .format(DateTime.parse(item['due_date'])),
+                            style: TextStyle(
+                              color: isChecked
+                                  ? Colors.green
+                                  : (DateTime.parse(item['due_date'])
+                                          .isBefore(DateTime.now())
+                                      ? Colors.red
+                                      : Colors
+                                          .black), // Menentukan warna teks berdasarkan kondisi
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              if (item['assign_to_user'] != null) ...[
+                SizedBox(height: 5),
+                Wrap(
+                  spacing: 5, // Jarak antar ikon
+                  runSpacing: 3, // Jarak antar baris jika ikon terlalu banyak
+                  children: [
+                    for (var member in item['assign_to_user']["data"] as List)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: General.getColorFromInitial(
+                                General.getInitials(member['name'])),
+                            child: Text(
+                              General.getInitials(member['name']),
+                              style:
+                                  TextStyle(fontSize: 12, color: Colors.black),
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ]
+            ],
           ),
-          trailing: Checkbox(
-            value: isChecked,
-            onChanged: (bool? value) {
-              // Update status item checklist saat diubah
-              _toggleItemCompletion(checklistId, item['id'], value!);
+          trailing: PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert,
+              color: Colors.black,
+            ),
+            offset: Offset(0, 40),
+            onSelected: (String result) async {
+              switch (result) {
+                case 'complete_toggle':
+                  await _toggleItemCompletion(item['id'], !isChecked);
+                  break;
+                case 'move':
+                  Map<String, int>? dataDialog =
+                      await _showMoveItemDialog(checklistId);
+
+                  if (dataDialog != null) {
+                    final data = {
+                      "task_checklist_id": dataDialog["task_checklist_id"]
+                    };
+
+                    final response = await ApiService.handleChecklistItem(
+                        method: 'PUT', data: data, checklistItemId: item['id']);
+
+                    if (response != null) {
+                      await loadChecklists();
+                      General.showSnackBar(
+                          context, "Item berhasil dipindahkan");
+                    } else {
+                      General.showSnackBar(context, "Gagal memindahkan item");
+                    }
+                  }
+                case 'due_date':
+                  await _pickDueDateChecklistItem(context, item['id']);
+                  break;
+                case 'member':
+                  ValueNotifier<List<Map<String, dynamic>>> assignedMembers =
+                      ValueNotifier<List<Map<String, dynamic>>>(
+                    List<Map<String, dynamic>>.from(
+                        item['assign_to_user']?["data"] ?? []),
+                  );
+                  await _showAssignedMembersChecklistItemDialog(
+                      context, assignedMembers, item['id']);
+                  break;
+                case 'convert':
+                  bool confirmed =
+                      await _showConvertItemChecklistToTaskConfirmationDialog();
+                  if (confirmed) {
+                    await _convertItemChecklistToTask(item['id']);
+                  }
+                  break;
+                case 'delete':
+                  bool confirmed =
+                      await _showDeleteItemChecklistConfirmationDialog();
+                  if (confirmed) {
+                    await _deleteItemChecklist(item['id']);
+                  }
+                  break;
+              }
             },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'complete_toggle',
+                child: Row(
+                  children: [
+                    Icon(
+                      isChecked ? Icons.unpublished_outlined : Icons.check,
+                      color: isChecked ? Colors.red : Colors.green,
+                    ),
+                    SizedBox(width: 8),
+                    Text(
+                      isChecked ? "Mark item Incomplete" : "Mark item Complete",
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'move',
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today),
+                    SizedBox(width: 8),
+                    Text('Move Item'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'due_date',
+                child: Row(
+                  children: [
+                    Icon(Icons.calendar_today),
+                    SizedBox(width: 8),
+                    Text('Add Due Date'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'member',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_add),
+                    SizedBox(width: 8),
+                    Text('Add Member'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'convert',
+                child: Row(
+                  children: [
+                    Icon(Icons.add_task),
+                    SizedBox(width: 8),
+                    Text('Convert to Task'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete),
+                    SizedBox(width: 8),
+                    Text('Delete Item'),
+                  ],
+                ),
+              ),
+            ],
           ),
         );
       },
@@ -2283,10 +2387,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Future<void> _addItemToChecklist(int checklistId, String itemTitle) async {
     final data = {
       'title': itemTitle,
-      'is_completed': false, // default item is not completed
     };
 
-    final response = await ApiService.handleChecklist(
+    final response = await ApiService.handleChecklistItem(
       method: 'POST',
       checklistId: checklistId,
       data: data,
@@ -2297,14 +2400,177 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
   }
 
-  Future<void> _toggleItemCompletion(
-      int checklistId, int itemId, bool isCompleted) async {
-    final data = {'is_completed': isCompleted};
+  Future<void> _editChecklist(int checklistId, String itemTitle) async {
+    final data = {
+      'title': itemTitle,
+    };
 
     final response = await ApiService.handleChecklist(
       method: 'PUT',
       checklistId: checklistId,
       data: data,
+    );
+
+    if (response != null) {
+      await loadChecklists(); // Refresh checklist setelah menambah item
+    }
+  }
+
+  Future<void> _showEditChecklistItemDialog(
+      int itemId, String currentTitle) async {
+    _checklistEditTextController.text = currentTitle;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Checklist Item'),
+          content: TextField(
+            controller: _checklistEditTextController,
+            decoration: InputDecoration(hintText: 'Enter checklist item title'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                _checklistEditTextController.clear();
+                Navigator.pop(context);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final itemTitle = _checklistEditTextController.text.trim();
+                if (itemTitle.isNotEmpty) {
+                  await _editChecklistItem(itemId, itemTitle);
+                  _checklistEditTextController.clear();
+                  Navigator.pop(context);
+                }
+              },
+              child: Text('Edit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _editChecklistItem(int itemId, String itemTitle) async {
+    final data = {
+      'title': itemTitle,
+    };
+
+    final response = await ApiService.handleChecklistItem(
+      method: 'PUT',
+      checklistItemId: itemId,
+      data: data,
+    );
+
+    if (response != null) {
+      await loadChecklists(); // Refresh checklist setelah menambah item
+    }
+  }
+
+  Future<void> _toggleItemCompletion(int itemId, bool isCompleted) async {
+    final data = {'is_completed': isCompleted};
+
+    final response = await ApiService.handleChecklistItem(
+      method: 'PUT',
+      checklistItemId: itemId,
+      data: data,
+    );
+
+    if (response != null) {
+      // Setelah update, refresh checklist
+      await loadChecklists(); // Refresh checklist setelah mengupdate status item
+    }
+  }
+
+  Future<bool> _showDeleteItemChecklistConfirmationDialog() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text("Konfirmasi Hapus"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Kamu yakin ingin menghapus item checklist?"),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pop(context, false), // Tidak jadi delete
+                  child: Text("Batal"),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pop(context, true), // Konfirmasi delete
+                  child: Text("Hapus", style: TextStyle(color: Colors.red)),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<void> _deleteItemChecklist(int itemId) async {
+    final response = await ApiService.handleChecklistItem(
+      method: 'DELETE',
+      checklistItemId: itemId,
+    );
+
+    if (response != null) {
+      // Setelah update, refresh checklist
+      await loadChecklists(); // Refresh checklist setelah mengupdate status item
+    }
+  }
+
+  Future<bool> _showConvertItemChecklistToTaskConfirmationDialog() async {
+    return await showDialog<bool>(
+          context: context,
+          builder: (BuildContext context) {
+            return AlertDialog(
+              title: Text("Konfirmasi Konversi Item Checklist ke Task"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text("Kamu yakin ingin konversi item checklist?"),
+                  Text(
+                    "Konversi item checklist akan menghapus item dan membuat task baru di board yang sama.",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.red,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pop(context, false), // Tidak jadi delete
+                  child: Text("Batal"),
+                ),
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pop(context, true), // Konfirmasi delete
+                  child: Text("Convert",
+                      style: TextStyle(color: Colors.green[700])),
+                ),
+              ],
+            );
+          },
+        ) ??
+        false;
+  }
+
+  Future<void> _convertItemChecklistToTask(int itemId) async {
+    final response = await ApiService.handleChecklistItem(
+      method: 'PATCH',
+      checklistItemId: itemId,
     );
 
     if (response != null) {
@@ -2324,18 +2590,396 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
   }
 
-  Future<void> _toggleChecklistStatus(int checklistId, bool newStatus) async {
-    final data = {"is_completed": newStatus};
+  Future<void> _pickDueDateChecklistItem(
+      BuildContext context, int itemId) async {
+    final initialDate = onEndDateNotifier.value ?? DateTime.now();
 
-    final response = await ApiService.handleChecklist(
-      method: 'PUT',
-      checklistId: checklistId,
-      data: data,
+    final datePicker = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2500),
+      fieldLabelText: "Waktu Akhir Task",
     );
 
-    if (response != null) {
-      await loadChecklists(); // Refresh checklist setelah update
+    if (datePicker != null && context.mounted) {
+      final currentTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+      );
+
+      if (currentTime != null) {
+        final selectedDate = datePicker.copyWith(
+          hour: currentTime.hour,
+          minute: currentTime.minute,
+        );
+
+        final now = DateTime.now();
+
+        // ✅ VALIDASI: waktu tidak boleh di masa lalu
+        if (selectedDate.isBefore(now)) {
+          General.showSnackBar(context, "Waktu Deadline Tidak Valid");
+          return;
+        }
+
+        final dueDate =
+            DateFormat("yyyy-MM-dd HH:mm:ss").format(selectedDate.toLocal());
+
+        onLoadingNotifier.value = true;
+
+        try {
+          final response = await ApiService.handleChecklistItem(
+            method: 'PUT',
+            checklistItemId: itemId,
+            data: {'due_date': dueDate},
+          );
+
+          if (response != null) {
+            // Setelah update, refresh checklist
+            await loadChecklists(); // Refresh checklist setelah mengupdate status item
+          }
+        } catch (e) {
+          General.showSnackBar(context, "Gagal Menambahkan Tanggal e: $e");
+        }
+
+        onLoadingNotifier.value = false;
+      }
     }
+  }
+
+  Future<void> _showAssignedMembersChecklistItemDialog(
+      BuildContext context,
+      ValueNotifier<List<Map<String, dynamic>>> assignedMembers,
+      int itemId) async {
+    final members = assignedMembers.value;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Assigned Members',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: members.isEmpty
+            ? Text('No members assigned yet.')
+            : SizedBox(
+                width: double.maxFinite,
+                height: 400,
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: members.length,
+                  itemBuilder: (context, index) {
+                    final member = members[index];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: General.getColorFromInitial(
+                            General.getInitials(member['name'])),
+                        child: Text(
+                          General.getInitials(member['name']),
+                          style: TextStyle(color: Colors.white),
+                        ),
+                      ),
+                      title: Text(member['name']),
+                      subtitle: Text('${member['role']} - ${member['divisi']}'),
+                      trailing: IconButton(
+                        icon: Icon(Icons.close, color: Colors.red),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: Text("Konfirmasi"),
+                              content: Text(
+                                  "Apakah yakin ingin menghapus user ini?"),
+                              actions: [
+                                TextButton(
+                                  child: Text("Batal"),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(false),
+                                ),
+                                TextButton(
+                                  child: Text("Hapus"),
+                                  onPressed: () =>
+                                      Navigator.of(context).pop(true),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true) {
+                            try {
+                              final remainingIds = assignedMembers.value
+                                  .where((u) => u['id'] != member['id'])
+                                  .map((u) => u['id'] as int)
+                                  .toList();
+
+                              final res = await ApiService.handleChecklistItem(
+                                method: 'PUT',
+                                checklistItemId: itemId,
+                                data: {
+                                  "assign_to_user": remainingIds,
+                                },
+                              );
+
+                              if (res != null) {
+                                await loadChecklists();
+                                Navigator.pop(context);
+                                General.showSnackBar(
+                                    context, "Berhasil menghapus user");
+                              }
+                            } catch (e) {
+                              General.showSnackBar(
+                                  context, "Gagal menghapus: $e");
+                            }
+                          }
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+        actions: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton(
+                onPressed: () async {
+                  await loadChecklists();
+                  Navigator.pop(context);
+                },
+                child: Text('Tutup'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  _showAddMemberChecklistItemDialog(
+                      context, assignedMembers, itemId);
+                },
+                child: Text('Add Member'),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddMemberChecklistItemDialog(BuildContext context,
+      ValueNotifier<List<Map<String, dynamic>>> assignedMembers, int itemId) {
+    _selectedUserIds = assignedMembers.value.map((u) => u['id'] as int).toSet();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, dialogSetState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text("Add Member",
+                      style: TextStyle(fontWeight: FontWeight.bold)),
+                  IconButton(
+                    icon: Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 500, // <-- batasi tinggi dialog
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: "Search User...",
+                          prefixIcon: Icon(Icons.search),
+                          border: OutlineInputBorder(),
+                        ),
+                        onChanged: (value) => _searchUserByName(dialogSetState),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    _isLoading
+                        ? Center(child: CircularProgressIndicator())
+                        : filteredUsers.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(16.0),
+                                child: Text("No users found."),
+                              )
+                            : Expanded(
+                                child: ListView.builder(
+                                  itemCount: filteredUsers.length,
+                                  itemBuilder: (context, index) {
+                                    final user = filteredUsers[index];
+                                    final isSelected =
+                                        _selectedUserIds.contains(user['id']);
+
+                                    return ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor:
+                                            General.getColorFromInitial(
+                                                General.getInitials(
+                                                    user['name'])),
+                                        child: Text(
+                                          General.getInitials(user['name']),
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                      title: Text(user['name']),
+                                      subtitle: Text(
+                                          '${user['role']['name']} - ${user['divisi']['name']}'),
+                                      trailing: isSelected
+                                          ? Icon(Icons.check_circle,
+                                              color: Colors.green)
+                                          : null,
+                                      onTap: () {
+                                        dialogSetState(() {
+                                          if (isSelected) {
+                                            _selectedUserIds.remove(user['id']);
+                                          } else {
+                                            _selectedUserIds.add(user['id']);
+                                          }
+                                        });
+                                      },
+                                    );
+                                  },
+                                ),
+                              ),
+                  ],
+                ),
+              ),
+              actions: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      child:
+                          Text("Cancel", style: TextStyle(color: Colors.red)),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    TextButton(
+                      child:
+                          Text("Done", style: TextStyle(color: Colors.green)),
+                      onPressed: () async {
+                        try {
+                          final res = await ApiService.handleChecklistItem(
+                            method: 'PUT',
+                            checklistItemId: itemId,
+                            data: {
+                              "assign_to_user": _selectedUserIds.toList(),
+                            },
+                          );
+
+                          if (res != null) {
+                            await loadChecklists();
+                            Navigator.pop(context);
+                            General.showSnackBar(
+                                context, "User berhasil di-assign");
+                          }
+                        } catch (e) {
+                          General.showSnackBar(
+                              context, "Gagal assign user: $e");
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<Map<String, int>?> _showMoveItemDialog(int taskChecklistId) async {
+    List<Map<String, dynamic>> taskChecklists = [];
+    int? selectedTaskChecklisId = taskChecklistId;
+
+    try {
+      final response = await ApiService.handleChecklist(
+          method: 'GET', taskId: widget.taskId, params: {'no_paging': 'yes'});
+      if (response.isNotEmpty) {
+        taskChecklists =
+            (response as List).map<Map<String, dynamic>>((checklist) {
+          final map = checklist as Map<String, dynamic>;
+          return {
+            "id": map["id"],
+            "title": map["title"],
+            "task_id": map["task_id"],
+            "check_persentase": map["check_persentase"],
+            "item_count": map["item"]["count"],
+          };
+        }).toList();
+        if (!taskChecklists.any((w) => w['id'] == selectedTaskChecklisId)) {
+          selectedTaskChecklisId =
+              taskChecklists.first['id']; // Default workspace
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        General.showSnackBar(context, 'Gagal memuat workspace: $e');
+      }
+    }
+
+    return await showDialog<Map<String, int>>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text("Move to"),
+          content: StatefulBuilder(
+            builder: (context, setState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Dropdown Workspace
+                  DropdownButtonFormField<int>(
+                    value: selectedTaskChecklisId,
+                    items: taskChecklists.map((taskChecklist) {
+                      return DropdownMenuItem<int>(
+                        value: taskChecklist['id'],
+                        child: Text(taskChecklist['title'] ?? ''),
+                      );
+                    }).toList(),
+                    onChanged: (int? newValue) async {
+                      setState(() {
+                        selectedTaskChecklisId = newValue;
+                      });
+                      setState(() {});
+                    },
+                    decoration: InputDecoration(
+                      labelText: "Select Checklist",
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, null), // Batal
+              child: Text("Batal"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(
+                context,
+                {
+                  'task_checklist_id': selectedTaskChecklisId!,
+                },
+              ), // Konfirmasi
+              child: Text("Move", style: TextStyle(color: Colors.blue)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Widget _buildAddChecklistSection(int taskId) {
@@ -2373,7 +3017,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Future<void> _addChecklist(int taskId) async {
     if (textChecklistController.text.isEmpty) return;
 
-    final data = {"title": textChecklistController.text, "is_completed": false};
+    final data = {
+      "title": textChecklistController.text,
+    };
 
     final response = await ApiService.handleChecklist(
       method: 'POST',
@@ -2388,6 +3034,43 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
 //======================End Checklist===========================================
+
+//================================Start File
+  void _deleteFile(int fileId) async {
+    try {
+      // Memanggil API untuk menghapus file
+      await ApiService.handleTaskFile(
+        method: 'DELETE',
+        taskId: widget.taskId,
+        fileId: fileId, // ID file yang akan dihapus
+      );
+
+      // Jika berhasil, lakukan sesuatu, misalnya memuat ulang data
+      setState(() {
+        loadFile(); // Memuat ulang daftar file
+      });
+
+      // Tampilkan snackbar atau feedback kepada pengguna
+      General.showSnackBar(context, "File berhasil dihapus");
+    } catch (e) {
+      // Tangani error jika terjadi kesalahan
+      General.showSnackBar(context, "Gagal menghapus file, coba lagi.");
+    }
+  }
+
+  void _showDeleteConfirmationDialog(int fileId) async {
+    final confirm = await General.showDialogDelete(
+        context: context,
+        title: "Hapus File",
+        message: "Apakah Anda Yakin Ingin Menghapus File Ini ? ",
+        confirmButtonText: "Hapus",
+        cancelButtonText: "Batal");
+
+    if (confirm == true) {
+      _deleteFile(fileId);
+    }
+  }
+
   Widget listFileWidget() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2401,6 +3084,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 scrollDirection: Axis.horizontal,
                 itemCount: listFile.length,
                 itemBuilder: (context, index) {
+                  final fileId = (listFile[index]["id"] ?? 0);
                   final fileName =
                       (listFile[index]["fileName"] ?? "").toString();
                   final fileType =
@@ -2432,7 +3116,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           builder: (_) => Dialog(
                             insetPadding: EdgeInsets.all(20),
                             child: SingleChildScrollView(
-                              child: Column(
+                              child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Container(
@@ -2442,6 +3126,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                     ),
                                     child: Column(
                                       children: [
+                                        // Gambar file
                                         Container(
                                           height: 300,
                                           width: double.infinity,
@@ -2451,17 +3136,24 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                             image: DecorationImage(
                                               image:
                                                   getImage(fileType, filePath),
-                                              fit: BoxFit.contain,
+                                              fit: BoxFit.cover,
                                             ),
                                           ),
                                         ),
-                                        SizedBox(height: 10),
+                                        // Nama file di bawah gambar
+                                        SizedBox(
+                                            height:
+                                                10), // Menambahkan jarak antara gambar dan nama file
                                         Text(
                                           fileName,
                                           style: TextStyle(
-                                              fontWeight: FontWeight.bold),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize:
+                                                16, // Anda bisa menyesuaikan ukuran font di sini
+                                          ),
                                           overflow: TextOverflow.ellipsis,
-                                          maxLines: 2,
+                                          maxLines:
+                                              2, // Membatasi dua baris jika nama file terlalu panjang
                                         ),
                                       ],
                                     ),
@@ -2469,7 +3161,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                   TextButton(
                                     onPressed: () => Navigator.pop(context),
                                     child: Text("Tutup"),
-                                  )
+                                  ),
                                 ],
                               ),
                             ),
@@ -2481,63 +3173,90 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       width: 150,
                       margin: EdgeInsets.only(right: 10),
                       child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            width: 150,
-                            height: 150,
-                            decoration: BoxDecoration(
-                              color: Color(0xFFC4C4C4),
-                              border: Border.all(
-                                color: Colors.transparent,
-                                width: 5,
-                              ),
-                              borderRadius: BorderRadius.circular(5),
-                              image: DecorationImage(
-                                image: getImage(fileType, filePath),
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          ),
+                          Stack(
+                            children: [
+                              // Gambar File
+                              Container(
+                                width: 150,
+                                height: 150,
+                                decoration: BoxDecoration(
+                                  color: Color(0xFFC4C4C4),
+                                  border: Border.all(
+                                    color: Colors.transparent,
+                                    width: 5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(5),
+                                  image: DecorationImage(
+                                    image: getImage(fileType, filePath),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ), // </Container> untuk gambar file
+
+                              // Tombol Hapus
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: GestureDetector(
+                                  onTap: () =>
+                                      _showDeleteConfirmationDialog(fileId),
+                                  child: CircleAvatar(
+                                    backgroundColor: Colors.red,
+                                    radius: 15,
+                                    child: Icon(
+                                      Icons.delete,
+                                      size: 18,
+                                      color: Colors.white,
+                                    ),
+                                  ), // </CircleAvatar>
+                                ), // </GestureDetector>
+                              ), // </Positioned>
+                            ],
+                          ), // </Stack>
+
+                          // Nama file di bawah gambar
                           SizedBox(height: 4),
                           Text(
                             fileName,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 12),
-                          ),
+                          ), // </Text>
                         ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            );
-          },
-        ),
+                      ), // </Column>
+                    ), // </Container>
+                  ); // </GestureDetector>
+                }, // </itemBuilder>
+              ), // </ListView.builder>
+            ); // </SizedBox>
+          }, // </builder dari ValueListenableBuilder>
+        ), // </ValueListenableBuilder>
       ],
-    );
+    ); // </Column>
   }
-}
 
-ImageProvider getImage(String fileFormat, String path) {
-  switch (fileFormat) {
-    case "pdf":
-      return AssetImage("assets/pdf.png");
-    case "docx":
-      return AssetImage("assets/docx.png");
-    case "pptx":
-      return AssetImage("assets/pptx.png");
-    case "csv":
-      return AssetImage("assets/csv.png");
-    case "mp3":
-      return AssetImage("assets/mp3.png");
-    case "mp4":
-      return AssetImage("assets/mp4.png");
-    case "txt":
-      return AssetImage("assets/txt.png");
-    case "xlsx":
-      return AssetImage("assets/xlsx.png");
-    default:
-      return NetworkImage(path);
+  ImageProvider getImage(String fileFormat, String path) {
+    switch (fileFormat) {
+      case "pdf":
+        return AssetImage("assets/pdf.png");
+      case "docx":
+        return AssetImage("assets/docx.png");
+      case "pptx":
+        return AssetImage("assets/pptx.png");
+      case "csv":
+        return AssetImage("assets/csv.png");
+      case "mp3":
+        return AssetImage("assets/mp3.png");
+      case "mp4":
+        return AssetImage("assets/mp4.png");
+      case "txt":
+        return AssetImage("assets/txt.png");
+      case "xlsx":
+        return AssetImage("assets/xlsx.png");
+      default:
+        return NetworkImage(path);
+    }
   }
 }

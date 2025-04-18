@@ -69,91 +69,46 @@ class _RoleWidgetState extends State<RoleWidget> {
                               ),
                             ],
                           ),
-                          child: Table(
-                            border: TableBorder.symmetric(
-                              inside: BorderSide(color: Colors.grey, width: 0.5),
-                              outside: BorderSide.none,
-                            ),
-                            columnWidths: const <int, TableColumnWidth>{
-                              0: FixedColumnWidth(50), // No
-                              1: FlexColumnWidth(2), // Role Name
-                              2: FlexColumnWidth(3), // Deskripsi
-                            },
-                            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+                          child: Column(
                             children: [
-                              TableRow(
-                                decoration: BoxDecoration(
-                                  color: Colors.blueAccent,
-                                  borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                              // Header - judul
+                              Padding(
+                                padding: const EdgeInsets.all(12.0),
+                                child: Text(
+                                  'Role Information',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 20,
+                                  ),
                                 ),
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Text(
-                                      'No.',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Text(
-                                      'Role Name',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Text(
-                                      'Description',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
-                                        fontSize: 16,
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
-                              // Tampilkan data role dengan nomor
-                              ...roles.asMap().entries.map(
-                                (entry) {
-                                  int index = entry.key;
-                                  var role = entry.value;
-                                  return TableRow(
-                                    children: [
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                                        child: Text(
-                                          "${index + 1}",
-                                          style: TextStyle(fontSize: 14),
-                                          textAlign: TextAlign.center,
+                              // Tampilkan data role sebagai paragraf
+                              ...roles.map(
+                                (role) {
+                                  return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 10.0, horizontal: 10.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${role['name']}',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 16,
+                                          ),
                                         ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 8.0),
-                                        child: Text(
-                                          role['name'],
-                                          style: TextStyle(fontSize: 14),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Description: ${role['description']}',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                          ),
                                         ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 12.0, vertical: 8.0),
-                                        child: Text(
-                                          role['description'],
-                                          style: TextStyle(fontSize: 14),
-                                        ),
-                                      ),
-                                    ],
+                                        SizedBox(height: 12),
+                                      ],
+                                    ),
                                   );
                                 },
                               ).toList(),

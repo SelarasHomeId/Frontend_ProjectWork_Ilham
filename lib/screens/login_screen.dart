@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/home_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
@@ -206,87 +208,11 @@ class _LoginScreenState extends State<LoginScreen> {
       });
 
       // Menampilkan dialog
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Container untuk background merah dan ikon
-                Container(
-                  width:
-                      double.infinity, // Agar container memenuhi lebar dialog
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.red, // Background merah
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                  ),
-                  child: Center(
-                    child: AnimatedScale(
-                      duration: Duration(seconds: 1),
-                      scale: 1.2, // Memberikan efek animasi pada ikon
-                      child: Icon(
-                        Icons.error,
-                        color: Colors.white,
-                        size: 80, // Ukuran ikon yang besar
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                // Judul dan pesan
-                Text(
-                  'Login Error',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                // Tombol OK
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  style: TextButton.styleFrom(
-                    backgroundColor: Colors.red[900],
-                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    'OK',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                SizedBox(height: 20),
-              ],
-            ),
-          );
-        },
-      );
+      General.showDialogError(
+          context: context,
+          title: "Login Error",
+          message: "Email atau Password Salah, Silahkan Input Kembali ",
+          confirmButtonText: "Oke");
     });
   }
 
@@ -506,8 +432,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           String email = _resetEmailController.text.trim();
 
                           if (email.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                content: Text("Email tidak boleh kosong")));
+                            General.showSnackBar(
+                                context, "Email tidak boleh kosong");
                             return;
                           }
 
@@ -529,16 +455,22 @@ class _LoginScreenState extends State<LoginScreen> {
                                 response['success'] == true) {
                               _showResetSuccessDialog();
                             } else {
-                              String errorMessage = response?['message'] ??
-                                  'Mohon Maaf Email Tidak Terdaftar';
-                              _showErrorResetDialog(errorMessage);
+                              General.showDialogError(
+                                  context: context,
+                                  title: "error",
+                                  message: 'Email Tidak Terdaftar: $e',
+                                  confirmButtonText: "oke");
                             }
                           } catch (e) {
                             debugPrint('Error saat mengirim email reset: $e');
                             setState(() {
                               _isLoading = false;
                             });
-                            _showErrorResetDialog('Terjadi kesalahan: $e');
+                            General.showDialogError(
+                                context: context,
+                                title: "Error",
+                                message: 'Terjadi kesalahan: $e',
+                                confirmButtonText: "Oke");
                           }
                         },
                   child: _isLoading
@@ -610,93 +542,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     backgroundColor: Colors.green,
                   ),
                 ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-// Menampilkan dialog error jika gagal mengirim reset password
-  void _showErrorResetDialog(String message) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15.0),
-          ),
-          backgroundColor: Colors.white,
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned(
-                      top: -15,
-                      right: -15,
-                      child: GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).pop();
-                        },
-                        child: MouseRegion(
-                          onEnter: (_) {
-                            setState(() {
-                              _isHovered = true;
-                            });
-                          },
-                          onExit: (_) {
-                            setState(() {
-                              _isHovered = false;
-                            });
-                          },
-                          child: AnimatedScale(
-                            scale: _isIconClicked ? 0.7 : 1.0,
-                            duration: Duration(milliseconds: 150),
-                            curve: Curves.easeInOut,
-                            child: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Colors.white,
-                              child: Icon(
-                                Icons.close,
-                                color: _isHovered ? Colors.red : Colors.black,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: Colors.red,
-                          size: 40,
-                        ),
-                        SizedBox(width: 10),
-                        Text(
-                          'Error',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                SizedBox(height: 20),
-                Text(
-                  message,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15),
-                ),
-                SizedBox(height: 20),
               ],
             ),
           ),

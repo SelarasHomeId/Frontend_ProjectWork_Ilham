@@ -554,11 +554,11 @@ class ApiService {
       endpoint =
           '/task/file/$taskId${params != null ? General.buildQueryParams(params) : ""}';
     } else if (method == 'POST') {
-      endpoint = '/task/file'; // Endpoint untuk create board
+      endpoint = '/task/file';
     } else if (method == 'PUT' && fileId != null) {
-      endpoint = '/task/file/$fileId'; // Endpoint untuk update board
+      endpoint = '/task/file/$fileId';
     } else if (method == 'DELETE' && fileId != null) {
-      endpoint = '/task/file/$taskId'; // Endpoint untuk delete board
+      endpoint = '/task/file/$fileId';
     } else {
       throw Exception('Parameter tidak lengkap untuk operasi $method');
     }
@@ -646,13 +646,15 @@ class ApiService {
     int? commentId,
     int? taskId,
     Map<String, dynamic>? data,
+    Map<String, String>? params,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
     // Tentukan endpoint berdasarkan metode
     String endpoint;
     if (method == 'GET') {
-      endpoint = '/task/comment/${commentId != null ? "/$commentId" : ""}';
+      endpoint =
+          '/task/comment${taskId != null ? "/$taskId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
     } else if (method == 'POST') {
       endpoint = '/task/comment';
     } else if (method == 'PUT' && commentId != null) {
@@ -699,6 +701,7 @@ class ApiService {
     int? checklistId,
     int? taskId,
     Map<String, dynamic>? data,
+    Map<String, String>? params,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -707,7 +710,7 @@ class ApiService {
     String endpoint;
     if (method == 'GET') {
       endpoint =
-          '/task/checklist/${checklistId != null ? "/$checklistId" : ""}';
+          '/task/checklist${taskId != null ? "/$taskId" : ""}${params != null ? General.buildQueryParams(params) : ""}';
     } else if (method == 'POST') {
       endpoint = '/task/checklist';
     } else if (method == 'PUT' && checklistId != null) {
@@ -777,6 +780,62 @@ class ApiService {
     }
   }
 
+  static Future<dynamic> handleChecklistItem({
+    required String method,
+    int? checklistItemId,
+    int? checklistId,
+    Map<String, dynamic>? data,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token'); // Ambil token dari local storage
+
+    // Tentukan endpoint berdasarkan metode
+    String endpoint;
+    if (method == 'GET') {
+      endpoint =
+          '/task/checklist/item${checklistItemId != null ? "/$checklistItemId" : ""}';
+    } else if (method == 'POST') {
+      endpoint = '/task/checklist/item';
+    } else if (method == 'PUT' && checklistItemId != null) {
+      endpoint = '/task/checklist/item/$checklistItemId';
+    } else if (method == 'PATCH' && checklistItemId != null) {
+      endpoint = '/task/checklist/item/convert_to_task/$checklistItemId';
+    } else if (method == 'DELETE' && checklistItemId != null) {
+      endpoint = '/task/checklist/item/$checklistItemId';
+    } else {
+      throw Exception('Parameter tidak lengkap untuk operasi $method');
+    }
+
+    // Panggil API sesuai metode
+    final response = await apiRequest(
+      method: method,
+      endpoint: endpoint,
+      body: {
+        if (checklistId != null) ...{
+          "task_checklist_id": checklistId,
+        },
+        ...(data ?? {}),
+      },
+      token: token,
+    );
+
+    try {
+      final encodeValue = json.encode(response);
+      log(encodeValue, name: endpoint);
+    } catch (e) {}
+
+    // Validasi response
+    if (response != null && response['success'] == true) {
+      if (method == 'GET') {
+        final currentData = response['data']['data'] ?? [];
+        return List<Map<String, dynamic>>.from(currentData);
+      } else {
+        return response['data']; // Return hasil operasi selain GET
+      }
+    } else {
+      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+    }
+  }
   //END TASK================================================================
 
   //START MASTER DATA================================================================

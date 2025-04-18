@@ -279,7 +279,7 @@ class _WidgetBoardState extends State<WidgetBoard> {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         child: Row(
           crossAxisAlignment:
-              CrossAxisAlignment.start, // Agar checkbox di atas dan di kiri
+              CrossAxisAlignment.center, // Agar checkbox di atas dan di kiri
           children: [
             // Container pertama untuk checkbox (paling kiri)
             Align(
@@ -359,169 +359,176 @@ class _WidgetBoardState extends State<WidgetBoard> {
                       fontSize: 16,
                     ),
                   ),
-                  SizedBox(height: 5),
                   // Row untuk menampilkan ikon description dan ikon alarm bersama dengan teks jika ada
-                  Wrap(
-                    spacing: 5,
-                    runSpacing: 3,
-                    children: [
-                      if (item.watch == true) ...[
-                        Icon(
-                          Icons.remove_red_eye_outlined, // Ikon dokumen
-                          size: 20, // Ukuran ikon
-                          color: Colors.grey, // Warna ikon
-                        ),
-                      ],
-                      // Ikon description jika item.description = true
-                      if (item.description == true) ...[
-                        Icon(
-                          Icons.description, // Ikon dokumen
-                          size: 20, // Ukuran ikon
-                          color: Colors.grey, // Warna ikon
-                        ),
-                      ],
-                      if (item.comment != 0) ...[
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.comment, // Ikon komentar
-                              size: 20, // Ukuran ikon
-                              color: Colors.grey, // Warna ikon
-                            ),
-                            SizedBox(width: 3),
-                            Text(
-                              '${item.comment}', // Menampilkan jumlah komentar
-                              style: TextStyle(
-                                fontSize: 14, // Ukuran teks
-                                color: Colors.grey, // Warna teks
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-
-                      if (item.file != 0) ...[
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.attachment, // Ikon komentar
-                              size: 20, // Ukuran ikon
-                              color: Colors.grey, // Warna ikon
-                            ),
-                            SizedBox(width: 3),
-                            Text(
-                              '${item.file}', // Menampilkan jumlah komentar
-                              style: TextStyle(
-                                fontSize: 14, // Ukuran teks
-                                color: Colors.grey, // Warna teks
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                      // Ikon alarm dan due date jika ada
-                      if (item.dueDate != null) ...[
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 3), // Padding untuk ikon dan teks
-                          decoration: BoxDecoration(
-                            color: item.isCompleted
-                                ? Colors.green.withOpacity(
-                                    0.2) // Background hijau jika completed
-                                : (DateTime.parse(item.dueDate!)
-                                        .isBefore(DateTime.now())
-                                    ? Colors.red.withOpacity(
-                                        0.2) // Background merah jika overdue
-                                    : Colors.black.withOpacity(
-                                        0.1)), // Background hitam jika belum overdue
-                            borderRadius: BorderRadius.circular(
-                                50), // Membuat sudut melengkung pada background
+                  if (item.watch == true ||
+                      item.description == true ||
+                      item.comment != 0 ||
+                      item.file != 0 ||
+                      item.dueDate != null ||
+                      item.checklist != null) ...[
+                    SizedBox(height: 5),
+                    Wrap(
+                      spacing: 5,
+                      runSpacing: 3,
+                      children: [
+                        if (item.watch == true) ...[
+                          Icon(
+                            Icons.remove_red_eye_outlined, // Ikon dokumen
+                            size: 20, // Ukuran ikon
+                            color: Colors.grey, // Warna ikon
                           ),
-                          child: Row(
+                        ],
+                        // Ikon description jika item.description = true
+                        if (item.description == true) ...[
+                          Icon(
+                            Icons.description, // Ikon dokumen
+                            size: 20, // Ukuran ikon
+                            color: Colors.grey, // Warna ikon
+                          ),
+                        ],
+                        if (item.comment != 0) ...[
+                          Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                Icons.alarm, // Ikon jam
+                                Icons.comment, // Ikon komentar
                                 size: 20, // Ukuran ikon
-                                color: item.isCompleted
-                                    ? Colors.green
-                                    : (DateTime.parse(item.dueDate!)
-                                            .isBefore(DateTime.now())
-                                        ? Colors.red
-                                        : Colors
-                                            .black), // Menentukan warna ikon
+                                color: Colors.grey, // Warna ikon
                               ),
-                              SizedBox(width: 8),
+                              SizedBox(width: 3),
                               Text(
-                                // Format tanggal sesuai kondisi
-                                DateFormat(item.dueDate!.substring(0, 4) !=
-                                            DateTime.now().year.toString()
-                                        ? 'MMM dd, yyyy'
-                                        : 'MMM dd')
-                                    .format(DateTime.parse(item.dueDate!)),
+                                '${item.comment}', // Menampilkan jumlah komentar
                                 style: TextStyle(
+                                  fontSize: 14, // Ukuran teks
+                                  color: Colors.grey, // Warna teks
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+
+                        if (item.file != 0) ...[
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.attachment, // Ikon komentar
+                                size: 20, // Ukuran ikon
+                                color: Colors.grey, // Warna ikon
+                              ),
+                              SizedBox(width: 3),
+                              Text(
+                                '${item.file}', // Menampilkan jumlah komentar
+                                style: TextStyle(
+                                  fontSize: 14, // Ukuran teks
+                                  color: Colors.grey, // Warna teks
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        // Ikon alarm dan due date jika ada
+                        if (item.dueDate != null) ...[
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 3), // Padding untuk ikon dan teks
+                            decoration: BoxDecoration(
+                              color: item.isCompleted
+                                  ? Colors.green.withOpacity(
+                                      0.2) // Background hijau jika completed
+                                  : (DateTime.parse(item.dueDate!)
+                                          .isBefore(DateTime.now())
+                                      ? Colors.red.withOpacity(
+                                          0.2) // Background merah jika overdue
+                                      : Colors.black.withOpacity(
+                                          0.1)), // Background hitam jika belum overdue
+                              borderRadius: BorderRadius.circular(
+                                  50), // Membuat sudut melengkung pada background
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.alarm, // Ikon jam
+                                  size: 20, // Ukuran ikon
                                   color: item.isCompleted
                                       ? Colors.green
                                       : (DateTime.parse(item.dueDate!)
                                               .isBefore(DateTime.now())
                                           ? Colors.red
                                           : Colors
-                                              .black), // Menentukan warna teks berdasarkan kondisi
+                                              .black), // Menentukan warna ikon
                                 ),
-                              ),
-                              SizedBox(width: 8),
-                            ],
+                                SizedBox(width: 8),
+                                Text(
+                                  // Format tanggal sesuai kondisi
+                                  DateFormat(item.dueDate!.substring(0, 4) !=
+                                              DateTime.now().year.toString()
+                                          ? 'MMM dd, yyyy'
+                                          : 'MMM dd')
+                                      .format(DateTime.parse(item.dueDate!)),
+                                  style: TextStyle(
+                                    color: item.isCompleted
+                                        ? Colors.green
+                                        : (DateTime.parse(item.dueDate!)
+                                                .isBefore(DateTime.now())
+                                            ? Colors.red
+                                            : Colors
+                                                .black), // Menentukan warna teks berdasarkan kondisi
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
-                      if (item.checklist != null) ...[
-                        // Memberikan jarak antara icon description dan icon alarm
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                              horizontal: 5,
-                              vertical: 3), // Padding untuk ikon dan teks
-                          decoration: BoxDecoration(
-                            color: General.checkChecklistCompleted(
-                                    item.checklist!)
-                                ? Colors.green.withOpacity(
-                                    0.2) // Background hijau jika completed
-                                : Colors.black.withOpacity(
-                                    0.1), // Background hitam jika belum overdue
-                            borderRadius: BorderRadius.circular(50),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.checklist, // Ikon jam
-                                size: 20, // Ukuran ikon
-                                color: General.checkChecklistCompleted(
-                                        item.checklist!)
-                                    ? Colors.green
-                                    : Colors.black, // Menentukan warna ikon
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                item.checklist!,
-                                style: TextStyle(
+                        ],
+                        if (item.checklist != null) ...[
+                          // Memberikan jarak antara icon description dan icon alarm
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 5,
+                                vertical: 3), // Padding untuk ikon dan teks
+                            decoration: BoxDecoration(
+                              color: General.checkChecklistCompleted(
+                                      item.checklist!)
+                                  ? Colors.green.withOpacity(
+                                      0.2) // Background hijau jika completed
+                                  : Colors.black.withOpacity(
+                                      0.1), // Background hitam jika belum overdue
+                              borderRadius: BorderRadius.circular(50),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.checklist, // Ikon jam
+                                  size: 20, // Ukuran ikon
                                   color: General.checkChecklistCompleted(
                                           item.checklist!)
                                       ? Colors.green
-                                      : Colors
-                                          .black, // Menentukan warna teks berdasarkan kondisi
+                                      : Colors.black, // Menentukan warna ikon
                                 ),
-                              ),
-                            ],
+                                SizedBox(width: 8),
+                                Text(
+                                  item.checklist!,
+                                  style: TextStyle(
+                                    color: General.checkChecklistCompleted(
+                                            item.checklist!)
+                                        ? Colors.green
+                                        : Colors
+                                            .black, // Menentukan warna teks berdasarkan kondisi
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                  SizedBox(height: 8),
+                    ),
+                  ],
                   if (item.assignToUser.isNotEmpty) ...[
+                    SizedBox(height: 8),
                     Wrap(
                       spacing: 5, // Jarak antar ikon
                       runSpacing:
