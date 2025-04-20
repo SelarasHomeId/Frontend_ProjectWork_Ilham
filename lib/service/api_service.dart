@@ -858,6 +858,9 @@ class ApiService {
       endpoint = '/user'; // Endpoint untuk create user
     } else if (method == 'PUT' && userId != null) {
       endpoint = '/user/$userId'; // Endpoint untuk update user
+    } else if (method == 'PATCH' && userId != null) {
+      endpoint =
+          '/user/change-password/$userId'; // Endpoint untuk change password user
     } else if (method == 'DELETE' && userId != null) {
       endpoint = '/user/$userId'; // Endpoint untuk delete user
     } else {
@@ -897,7 +900,10 @@ class ApiService {
           'count': count,
         };
       }
-    } else if (method == 'DELETE' || method == 'POST' || method == 'PUT') {
+    } else if (method == 'DELETE' ||
+        method == 'POST' ||
+        method == 'PUT' ||
+        method == 'PATCH') {
       // Untuk operasi selain GET (POST, PUT, DELETE), hanya periksa success dan code
       if (response != null &&
           response['success'] == true &&

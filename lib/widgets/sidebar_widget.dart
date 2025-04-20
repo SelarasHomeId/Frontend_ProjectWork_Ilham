@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/utils/general.dart';
+import 'package:selarashomeid/screens/profile_screen.dart';
 
 class Sidebar extends StatefulWidget {
   final int roleId;
@@ -55,6 +56,26 @@ class _SidebarState extends State<Sidebar> {
         );
       }
     }
+  }
+
+  Route _createRoute(Widget targetScreen) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0); // Mulai dari kanan
+        const end = Offset.zero; // Berakhir di posisi normal
+        const curve = Curves.easeInOut;
+
+        var tween =
+            Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+        var offsetAnimation = animation.drive(tween);
+
+        return SlideTransition(
+          position: offsetAnimation,
+          child: child,
+        );
+      },
+    );
   }
 
   // Fungsi untuk menampilkan dialog konfirmasi logout
@@ -199,16 +220,23 @@ class _SidebarState extends State<Sidebar> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            CircleAvatar(
-                              radius: screenWidth * 0.09,
-                              backgroundColor:
-                                  General.getColorFromInitial(user['initials']),
-                              child: Text(
-                                user['initials']!,
-                                style: TextStyle(
-                                  fontSize: screenWidth * 0.08,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color.fromARGB(255, 21, 55, 83),
+                            GestureDetector(
+                              onTap: () {
+                                Navigator.of(context)
+                                    .push(_createRoute(ProfileScreen()));
+                              },
+                              child: CircleAvatar(
+                                radius: screenWidth * 0.09,
+                                backgroundColor: General.getColorFromInitial(
+                                    user['initials']),
+                                child: Text(
+                                  user['initials']!,
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.08,
+                                    fontWeight: FontWeight.bold,
+                                    color:
+                                        const Color.fromARGB(255, 21, 55, 83),
+                                  ),
                                 ),
                               ),
                             ),

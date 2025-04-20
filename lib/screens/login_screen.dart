@@ -57,6 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
           final token = response['data']['token'];
           final email = response['data']['data']['email'];
           final name = response['data']['data']['name'];
+          final createdAt = response['data']['data']['created_at'];
           final id = response['data']['data']['id'];
           final roleId = response['data']['data']['role']['id'];
           final divisiId = response['data']['data']['divisi']['id'];
@@ -67,6 +68,7 @@ class _LoginScreenState extends State<LoginScreen> {
             'token': token,
             'email': email,
             'name': name,
+            'createdAt': createdAt,
             'id': id,
             'roleId': roleId,
             'divisiId': divisiId,
@@ -495,19 +497,6 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-// Menampilkan dialog loading saat menunggu API response
-  void _showLoadingDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false, // Agar pengguna tidak bisa menutup dialog ini
-      builder: (BuildContext context) {
-        return Center(
-          child: CircularProgressIndicator(),
-        );
-      },
-    );
-  }
-
 // Menampilkan dialog sukses reset password
   void _showResetSuccessDialog() {
     showDialog(
@@ -706,14 +695,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           backgroundColor:
                                               Color.fromARGB(255, 213, 37, 29),
                                           foregroundColor: Colors.white),
-                                      child: _isLoading
-                                          ? CircularProgressIndicator(
-                                              valueColor:
-                                                  AlwaysStoppedAnimation<Color>(
-                                                      const Color.fromARGB(
-                                                          255, 255, 255, 255)),
-                                            )
-                                          : Text('Login'),
+                                      child: Text('Login'),
                                     ),
                                   ),
                                   SizedBox(height: 10),

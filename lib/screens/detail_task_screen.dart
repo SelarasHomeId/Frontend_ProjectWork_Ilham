@@ -32,12 +32,14 @@ class DetailTaskScreen extends StatefulWidget {
 
 class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late Future<Map<String, String>> userProfileFuture;
-
+  Map<String, String> userProfile = {};
   late ValueNotifier<bool> onExpandableValue;
 
   late TextEditingController textDescController;
   late TextEditingController textTitleController;
   late TextEditingController textCommentController;
+  late TextEditingController textEditCommentController =
+      TextEditingController();
   late TextEditingController textChecklistController;
   late TextEditingController _itemTextController = TextEditingController();
   late TextEditingController _checklistEditTextController =
@@ -100,7 +102,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   @override
   void initState() {
     userProfileFuture = General.getUserProfile();
-
+    userProfileFuture.then((data) {
+      setState(() {
+        userProfile = data;
+      });
+    });
     onExpandableValue = ValueNotifier<bool>(false);
     onLoadingNotifier = ValueNotifier<bool>(false);
 
@@ -121,6 +127,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textDescController = TextEditingController();
     textTitleController = TextEditingController();
     textCommentController = TextEditingController();
+    textEditCommentController = TextEditingController();
     textChecklistController = TextEditingController();
     currentWatch = ValueNotifier<bool>(false);
     currentIsCompleted = ValueNotifier<bool>(false);
@@ -255,6 +262,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textDescController.dispose();
     textTitleController.dispose();
     textCommentController.dispose();
+    textEditCommentController.dispose();
     textChecklistController.dispose();
     _itemTextController.dispose();
     _checklistEditTextController.dispose();
@@ -1340,9 +1348,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         return {
           "id": e["id"],
           "comment": e["comment"],
-          "created_at": e["created_at"],
-          // Jika perlu menampilkan user, mungkin perlu penyesuaian dari API
-          "user_name": e['created_by']['name'], // Ambil dari created_by task
+          "is_history": e["is_history"],
+          "updated_at": e["updated_at"],
+          "user_name": e['created_by']['name'],
+          "user_id": e['created_by']['id'],
         };
       }).toList();
     }
@@ -1568,6 +1577,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                               );
                             }
                             loadFile();
+                            loadComments();
                             onLoadingNotifier.value = false;
                             onLoadingFileNotifier.value = false;
                           },
@@ -1865,11 +1875,20 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           itemBuilder: (context, index) {
             final comment = commentList[index];
             return ListTile(
-              leading: CircleAvatar(
-                backgroundColor: General.getColorFromInitial(
-                    General.getInitials(comment['user_name'])),
-                child: Text(General.getInitials(comment['user_name'])),
-              ),
+              leading: comment['is_history'] == true
+                  ? Image.asset(
+                      'assets/selaras_logo2.png',
+                      width: 40,
+                      height: 40,
+                    )
+                  : CircleAvatar(
+                      backgroundColor: General.getColorFromInitial(
+                        General.getInitials(comment['user_name']),
+                      ),
+                      child: Text(
+                        General.getInitials(comment['user_name']),
+                      ),
+                    ),
               title: Text(comment['user_name']),
               subtitle: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1877,12 +1896,41 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   Text(comment['comment']),
                   Text(
                     DateFormat('dd MMM yyyy HH:mm').format(
-                      DateTime.parse(comment['created_at']).toLocal(),
+                      DateTime.parse(comment['updated_at']).toLocal(),
                     ),
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
               ),
+              trailing: (comment['is_history'] == false &&
+                      comment['user_id'] ==
+                          int.tryParse(userProfile['id'].toString()))
+                  ? PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert),
+                      offset: Offset(0, 40),
+                      onSelected: (String result) async {
+                        switch (result) {
+                          case 'edit':
+                            _showEditCommentDialog(
+                                comment['id'], comment['comment']);
+                            break;
+                          case 'delete':
+                            await _deleteComment(comment['id']);
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Edit'),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete'),
+                        ),
+                      ],
+                    )
+                  : null,
             );
           },
         );
@@ -1903,6 +1951,69 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     if (response != null) {
       textCommentController.clear();
+      await loadComments();
+    }
+  }
+
+  Future<void> _showEditCommentDialog(
+      int commentId, String currentComment) async {
+    textEditCommentController.text = currentComment;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Comment'),
+          content: TextField(
+            controller: textEditCommentController,
+            decoration: InputDecoration(hintText: 'Enter comment'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                textEditCommentController.clear();
+                Navigator.pop(context);
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final comment = textEditCommentController.text.trim();
+                if (comment.isNotEmpty) {
+                  await _editComment(commentId, comment);
+                  textEditCommentController.clear();
+                  Navigator.pop(context);
+                }
+              },
+              child: Text('Edit'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _editComment(int commentId, String comment) async {
+    final data = {"comment": comment};
+
+    final response = await ApiService.handleComment(
+      method: 'PUT',
+      data: data,
+      commentId: commentId,
+    );
+
+    if (response != null) {
+      textEditCommentController.clear();
+      await loadComments();
+    }
+  }
+
+  Future<void> _deleteComment(int commentId) async {
+    final response = await ApiService.handleComment(
+      method: 'DELETE',
+      commentId: commentId,
+    );
+
+    if (response != null) {
       await loadComments();
     }
   }
@@ -2396,7 +2507,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     if (response != null) {
-      await loadChecklists(); // Refresh checklist setelah menambah item
+      await loadChecklists();
+      await loadComments();
     }
   }
 
@@ -2522,8 +2634,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     if (response != null) {
-      // Setelah update, refresh checklist
-      await loadChecklists(); // Refresh checklist setelah mengupdate status item
+      await loadChecklists();
+      await loadComments();
     }
   }
 
@@ -2574,8 +2686,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     if (response != null) {
-      // Setelah update, refresh checklist
-      await loadChecklists(); // Refresh checklist setelah mengupdate status item
+      await loadChecklists();
+      await loadComments();
     }
   }
 
@@ -2586,7 +2698,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     if (response != null) {
-      await loadChecklists(); // Refresh checklist setelah menghapus checklist
+      await loadChecklists();
+      await loadComments();
     }
   }
 
@@ -3029,7 +3142,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     if (response != null) {
       textChecklistController.clear();
-      await loadChecklists(); // Load checklist setelah berhasil ditambahkan
+      await loadChecklists();
+      await loadComments();
     }
   }
 
@@ -3047,7 +3161,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
       // Jika berhasil, lakukan sesuatu, misalnya memuat ulang data
       setState(() {
-        loadFile(); // Memuat ulang daftar file
+        loadFile();
+        loadComments();
       });
 
       // Tampilkan snackbar atau feedback kepada pengguna

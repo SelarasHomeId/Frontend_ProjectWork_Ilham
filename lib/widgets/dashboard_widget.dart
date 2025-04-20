@@ -30,7 +30,6 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   List<Map<String, dynamic>> _baseaffiliates = [];
   List<Map<String, dynamic>> _calculateTaskData = [];
 
-  bool _isLoadingData = false;
   bool _isLoadingContacts = false;
   bool _isLoadingAffiliate = false;
   int _rowsPerPage = 10;
@@ -78,14 +77,12 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     await _fetchAffiliates();
 
     setState(() {
-      _isLoadingData = false;
       _isLoadingContacts = false;
       _isLoadingAffiliate = false;
     });
   }
 
   Future<void> _fetchData() async {
-    setState(() => _isLoadingData = true);
     final data = await ApiService.fetchDashboard(widget.token);
     setState(() {
       _chartData = data?['data'];
@@ -910,23 +907,6 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   }
 
   // Widget to create legend for each chart section
-  Widget _buildLegend(String label, Color color) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-    );
-  }
 }
 
 class ContactDataSource extends DataTableSource {

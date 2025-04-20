@@ -234,25 +234,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
     });
   }
 
-  // Function for sorting data
-  void _sort<T>(Comparable<T> Function(dynamic d) getField, int columnIndex,
-      bool ascending) {
-    filteredUsers.sort((a, b) {
-      if (!ascending) {
-        final temp = a;
-        a = b;
-        b = temp;
-      }
-      final aValue = getField(a);
-      final bValue = getField(b);
-      return Comparable.compare(aValue, bValue);
-    });
-    setState(() {
-      _sortColumnIndex = columnIndex;
-      _sortAscending = ascending;
-    });
-  }
-
   // Function to create route for navigating with custom animation
   Route _createRoute(Widget targetScreen) {
     return PageRouteBuilder(

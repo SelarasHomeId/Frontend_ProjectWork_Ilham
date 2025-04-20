@@ -1,7 +1,5 @@
 import 'package:selarashomeid/widgets/board/appflowy_board.dart';
 import 'package:flutter/widgets.dart';
-import 'package:selarashomeid/widgets/board/appflowy_board.dart';
-
 import '../../utils/log.dart';
 import '../reorder_flex/drag_state.dart';
 import '../reorder_flex/drag_target.dart';

@@ -28,6 +28,7 @@ abstract class AppFlowyGroupItem extends ReoderFlexItem {
 ///
 /// All there operations will notify listeners by default.
 ///
+// ignore: must_be_immutable
 class AppFlowyGroupController extends ChangeNotifier with EquatableMixin {
   AppFlowyGroupController({required this.groupData});
 
@@ -190,6 +191,7 @@ class AppFlowyGroupController extends ChangeNotifier with EquatableMixin {
 }
 
 /// [AppFlowyGroupData] represents the data of each group of the Board.
+// ignore: must_be_immutable
 class AppFlowyGroupData<CustomData> extends ReoderFlexItem with EquatableMixin {
   AppFlowyGroupData({
     required this.id,

@@ -56,18 +56,22 @@ class General {
 
   static Future<Map<String, String>> getUserProfile() async {
     final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getInt('id') ?? 0;
     final name = prefs.getString('name') ?? 'User Name';
     final email = prefs.getString('email') ?? 'user@example.com';
     final roleName = prefs.getString('roleName') ?? ' - ';
     final divisiName = prefs.getString('divisiName') ?? ' - ';
+    final createdAt = prefs.getString('createdAt') ?? ' - ';
     final initials = General.getInitials(name);
 
     return {
+      'id': id.toString(),
       'name': name,
       'email': email,
       'initials': initials,
       'roleName': roleName,
       'divisiName': divisiName,
+      'createdAt': createdAt,
     };
   }
 
