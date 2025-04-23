@@ -565,7 +565,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
           General.showSnackBar(context, 'Failed to delete Division');
         }
       } catch (e) {
-        General.showSnackBar(context, 'Error deleting Division: $e');
+        General.showSnackBar(context, '$e');
       } finally {
         setState(() {
           _isLoading = false;

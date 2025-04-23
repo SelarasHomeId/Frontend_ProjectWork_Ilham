@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/services.dart';
+import 'package:selarashomeid/utils/general.dart';
 
 class DashboardWidget extends StatefulWidget {
   final int roleId;
@@ -29,6 +30,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   List<Map<String, dynamic>> _affiliates = [];
   List<Map<String, dynamic>> _baseaffiliates = [];
   List<Map<String, dynamic>> _calculateTaskData = [];
+  int _selectedWorkspaceIndex = 0;
 
   bool _isLoadingContacts = false;
   bool _isLoadingAffiliate = false;
@@ -112,9 +114,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
       }
     } catch (e, stackTrace) {
       print("Error fetching contacts: $e, $stackTrace");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat kontak: ${e.toString()}')),
-      );
+      General.showSnackBar(context, 'Gagal memuat kontak: ${e.toString()}');
     } finally {
       setState(() => _isLoadingContacts = false);
     }
@@ -155,6 +155,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     setState(() {
       if (keyword.isEmpty) {
         _contacts = List.from(_basecontacts);
+        Text("Pesan tidak ditemukan");
       } else {
         _contacts = _basecontacts
             .where((contact) =>
@@ -287,9 +288,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
       if (await Permission.manageExternalStorage.request().isGranted) {
         directory = Directory("/storage/emulated/0/Download");
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Izin penyimpanan tidak diberikan.')),
-        );
+        General.showSnackBar(context, 'Izin penyimpanan tidak diberikan.');
         openAppSettings(); // Arahkan ke pengaturan aplikasi
         return;
       }
@@ -305,9 +304,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
           ..createSync(recursive: true)
           ..writeAsBytesSync(excel.encode()!);
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('File Excel berhasil disimpan di: $filePath')),
-        );
+        General.showSnackBar(
+            context, 'File Excel berhasil disimpan di: $filePath');
 
         print('File berhasil disimpan di: $filePath');
       } catch (e) {
@@ -412,6 +410,136 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                       ],
                     ),
                   ),
+                  SizedBox(height: 10.0),
+
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          spreadRadius: 2,
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Task Summary',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+
+                        // Workspace selection buttons
+                        SizedBox(
+                          height: 40,
+                          child: ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: _calculateTaskData.length,
+                            itemBuilder: (context, index) {
+                              return Padding(
+                                padding: EdgeInsets.only(right: 8),
+                                child: ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor:
+                                        _selectedWorkspaceIndex == index
+                                            ? Colors.blue[800]
+                                            : Colors.grey[200],
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _selectedWorkspaceIndex = index;
+                                    });
+                                  },
+                                  child: Text(
+                                    _calculateTaskData[index]['workspace_name'],
+                                    style: TextStyle(
+                                      color: _selectedWorkspaceIndex == index
+                                          ? Colors.white
+                                          : Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        SizedBox(height: 16),
+
+                        // Display boards
+                        if (_isLoadingAffiliate)
+                          Center(child: CircularProgressIndicator()),
+                        if (_calculateTaskData.isNotEmpty)
+                          _calculateTaskData[_selectedWorkspaceIndex]
+                                          ['boards'] !=
+                                      null &&
+                                  _calculateTaskData[_selectedWorkspaceIndex]
+                                          ['boards']
+                                      .isNotEmpty
+                              ? SizedBox(
+                                  height: 145,
+                                  child: ListView.separated(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: _calculateTaskData[
+                                            _selectedWorkspaceIndex]['boards']
+                                        .length,
+                                    separatorBuilder: (context, index) =>
+                                        SizedBox(width: 16),
+                                    itemBuilder: (context, index) {
+                                      final board = _calculateTaskData[
+                                              _selectedWorkspaceIndex]['boards']
+                                          [index];
+                                      return Container(
+                                        width: 280,
+                                        margin: EdgeInsets.all(10),
+                                        child: createCard(
+                                          label1:
+                                              'Count: ${board["count_task"].toString()}',
+                                          label2: board['has_new'] == true
+                                              ? 'Has New!'
+                                              : '',
+                                          description: board['name'],
+                                          date: DateFormat(
+                                                  'EEE, dd MMM y | hh:MM:ss')
+                                              .format(DateTime.parse(
+                                                      board['updated_at'])
+                                                  .toLocal()),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                )
+                              : Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 20),
+                                    child: Text(
+                                      "No boards to display",
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontStyle: FontStyle.italic,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                        if (_calculateTaskData.isEmpty)
+                          Center(child: CircularProgressIndicator()),
+                      ],
+                    ),
+                  ),
+
                   SizedBox(height: 10.0),
 
                   // Social Media Engagement Pie Chart
@@ -541,178 +669,6 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                   ] else ...[
                     Center(child: CircularProgressIndicator()),
                   ],
-                  SizedBox(height: 10.0),
-
-                  // Kontainer Calculation of Tasks
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(16.0),
-                    decoration: _containerDecoration(),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Calculation of tasks to date',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        SizedBox(height: 10),
-                        if (_calculateTaskData.isNotEmpty)
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children:
-                                _calculateTaskData.map<Widget>((workspace) {
-                              return Column(
-                                children: [
-                                  // Garis dan nama workspace
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Container(
-                                          height: 2,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Colors.grey[400]!,
-                                                Colors.transparent
-                                              ],
-                                              begin: Alignment.centerRight,
-                                              end: Alignment.centerLeft,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: EdgeInsets.symmetric(
-                                            horizontal: 10),
-                                        child: Text(
-                                          workspace['workspace_name'],
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: Container(
-                                          height: 2,
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              colors: [
-                                                Colors.grey[400]!,
-                                                Colors.transparent
-                                              ],
-                                              begin: Alignment.centerLeft,
-                                              end: Alignment.centerRight,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  SizedBox(height: 10),
-                                  if (workspace.containsKey('boards') &&
-                                      workspace['boards'] != null &&
-                                      workspace['boards'].isNotEmpty)
-                                    GridView.count(
-                                      shrinkWrap: true,
-                                      physics: NeverScrollableScrollPhysics(),
-                                      crossAxisCount:
-                                          2, // Maksimal 2 ikon per baris
-                                      crossAxisSpacing: 15, // Jarak antar kolom
-                                      mainAxisSpacing: 15, // Jarak antar baris
-                                      children: workspace['boards']
-                                          .map<Widget>((board) {
-                                        return Container(
-                                          padding: EdgeInsets.all(5),
-                                          decoration: BoxDecoration(
-                                            color: Colors.blue[100],
-                                            borderRadius:
-                                                BorderRadius.circular(10),
-                                          ),
-                                          child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              if (board['has_new'] == true)
-                                                Text(
-                                                  "Has New!", // Nama board
-                                                  textAlign: TextAlign.center,
-                                                  style: TextStyle(
-                                                    fontSize: 14,
-                                                    color: Colors.red,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              SizedBox(height: 5),
-                                              Icon(
-                                                Icons
-                                                    .assignment_turned_in, // Ikon baru
-                                                color: Colors.blue,
-                                                size: 50, // Ukuran lebih besar
-                                              ),
-                                              SizedBox(height: 5),
-                                              Text(
-                                                board['name'], // Nama board
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                              ),
-                                              SizedBox(height: 5),
-                                              Text(
-                                                '${board['count_task']} tasks', // Jumlah tugas
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                              SizedBox(height: 5),
-                                              Text(
-                                                DateFormat(
-                                                        'yyyy-MM-dd hh-MM-ss')
-                                                    .format(DateTime.parse(
-                                                            board['updated_at'])
-                                                        .toLocal()),
-                                                textAlign: TextAlign.center,
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    )
-                                  else
-                                    Center(
-                                      child: Padding(
-                                        padding:
-                                            EdgeInsets.symmetric(vertical: 20),
-                                        child: Text(
-                                          "No boards to display",
-                                          style: TextStyle(
-                                              fontSize: 16,
-                                              fontStyle: FontStyle.italic,
-                                              color: Colors.grey),
-                                        ),
-                                      ),
-                                    ),
-                                  SizedBox(height: 10),
-                                ],
-                              );
-                            }).toList(),
-                          )
-                        else
-                          Center(child: CircularProgressIndicator()),
-                      ],
-                    ),
-                  ),
                   SizedBox(height: 10.0),
 
                   // Kontainer Messaging dengan Tabel Contact
@@ -906,7 +862,107 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     );
   }
 
-  // Widget to create legend for each chart section
+  Widget createCard({
+    required String label1,
+    required String label2,
+    required String description,
+    required String date,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.3),
+            spreadRadius: 2,
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          )
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min, // Mengurangi tinggi keseluruhan
+        children: [
+          // Label Row
+          Row(
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue[50],
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  label1,
+                  style: TextStyle(
+                      color: Colors.blue[800],
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+              SizedBox(width: 8),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: label2 != "" ? Colors.orange[50] : Colors.white,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  label2,
+                  style: TextStyle(
+                      color: Colors.orange[800],
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 8), // Mengurangi spacing
+          // Title
+          Text(
+            description,
+            style: TextStyle(
+                fontSize: 16, fontWeight: FontWeight.bold, height: 1.3),
+          ),
+          SizedBox(height: 6), // Mengurangi spacing
+          // Date
+          Text(
+            date,
+            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget _buildWorkspaceCards(Map<String, dynamic> workspace) {
+  //   return Container(
+  //     height: 200, // Sesuaikan tinggi
+  //     child: ListView.builder(
+  //       scrollDirection: Axis.horizontal,
+  //       itemCount: workspace['boards']?.length ?? 0,
+  //       itemBuilder: (context, index) {
+  //         var board = workspace['boards'][index];
+  //         return Container(
+  //           width: 280, // Lebar card
+  //           margin: EdgeInsets.only(right: 16),
+  //           child: createCard(
+  //             label1: "Office",
+  //             label2: "Priority",
+  //             description: board['name'],
+  //             date: DateFormat('EEE.ddMMM y').format(
+  //               DateTime.parse(board['updated_at']).toLocal(),
+  //             ),
+  //           ),
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
 }
 
 class ContactDataSource extends DataTableSource {
@@ -927,99 +983,10 @@ class ContactDataSource extends DataTableSource {
         GestureDetector(
           onTap: () {
             if ((contact['message']?.toString() ?? '-').length > 30) {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return Dialog(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ), // Penutup untuk RoundedRectangleBorder
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.6,
-                        maxWidth: MediaQuery.of(context).size.height * 0.8,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Header Section
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[700],
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                topRight: Radius.circular(16),
-                              ),
-                            ),
-                            child: Center(
-                              child: AnimatedScale(
-                                duration: Duration(milliseconds: 500),
-                                scale: 1.2,
-                                child: Icon(
-                                  Icons.email,
-                                  color: Colors.white,
-                                  size: 80,
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 5),
-
-                          // Title
-                          Text(
-                            'Pesan Lengkap',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                          SizedBox(height: 5),
-
-                          // Scrollable Content
-                          Expanded(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              child: SingleChildScrollView(
-                                physics: AlwaysScrollableScrollPhysics(),
-                                child: Text(
-                                  contact['message']?.toString() ?? '-',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 5),
-
-                          // Close Button
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.grey[800],
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 30, vertical: 5),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'Tutup',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
+              General.showDialogMessage(
+                  context: context,
+                  title: "Pesan Lengkap",
+                  message: contact['message']?.toString() ?? '-');
             }
           },
           child: Container(
@@ -1116,13 +1083,8 @@ class AffiliateDataSource extends DataTableSource {
               InkWell(
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: instagram));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Berhasil disalin ke clipboard!'),
-                      backgroundColor: Colors.green,
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
+                  General.showSnackBar(
+                      context, 'Berhasil disalin ke clipboard!');
                 },
                 child: Tooltip(
                   // Tambahkan tooltip untuk UX lebih baik
@@ -1193,13 +1155,8 @@ class AffiliateDataSource extends DataTableSource {
               InkWell(
                 onTap: () {
                   Clipboard.setData(ClipboardData(text: tiktok));
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Berhasil disalin ke clipboard!'),
-                      backgroundColor: Colors.green,
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
+                  General.showSnackBar(
+                      context, 'Berhasil disalin ke clipboard!');
                 },
                 child: Tooltip(
                   // Tambahkan tooltip untuk UX lebih baik
@@ -1240,99 +1197,10 @@ class AffiliateDataSource extends DataTableSource {
         GestureDetector(
           onTap: () {
             if ((affiliate['info']?.toString() ?? '-').length > 30) {
-              showDialog(
-                context: context,
-                builder: (BuildContext context) {
-                  return Dialog(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ), // Penutup untuk RoundedRectangleBorder
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: MediaQuery.of(context).size.height * 0.6,
-                        maxWidth: MediaQuery.of(context).size.height * 0.8,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // Header Section
-                          Container(
-                            width: double.infinity,
-                            padding: EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[700],
-                              borderRadius: BorderRadius.only(
-                                topLeft: Radius.circular(16),
-                                topRight: Radius.circular(16),
-                              ),
-                            ),
-                            child: Center(
-                              child: AnimatedScale(
-                                duration: Duration(milliseconds: 500),
-                                scale: 1.2,
-                                child: Icon(
-                                  Icons.email,
-                                  color: Colors.white,
-                                  size: 80,
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 5),
-
-                          // Title
-                          Text(
-                            'Pesan Lengkap',
-                            style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                          SizedBox(height: 5),
-
-                          // Scrollable Content
-                          Expanded(
-                            child: Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 20),
-                              child: SingleChildScrollView(
-                                physics: AlwaysScrollableScrollPhysics(),
-                                child: Text(
-                                  affiliate['info']?.toString() ?? '-',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    color: Colors.black54,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 5),
-
-                          // Close Button
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            style: TextButton.styleFrom(
-                              backgroundColor: Colors.grey[800],
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: 30, vertical: 5),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: Text(
-                              'Tutup',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          SizedBox(height: 20),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              );
+              General.showDialogMessage(
+                  context: context,
+                  title: "Info Lengkap",
+                  message: affiliate['info']?.toString() ?? '-');
             }
           },
           child: Container(

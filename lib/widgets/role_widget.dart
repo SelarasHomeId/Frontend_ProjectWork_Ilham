@@ -37,17 +37,6 @@ class _RoleWidgetState extends State<RoleWidget> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Role Management",
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator())
           : roles.isEmpty

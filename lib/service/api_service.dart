@@ -328,7 +328,7 @@ class ApiService {
 
     final response = await apiRequest(
       method: 'GET',
-      endpoint: '/crm/calculate_task',
+      endpoint: '/crm/calculate_task?order=sort_number&order_by=asc',
       body: null,
       token: token,
       contentType: 'application/json',
@@ -1082,14 +1082,12 @@ class ApiService {
           response['code'] == 200) {
         return response; // Kembalikan response jika sukses
       } else {
-        print(
-            'Operasi gagal: ${response?['message']}'); // Debugging pesan error
-        throw Exception(
-            'Operasi $method gagal pada endpoint $endpoint: ${response?['message']}');
+        print('Operasi gagal: ${response?['message']}');
+        throw '${response?['data']['message']}';
       }
     } else {
       // Jika tidak ada response yang valid
-      throw Exception('Operasi $method gagal pada endpoint $endpoint');
+      throw '${response?['data']['message']}';
     }
   }
 

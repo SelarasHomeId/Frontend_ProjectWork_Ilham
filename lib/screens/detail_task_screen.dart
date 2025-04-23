@@ -141,7 +141,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     currentWorkspaceId = ValueNotifier<int>(0);
     showSaveDescButton = ValueNotifier<bool>(false);
 
-    showSaveDescButton = ValueNotifier<bool>(false);
     _selectedUserIds = {};
 
     workspaceName = "";
@@ -149,11 +148,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     latestUpdatedAt = "";
     latestUpdatedBy = "";
 
-    textDescController.addListener(() {
-      final now = textDescController.text.trim();
-      final original = (currentDesc ?? '').trim();
-      showSaveDescButton.value = now != original;
-    });
     Future.wait(
       [
         onLoadValue(),
@@ -164,6 +158,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     fetchUsers();
     loadInitialData();
+  }
+
+  Future<void> onLoadDesc() async {
+    textDescController.addListener(() {
+      final now = textDescController.text.trim();
+      final original = (currentDesc ?? '').trim();
+      showSaveDescButton.value = now != original;
+    });
   }
 
   Future<void> onLoadValue() async {
@@ -236,6 +238,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     currentTitle = title;
     currentWatch.value = watch;
     currentDesc = desc;
+    textDescController.addListener(() {
+      final now = textDescController.text.trim();
+      final original = (currentDesc ?? '').trim();
+      showSaveDescButton.value = now != original;
+    });
     currentWorkspaceId.value = workspaceIdCurrent;
     currentBoardId.value = boardId;
     currentDate = date;
@@ -589,89 +596,106 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       first: assignedMembersNotifier,
       second: isMemberExpanded,
       builder: (context, members, expanded, _) {
-        return ExpansionPanelList(
-          elevation: 1,
-          expandedHeaderPadding: EdgeInsets.all(0),
-          expansionCallback: (int index, bool isExpanded) {
-            isMemberExpanded.value = isExpanded;
-          },
-          children: [
-            ExpansionPanel(
-              headerBuilder: (context, isExpanded) {
-                return Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Text(
-                    'Assigned Members',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                  ),
-                );
-              },
-              isExpanded: expanded,
-              body: members.isEmpty
-                  ? Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text('No members assigned yet.'),
-                    )
-                  : Column(
-                      children: members.map((member) {
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: General.getColorFromInitial(
-                                General.getInitials(member['name'])),
-                            child: Text(
-                              General.getInitials(member['name']),
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ),
-                          title: Text(member['name']),
-                          subtitle:
-                              Text(member['role'] + ' - ' + member['divisi']),
-                          trailing: IconButton(
-                            icon: Icon(Icons.close, color: Colors.red),
-                            onPressed: () async {
-                              final confirm = await General.showDialogDelete(
-                                  context: context,
-                                  title: "Hapus User",
-                                  message:
-                                      "Apakah Yakin Ingin Menghapus User ini?",
-                                  confirmButtonText: "Hapus",
-                                  cancelButtonText: "Batal");
+        return Container(
+          margin: EdgeInsets.symmetric(
+              vertical: 8, horizontal: 8), // Margin di sekitar panel
+          decoration: BoxDecoration(
+            color: Colors.white, // Background color untuk container
+            borderRadius: BorderRadius.circular(12), // Sudut membulat
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1), // Warna shadow
+                blurRadius: 6, // Blur shadow
+                spreadRadius: 2, // Spread shadow
+              ),
+            ],
+          ),
 
-                              if (confirm == true) {
-                                try {
-                                  // Buat array baru tanpa user yang dihapus
-                                  final remainingIds = assignedMembersNotifier
-                                      .value
-                                      .where((u) => u['id'] != member['id'])
-                                      .map((u) => u['id'] as int)
-                                      .toList();
-
-                                  final res = await ApiService.handleTask(
-                                    method: "PUT",
-                                    taskId: widget.taskId,
-                                    data: {
-                                      "assign_to_user": remainingIds,
-                                    },
-                                  );
-
-                                  if (res != null) {
-                                    await onLoadValue();
-                                    setState(() {});
-                                    General.showSnackBar(
-                                        context, "Berhasil menghapus user");
-                                  }
-                                } catch (e) {
-                                  General.showSnackBar(
-                                      context, "Gagal menghapus: $e");
-                                }
-                              }
-                            },
-                          ),
-                        );
-                      }).toList(),
+          child: ExpansionPanelList(
+            elevation: 1,
+            expandedHeaderPadding: EdgeInsets.all(0),
+            expansionCallback: (int index, bool isExpanded) {
+              isMemberExpanded.value = isExpanded;
+            },
+            children: [
+              ExpansionPanel(
+                headerBuilder: (context, isExpanded) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Assigned Members',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-            ),
-          ],
+                  );
+                },
+                isExpanded: expanded,
+                body: members.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text('No members assigned yet.'),
+                      )
+                    : Column(
+                        children: members.map((member) {
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: General.getColorFromInitial(
+                                  General.getInitials(member['name'])),
+                              child: Text(
+                                General.getInitials(member['name']),
+                                style: TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            title: Text(member['name']),
+                            subtitle:
+                                Text(member['role'] + ' - ' + member['divisi']),
+                            trailing: IconButton(
+                              icon: Icon(Icons.close, color: Colors.red),
+                              onPressed: () async {
+                                final confirm = await General.showDialogDelete(
+                                    context: context,
+                                    title: "Hapus User",
+                                    message:
+                                        "Apakah Yakin Ingin Menghapus User ini?",
+                                    confirmButtonText: "Hapus",
+                                    cancelButtonText: "Batal");
+
+                                if (confirm == true) {
+                                  try {
+                                    // Buat array baru tanpa user yang dihapus
+                                    final remainingIds = assignedMembersNotifier
+                                        .value
+                                        .where((u) => u['id'] != member['id'])
+                                        .map((u) => u['id'] as int)
+                                        .toList();
+
+                                    final res = await ApiService.handleTask(
+                                      method: "PUT",
+                                      taskId: widget.taskId,
+                                      data: {
+                                        "assign_to_user": remainingIds,
+                                      },
+                                    );
+
+                                    if (res != null) {
+                                      await onLoadValue();
+                                      setState(() {});
+                                      General.showSnackBar(
+                                          context, "Berhasil menghapus user");
+                                    }
+                                  } catch (e) {
+                                    General.showSnackBar(
+                                        context, "Gagal menghapus: $e");
+                                  }
+                                }
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -918,9 +942,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         case 'delete':
                           deleteTask(widget.taskId);
                           break;
-                        case 'member':
-                          _showAddMemberDialog();
-                          break;
                       }
                     },
                     itemBuilder: (BuildContext context) => [
@@ -990,16 +1011,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           ],
                         ),
                       ),
-                      PopupMenuItem<String>(
-                        value: 'member',
-                        child: Row(
-                          children: [
-                            Icon(Icons.person_add),
-                            SizedBox(width: 8),
-                            Text('Add Member'),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -1017,37 +1028,49 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     children: [
                       // Cover
                       Padding(
-                          padding: const EdgeInsets.only(bottom: 3),
-                          child: currentCover.value == null
-                              ? Image.asset(
-                                  'assets/no_cover.png', // Gambar default dari assets
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: 120,
-                                )
-                              : Image.network(
-                                  currentCover.value.toString(),
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  height: 120,
-                                )),
-                      SizedBox(height: 20),
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: Colors.black,
+                                width: 0.5), // Border tipis
+                            borderRadius:
+                                BorderRadius.circular(8), // Radius container
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                                7.5), // Radius sedikit lebih kecil dari container
+                            child: currentCover.value == null
+                                ? Image.asset(
+                                    'assets/no_cover.png',
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 120,
+                                  )
+                                : Image.network(
+                                    currentCover.value.toString(),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 120,
+                                  ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 10),
 
                       //Show Workspace and Board Data
                       _buildShowSummaryTask(),
-                      SizedBox(height: 20),
+                      SizedBox(height: 10),
+
                       // Quick Actions
                       _buildQuickActions(onExpandableValue),
-                      SizedBox(height: 20),
+                      SizedBox(height: 10),
 
                       // Assigned Member/user
                       _buildMemberSection(),
-                      SizedBox(height: 20),
+                      SizedBox(height: 10),
 
                       // Description
-                      Text("Description",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
                       _buildCardDescription(
                         textDescController: textDescController,
                         focusNode: descFocusNode,
@@ -1068,14 +1091,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                 context, 'Gagal Update Deskripsi ');
                             currentDesc = textDescController.text;
                           }
+                          await onLoadDesc();
                         },
                       ),
                       SizedBox(height: 20),
 
                       // Labels
-                      Text("Labels",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
                       _buildLabelsButton(
                         onAddingLabel: (labelId) async {
                           onLoadingNotifier.value = true;
@@ -1100,85 +1121,20 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       SizedBox(height: 20),
 
                       // Due Dates
-                      Text("Due Date",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                      SizedBox(
-                        height: 10,
-                      ),
                       _buildDatePickers(),
                       SizedBox(height: 20),
 
                       // Attachment
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Text(
-                            "Attachment",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(width: 8),
-                          Text(
-                            "(hold to preview & click to download)",
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                              fontStyle: FontStyle.italic,
-                            ),
-                          ),
-                        ],
-                      ),
                       listFileWidget(),
                       SizedBox(height: 20),
 
                       // Checklist
-                      Text("Checklist",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 10),
-                      _buildAddChecklistSection(widget
-                          .taskId), // Menggunakan widget untuk menambah checklist
-                      ValueListenableBuilder(
-                        valueListenable:
-                            onLoadingChecklistNotifier, // Gunakan notifikasi loading untuk checklist
-                        builder: (context, value, child) {
-                          return Container(
-                            constraints: BoxConstraints(maxHeight: 300),
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            // Menampilkan daftar checklist
-                            child: _buildChecklistList(),
-                          );
-                        },
-                      ),
+                      _buildAddChecklistSection(widget.taskId),
                       SizedBox(height: 20),
 
                       // Comments
-                      Text("Comments",
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold)),
-                      SizedBox(height: 10),
                       _buildAddCommentSection(widget.taskId),
-                      ValueListenableBuilder(
-                        valueListenable: onLoadingNotifier,
-                        builder: (context, value, child) {
-                          return Container(
-                            constraints: BoxConstraints(maxHeight: 300),
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: _buildCommentList(),
-                          );
-                        },
-                      ),
+                      SizedBox(height: 10),
                     ],
                   ),
                 ),
@@ -1406,6 +1362,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 //Start Summary And Quick Aactions
   Widget _buildShowSummaryTask() {
     return Card(
+      color: Colors.white,
       elevation: 5,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
@@ -1500,32 +1457,141 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
   Widget _buildQuickActions(ValueNotifier<bool> onExpandableValue) {
     return ValueListenableBuilder(
-        valueListenable: onExpandableValue,
-        builder: (context, expandletrue, _) {
-          return ExpansionPanelList(
-              expansionCallback: (int index, bool isExpanded) {
-                onExpandableValue.value = isExpanded;
-              },
-              children: [
-                ExpansionPanel(
-                  headerBuilder: (BuildContext context, bool isExpanded) {
-                    return InkWell(
-                      onTap: () {
-                        final currentValueExpandale = onExpandableValue.value;
-                        onExpandableValue.value = !currentValueExpandale;
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text('Quick Actions'),
+      valueListenable: onExpandableValue,
+      builder: (context, expandletrue, _) {
+        return Container(
+          margin: EdgeInsets.symmetric(
+              vertical: 8, horizontal: 8), // Margin di sekitar panel
+          decoration: BoxDecoration(
+            color: Colors.white, // Background color untuk container
+            borderRadius: BorderRadius.circular(12), // Sudut membulat
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1), // Warna shadow
+                blurRadius: 6, // Blur shadow
+                spreadRadius: 2, // Spread shadow
+              ),
+            ],
+          ),
+          child: ExpansionPanelList(
+            elevation: 0, // Menghilangkan shadow default
+            expandedHeaderPadding: EdgeInsets.all(16),
+            expansionCallback: (int index, bool isExpanded) {
+              onExpandableValue.value = isExpanded;
+            },
+            children: [
+              ExpansionPanel(
+                backgroundColor: expandletrue ? Colors.white38 : Colors.white70,
+                headerBuilder: (BuildContext context, bool isExpanded) {
+                  return InkWell(
+                    onTap: () {
+                      final currentValueExpandale = onExpandableValue.value;
+                      onExpandableValue.value = !currentValueExpandale;
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Quick Actions',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
                       ),
-                    );
-                  },
-                  body: Wrap(
+                    ),
+                  );
+                },
+                body: Padding(
+                  padding:
+                      const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                  child: Wrap(
+                    runSpacing: 15,
+                    spacing: 10,
                     children: [
-                      ElevatedButton(
-                          onPressed: () {}, child: Text('Add Checklist')),
-                      SizedBox(width: 10),
-                      ElevatedButton(
+                      // Baris Pertama: Checklist & Members
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.9,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  _showAddChecklistDialog(widget.taskId);
+                                },
+                                icon: Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  'Add Checklist',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      const Color.fromARGB(255, 27, 169, 11),
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 20,
+                                  shadowColor:
+                                      const Color.fromARGB(255, 255, 255, 255)
+                                          .withOpacity(0.4),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Flexible(
+                              child: ElevatedButton.icon(
+                                icon: Icon(
+                                  Icons.person_add_alt_1_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                onPressed: _showAddMemberDialog,
+                                label: Text(
+                                  'Add Members',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      const Color.fromARGB(255, 144, 9, 156),
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 20),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 10,
+                                  shadowColor:
+                                      const Color.fromARGB(255, 255, 255, 255)
+                                          .withOpacity(0.4),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Baris Kedua: Attachment
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: MediaQuery.of(context).size.width * 0.8,
+                        ),
+                        child: ElevatedButton.icon(
+                          icon: Icon(
+                            Icons.attach_file_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
                           onPressed: () async {
                             onLoadingNotifier.value = true;
                             onLoadingFileNotifier.value = true;
@@ -1568,7 +1634,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                               await ApiService.handleTaskFile(
                                 method: 'POST',
-                                // workspaceId: widget.workspaceId,
                                 taskId: widget.taskId,
                                 listFile: listFile,
                                 data: {
@@ -1581,18 +1646,39 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             onLoadingNotifier.value = false;
                             onLoadingFileNotifier.value = false;
                           },
-                          child: Text('Add Attachment')),
-                      SizedBox(width: 10),
-                      ElevatedButton(
-                          onPressed: _showAddMemberDialog,
-                          child: Text('Add Members')),
+                          label: Text(
+                            'Add Attachment',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                const Color.fromARGB(255, 9, 61, 150),
+                            padding: EdgeInsets.symmetric(
+                                vertical: 12, horizontal: 25),
+                            minimumSize: Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 10,
+                            shadowColor: Colors.black.withOpacity(0.4),
+                          ),
+                        ),
+                      ),
                     ],
                   ),
-                  isExpanded: expandletrue,
                 ),
-              ]);
-        });
+                isExpanded: expandletrue,
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
+
 // end quick actions and summary========================================
 
   Widget _buildCardDescription({
@@ -1600,131 +1686,180 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     required FocusNode focusNode,
     required Future<void> Function() onSubmitButton,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          controller: textDescController,
-          focusNode: focusNode,
-          decoration: InputDecoration(
-            hintText: 'Masukan Deskripsi',
-            border: OutlineInputBorder(),
-            contentPadding: EdgeInsets.all(10),
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white, // Warna background box
+        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), // Warna shadow
+            spreadRadius: 2, // Jarak shadow
+            blurRadius: 5, // Ukuran blur shadow
+            offset: Offset(0, 3), // Posisi shadow
           ),
-          maxLines: 3,
-        ),
-        SizedBox(height: 10),
-        ValueListenableBuilder<bool>(
-          valueListenable: showSaveDescButton,
-          builder: (context, show, child) {
-            return show
-                ? ElevatedButton(
-                    onPressed: () async {
-                      await onSubmitButton();
-                      // Setelah submit berhasil, reset currentDesc
-                      currentDesc = textDescController.text;
-                      showSaveDescButton.value = false;
-                    },
-                    child: Text("Simpan"),
-                  )
-                : SizedBox();
-          },
-        ),
-      ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Description",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(
+            height: 10,
+          ),
+          TextField(
+            controller: textDescController,
+            focusNode: descFocusNode,
+            decoration: InputDecoration(
+              hintText: 'Masukan Deskripsi',
+              hintStyle: TextStyle(color: Colors.grey[500]),
+              border: OutlineInputBorder(),
+              contentPadding: EdgeInsets.all(10),
+            ),
+            maxLines: 3,
+          ),
+          SizedBox(height: 10),
+          ValueListenableBuilder<bool>(
+            valueListenable: showSaveDescButton,
+            builder: (context, show, child) {
+              return show
+                  ? ElevatedButton(
+                      focusNode: descFocusNode,
+                      onPressed: () async {
+                        FocusScope.of(context).requestFocus(FocusNode());
+                        await onSubmitButton();
+                        currentDesc = textDescController.text;
+                        showSaveDescButton.value = false;
+                      },
+                      child: Text("Simpan"),
+                    )
+                  : SizedBox();
+            },
+          )
+        ],
+      ),
     );
   }
 
+//===================================Label=====================================
   Widget _buildLabelsButton(
       {required Future<void> Function(int) onAddingLabel}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ElevatedButton(
-          onPressed: () async {
-            final id = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => LabelScreen(),
-              ),
-            );
-            if (id != null) {
-              await onAddingLabel(id);
-            }
-          },
-          child: Text('Labels'),
-        ),
-        SizedBox(height: 8), // Jarak antara tombol dan label
-        ValueListenableBuilder(
-          valueListenable: notifierLabelColor,
-          builder: (context, value, child) {
-            if (value.isNotEmpty) {
-              return SizedBox(
-                height: 40, // Sesuaikan tinggi agar label terlihat
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: value.map((label) {
-                      return GestureDetector(
-                        onTap: () async {
-                          final confirmDelete = await General.showDialogDelete(
-                              context: context,
-                              title: "Hapus Label",
-                              message: "Apakah Yakin Menghapus Label ?",
-                              confirmButtonText: "Hapus",
-                              cancelButtonText: "Batal");
-
-                          if (confirmDelete == true) {
-                            // Hapus label dari daftar
-                            currentLabelIds.remove(label.$3);
-
-                            // Perbarui ValueNotifier
-                            notifierLabelColor.value =
-                                List.from(notifierLabelColor.value)
-                                  ..remove(label);
-
-                            // Kirim data terbaru ke API
-                            onLoadingNotifier.value = true;
-                            final getUpdatedData = await ApiService.handleTask(
-                              method: 'PUT',
-                              taskId: widget.taskId,
-                              boardId: widget.boardId,
-                              data: {'label': currentLabelIds},
-                              contentType: 'application/json',
-                            );
-
-                            if (getUpdatedData != null && context.mounted) {
-                              General.showSnackBar(
-                                  context, 'Label berhasil dihapus');
-                            }
-                            onLoadingNotifier.value = false;
-                          }
-                        },
-                        child: Container(
-                          margin: EdgeInsets.only(right: 8),
-                          padding:
-                              EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.all(Radius.circular(12)),
-                            color: label.$2, // Warna dari label
-                          ),
-                          child: Text(
-                            label.$1, // Nama label
-                            style: TextStyle(
-                                color: Colors.white), // Teks lebih kontras
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white, // Warna background box
+        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), // Warna shadow
+            spreadRadius: 2, // Jarak shadow
+            blurRadius: 5, // Ukuran blur shadow
+            offset: Offset(0, 3), // Posisi shadow
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Labels",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(
+            height: 10,
+          ),
+          ElevatedButton.icon(
+            icon: Icon(Icons.add),
+            label: Text('Add Label'),
+            onPressed: () async {
+              final id = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => LabelScreen(),
                 ),
               );
-            }
-            return Container();
-          },
-        ),
-      ],
+              if (id != null) {
+                await onAddingLabel(id);
+              }
+            },
+          ),
+          SizedBox(height: 8), // Jarak antara tombol dan label
+          ValueListenableBuilder(
+            valueListenable: notifierLabelColor,
+            builder: (context, value, child) {
+              if (value.isNotEmpty) {
+                return SizedBox(
+                  height: 40, // Sesuaikan tinggi agar label terlihat
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: value.map((label) {
+                        return GestureDetector(
+                          onTap: () async {
+                            final confirmDelete =
+                                await General.showDialogDelete(
+                                    context: context,
+                                    title: "Hapus Label",
+                                    message: "Apakah Yakin Menghapus Label ?",
+                                    confirmButtonText: "Hapus",
+                                    cancelButtonText: "Batal");
+
+                            if (confirmDelete == true) {
+                              // Hapus label dari daftar
+                              currentLabelIds.remove(label.$3);
+
+                              // Perbarui ValueNotifier
+                              notifierLabelColor.value =
+                                  List.from(notifierLabelColor.value)
+                                    ..remove(label);
+
+                              // Kirim data terbaru ke API
+                              onLoadingNotifier.value = true;
+                              final getUpdatedData =
+                                  await ApiService.handleTask(
+                                method: 'PUT',
+                                taskId: widget.taskId,
+                                boardId: widget.boardId,
+                                data: {'label': currentLabelIds},
+                                contentType: 'application/json',
+                              );
+
+                              if (getUpdatedData != null && context.mounted) {
+                                General.showSnackBar(
+                                    context, 'Label berhasil dihapus');
+                              }
+                              onLoadingNotifier.value = false;
+                            }
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(right: 8),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
+                              color: label.$2, // Warna dari label
+                            ),
+                            child: Text(
+                              label.$1, // Nama label
+                              style: TextStyle(
+                                  color: Colors.white), // Teks lebih kontras
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                );
+              }
+              return Container();
+            },
+          ),
+        ],
+      ),
     );
   }
+//=====================end Label============================================
 
 //=========== Date dan Due Date===========================================
 
@@ -1736,62 +1871,82 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             ? DateFormat('EEEE, dd MMMM yyyy - HH:mm WIB').format(selectedDate)
             : 'Belum ada Deadline';
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Teks Deadline
-            Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: Text(
-                dateText,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: selectedDate != null ? Colors.black : Colors.grey,
+        return Container(
+          width: MediaQuery.of(context).size.width,
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white, // Warna background box
+            borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1), // Warna shadow
+                spreadRadius: 2, // Jarak shadow
+                blurRadius: 5, // Ukuran blur shadow
+                offset: Offset(0, 3), // Posisi shadow
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Due Date",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              SizedBox(
+                height: 5,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  dateText,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: selectedDate != null ? Colors.black : Colors.grey,
+                  ),
                 ),
               ),
-            ),
 
-            // Tombol Pilih Tanggal & Hapus
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  icon: Icon(Icons.calendar_today),
-                  label: Text("Pilih Tanggal"),
-                  onPressed: () => _pickDueDate(context),
-                ),
-                SizedBox(width: 10),
-                if (selectedDate != null)
+              // Tombol Pilih Tanggal & Hapus
+              Row(
+                children: [
                   ElevatedButton.icon(
-                    icon: Icon(Icons.cancel),
-                    label: Text(
-                      "Hapus",
-                      style: TextStyle(color: Colors.white),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: () async {
-                      onLoadingNotifier.value = true;
-
-                      final getUpdatedData = await ApiService.handleTask(
-                        method: 'PUT',
-                        taskId: widget.taskId,
-                        boardId: widget.boardId,
-                        data: {'due_date': ''},
-                      );
-
-                      if (getUpdatedData != null) {
-                        onEndDateNotifier.value = null;
-                      }
-
-                      onLoadingNotifier.value = false;
-                    },
+                    icon: Icon(Icons.calendar_today),
+                    label: Text("Pilih Tanggal"),
+                    onPressed: () => _pickDueDate(context),
                   ),
-              ],
-            ),
-          ],
+                  SizedBox(width: 10),
+                  if (selectedDate != null)
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.cancel),
+                      label: Text(
+                        "Hapus",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () async {
+                        onLoadingNotifier.value = true;
+
+                        final getUpdatedData = await ApiService.handleTask(
+                          method: 'PUT',
+                          taskId: widget.taskId,
+                          boardId: widget.boardId,
+                          data: {'due_date': ''},
+                        );
+
+                        if (getUpdatedData != null) {
+                          onEndDateNotifier.value = null;
+                        }
+
+                        onLoadingNotifier.value = false;
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
         );
       },
     );
@@ -2019,45 +2174,77 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Widget _buildAddCommentSection(int taskId) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            FutureBuilder<Map<String, String>>(
-              future: userProfileFuture,
-              builder: (context, snapshot) {
-                String initial =
-                    General.getInitials(snapshot.data?['name'] ?? 'U');
-                return CircleAvatar(
-                  backgroundColor: General.getColorFromInitial(initial),
-                  child: Text(initial),
-                );
-              },
-            ),
-            SizedBox(width: 10),
-            Expanded(
-              flex: 6,
-              child: TextField(
-                controller: textCommentController,
-                decoration: InputDecoration(
-                  hintText: 'Add comment',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.all(10),
+    return Container(
+      padding: EdgeInsets.all(16), // Padding di dalam container
+      decoration: BoxDecoration(
+        color: Colors.white, // Warna background box
+        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), // Warna shadow
+            spreadRadius: 2, // Jarak shadow
+            blurRadius: 5, // Ukuran blur shadow
+            offset: Offset(0, 3), // Posisi shadow
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Comments",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              FutureBuilder<Map<String, String>>(
+                future: userProfileFuture,
+                builder: (context, snapshot) {
+                  String initial =
+                      General.getInitials(snapshot.data?['name'] ?? 'U');
+                  return CircleAvatar(
+                    backgroundColor: General.getColorFromInitial(initial),
+                    child: Text(initial),
+                  );
+                },
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                flex: 6,
+                child: TextField(
+                  controller: textCommentController,
+                  decoration: InputDecoration(
+                    hintText: 'Add comment',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.all(10),
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: InkWell(
-                  onTap: () async {
-                    await _addComment(taskId);
-                  },
-                  child: Icon(Icons.send)),
-            )
-          ],
-        ),
-        SizedBox(height: 10),
-      ],
+              Expanded(
+                child: InkWell(
+                    onTap: () async {
+                      await _addComment(taskId);
+                    },
+                    child: Icon(Icons.send)),
+              )
+            ],
+          ),
+          SizedBox(height: 10),
+          ValueListenableBuilder(
+            valueListenable: onLoadingNotifier,
+            builder: (context, value, child) {
+              return Container(
+                constraints: BoxConstraints(maxHeight: 300),
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: _buildCommentList(),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
   //===================================End Comment==============================
@@ -2079,6 +2266,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             final checklist = checklistList[index];
 
             return Card(
+              color: Colors.white,
               margin: EdgeInsets.symmetric(vertical: 5),
               child: ListTile(
                 title: Column(
@@ -2456,6 +2644,41 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               ),
             ],
           ),
+        );
+      },
+    );
+  }
+
+  Future<void> _showAddChecklistDialog(int taskId) async {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Add Checklist'),
+          content: TextField(
+            controller: textChecklistController,
+            decoration: InputDecoration(hintText: 'Enter Checklist title'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                textChecklistController.clear();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final itemTitle = textChecklistController.text.trim();
+                if (itemTitle.isNotEmpty) {
+                  await _addChecklist(taskId);
+                  textChecklistController.clear();
+                  Navigator.pop(context);
+                }
+              },
+              child: Text('Add'),
+            ),
+          ],
         );
       },
     );
@@ -3096,34 +3319,68 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Widget _buildAddChecklistSection(int taskId) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              flex: 6,
-              child: TextField(
-                controller: textChecklistController,
-                decoration: InputDecoration(
-                  hintText: 'Add checklist item',
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.all(10),
+    return Container(
+      padding: EdgeInsets.all(16), // Padding di dalam container
+      decoration: BoxDecoration(
+        color: Colors.white, // Warna background box
+        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), // Warna shadow
+            spreadRadius: 2, // Jarak shadow
+            blurRadius: 5, // Ukuran blur shadow
+            offset: Offset(0, 3), // Posisi shadow
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Checklist",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                flex: 6,
+                child: TextField(
+                  controller: textChecklistController,
+                  decoration: InputDecoration(
+                    hintText: 'Add checklist item',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.all(10),
+                  ),
                 ),
               ),
-            ),
-            Expanded(
-              child: InkWell(
-                onTap: () async {
-                  await _addChecklist(taskId);
-                },
-                child: Icon(Icons.send),
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    await _addChecklist(taskId);
+                  },
+                  child: Icon(Icons.check_circle),
+                ),
               ),
-            ),
-          ],
-        ),
-        SizedBox(height: 10),
-      ],
+            ],
+          ),
+          SizedBox(height: 10),
+          ValueListenableBuilder(
+            valueListenable:
+                onLoadingChecklistNotifier, // Gunakan notifikasi loading untuk checklist
+            builder: (context, value, child) {
+              return Container(
+                constraints: BoxConstraints(maxHeight: 300),
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                // Menampilkan daftar checklist
+                child: _buildChecklistList(),
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -3149,7 +3406,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
 //======================End Checklist===========================================
 
-//================================Start File
+//================================Start Attachment==============================
   void _deleteFile(int fileId) async {
     try {
       // Memanggil API untuk menghapus file
@@ -3187,169 +3444,231 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Widget listFileWidget() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        ValueListenableBuilder(
-          valueListenable: onFileNotifier,
-          builder: (context, listFile, child) {
-            return SizedBox(
-              height: 200,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: listFile.length,
-                itemBuilder: (context, index) {
-                  final fileId = (listFile[index]["id"] ?? 0);
-                  final fileName =
-                      (listFile[index]["fileName"] ?? "").toString();
-                  final fileType =
-                      (listFile[index]["fileExt"] ?? "").toString();
-                  final filePath =
-                      (listFile[index]["filePath"] ?? "").toString();
-                  final fileDownload =
-                      (listFile[index]["fileDownload"] ?? "").toString();
+    return Container(
+      padding: EdgeInsets.all(16), // Padding di dalam container
+      decoration: BoxDecoration(
+        color: Colors.white, // Warna background box
+        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), // Warna shadow
+            spreadRadius: 2, // Jarak shadow
+            blurRadius: 5, // Ukuran blur shadow
+            offset: Offset(0, 3), // Posisi shadow
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Attachment",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.left,
+              ),
+              SizedBox(width: 8),
+              Text(
+                "(hold to preview & click to download)",
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey[600],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
 
-                  return GestureDetector(
-                    onTap: () async {
-                      if (await canLaunchUrl(Uri.parse(fileDownload))) {
-                        await launchUrl(Uri.parse(fileDownload),
-                            mode: LaunchMode.externalApplication);
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text("Tidak dapat membuka tautan")),
-                        );
-                      }
-                    },
-                    onLongPress: () {
-                      if (fileType.toLowerCase() == "pdf") {
-                        showPDFPreview(context, fileDownload);
-                      } else if (fileType.toLowerCase() == "mp3") {
-                        showAudioPreview(context, fileDownload);
-                      } else {
-                        showDialog(
-                          context: context,
-                          builder: (_) => Dialog(
-                            insetPadding: EdgeInsets.all(20),
-                            child: SingleChildScrollView(
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    padding: EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        // Gambar file
-                                        Container(
-                                          height: 300,
-                                          width: double.infinity,
-                                          decoration: BoxDecoration(
-                                            borderRadius:
-                                                BorderRadius.circular(8),
-                                            image: DecorationImage(
-                                              image:
-                                                  getImage(fileType, filePath),
-                                              fit: BoxFit.cover,
+          SizedBox(
+            height: 10,
+          ),
+          ValueListenableBuilder(
+            valueListenable: onFileNotifier,
+            builder: (context, listFile, child) {
+              if (listFile.isEmpty) {
+                return Container(
+                  constraints: BoxConstraints(
+                      maxHeight: 200, minHeight: 200, minWidth: 350),
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[200],
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: Text(
+                      'Belum ada Attachment',
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              } else {
+                return SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: listFile.length,
+                    itemBuilder: (context, index) {
+                      final fileId = (listFile[index]["id"] ?? 0);
+                      final fileName =
+                          (listFile[index]["fileName"] ?? "").toString();
+                      final fileType =
+                          (listFile[index]["fileExt"] ?? "").toString();
+                      final filePath =
+                          (listFile[index]["filePath"] ?? "").toString();
+                      final fileDownload =
+                          (listFile[index]["fileDownload"] ?? "").toString();
+
+                      return GestureDetector(
+                        onTap: () async {
+                          if (await canLaunchUrl(Uri.parse(fileDownload))) {
+                            await launchUrl(Uri.parse(fileDownload),
+                                mode: LaunchMode.externalApplication);
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text("Tidak dapat membuka tautan")),
+                            );
+                          }
+                        },
+                        onLongPress: () {
+                          if (fileType.toLowerCase() == "pdf") {
+                            showPDFPreview(context, fileDownload);
+                          } else if (fileType.toLowerCase() == "mp3") {
+                            showAudioPreview(context, fileDownload);
+                          } else {
+                            showDialog(
+                              context: context,
+                              builder: (_) => Dialog(
+                                insetPadding: EdgeInsets.all(20),
+                                child: SingleChildScrollView(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        padding: EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Column(
+                                          children: [
+                                            // Gambar file
+                                            Container(
+                                              height: 300,
+                                              width: double.infinity,
+                                              decoration: BoxDecoration(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                image: DecorationImage(
+                                                  image: getImage(
+                                                      fileType, filePath),
+                                                  fit: BoxFit.cover,
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                            // Nama file di bawah gambar
+                                            SizedBox(
+                                                height:
+                                                    10), // Menambahkan jarak antara gambar dan nama file
+                                            Text(
+                                              fileName,
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize:
+                                                    16, // Anda bisa menyesuaikan ukuran font di sini
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                              maxLines:
+                                                  2, // Membatasi dua baris jika nama file terlalu panjang
+                                            ),
+                                          ],
                                         ),
-                                        // Nama file di bawah gambar
-                                        SizedBox(
-                                            height:
-                                                10), // Menambahkan jarak antara gambar dan nama file
-                                        Text(
-                                          fileName,
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize:
-                                                16, // Anda bisa menyesuaikan ukuran font di sini
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                          maxLines:
-                                              2, // Membatasi dua baris jika nama file terlalu panjang
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text("Tutup"),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }
-                    },
-                    child: Container(
-                      width: 150,
-                      margin: EdgeInsets.only(right: 10),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Stack(
-                            children: [
-                              // Gambar File
-                              Container(
-                                width: 150,
-                                height: 150,
-                                decoration: BoxDecoration(
-                                  color: Color(0xFFC4C4C4),
-                                  border: Border.all(
-                                    color: Colors.transparent,
-                                    width: 5,
-                                  ),
-                                  borderRadius: BorderRadius.circular(5),
-                                  image: DecorationImage(
-                                    image: getImage(fileType, filePath),
-                                    fit: BoxFit.cover,
+                                      ),
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: Text("Tutup"),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ), // </Container> untuk gambar file
-
-                              // Tombol Hapus
-                              Positioned(
-                                top: 8,
-                                right: 8,
-                                child: GestureDetector(
-                                  onTap: () =>
-                                      _showDeleteConfirmationDialog(fileId),
-                                  child: CircleAvatar(
-                                    backgroundColor: Colors.red,
-                                    radius: 15,
-                                    child: Icon(
-                                      Icons.delete,
-                                      size: 18,
-                                      color: Colors.white,
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          width: 150,
+                          margin: EdgeInsets.only(right: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Stack(
+                                children: [
+                                  // Gambar File
+                                  Container(
+                                    width: 150,
+                                    height: 150,
+                                    decoration: BoxDecoration(
+                                      color: Color(0xFFC4C4C4),
+                                      border: Border.all(
+                                        color: Colors.transparent,
+                                        width: 5,
+                                      ),
+                                      borderRadius: BorderRadius.circular(5),
+                                      image: DecorationImage(
+                                        image: getImage(fileType, filePath),
+                                        fit: BoxFit.cover,
+                                      ),
                                     ),
-                                  ), // </CircleAvatar>
-                                ), // </GestureDetector>
-                              ), // </Positioned>
-                            ],
-                          ), // </Stack>
+                                  ), // </Container> untuk gambar file
 
-                          // Nama file di bawah gambar
-                          SizedBox(height: 4),
-                          Text(
-                            fileName,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 12),
-                          ), // </Text>
-                        ],
-                      ), // </Column>
-                    ), // </Container>
-                  ); // </GestureDetector>
-                }, // </itemBuilder>
-              ), // </ListView.builder>
-            ); // </SizedBox>
-          }, // </builder dari ValueListenableBuilder>
-        ), // </ValueListenableBuilder>
-      ],
-    ); // </Column>
+                                  // Tombol Hapus
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          _showDeleteConfirmationDialog(fileId),
+                                      child: CircleAvatar(
+                                        backgroundColor: Colors.red,
+                                        radius: 15,
+                                        child: Icon(
+                                          Icons.delete,
+                                          size: 18,
+                                          color: Colors.white,
+                                        ),
+                                      ), // </CircleAvatar>
+                                    ), // </GestureDetector>
+                                  ), // </Positioned>
+                                ],
+                              ), // </Stack>
+
+                              // Nama file di bawah gambar
+                              SizedBox(height: 4),
+                              Text(
+                                fileName,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12),
+                              ), // </Text>
+                            ],
+                          ), // </Column>
+                        ), // </Container>
+                      ); // </GestureDetector>
+                    }, // </itemBuilder>
+                  ), // </ListView.builder>
+                ); // </SizedBox>
+              }
+            }, // </builder dari ValueListenableBuilder>
+          ), // </ValueListenableBuilder>
+        ],
+      ),
+    );
+    // </Column>
   }
 
   ImageProvider getImage(String fileFormat, String path) {

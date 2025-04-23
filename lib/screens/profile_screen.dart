@@ -169,6 +169,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       onPressed: () {
                         showDialog(
                           context: context,
+                          barrierDismissible: true,
                           builder: (BuildContext context) {
                             return ChangePasswordDialog();
                           },

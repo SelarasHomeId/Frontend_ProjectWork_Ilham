@@ -13,6 +13,10 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
   final _confirmPasswordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
+  FocusNode oldPasswordFocusNode = FocusNode();
+  FocusNode newPasswordFocusNode = FocusNode();
+  FocusNode confirmPasswordFocusNode = FocusNode();
+
   bool _isOldPasswordObscured = true;
   bool _isNewPasswordObscured = true;
   bool _isConfirmPasswordObscured = true;
@@ -88,135 +92,178 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
 
   @override
   Widget build(BuildContext context) {
-    // double screenWidth = MediaQuery.of(context).size.width;
-
-    return AlertDialog(
-      title: Text('Change Password'),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        oldPasswordFocusNode.unfocus();
+        newPasswordFocusNode.unfocus();
+        confirmPasswordFocusNode.unfocus();
+      },
+      child: AlertDialog(
+        contentPadding: EdgeInsets.fromLTRB(16, 28, 16, 16),
+        titlePadding: EdgeInsets.zero,
+        content: Stack(
+          clipBehavior: Clip.none,
           children: [
-            // Old Password Field
-            TextFormField(
-              controller: _oldPasswordController,
-              obscureText: _isOldPasswordObscured, // Controlled by the state
-              decoration: InputDecoration(
-                labelText: 'Old Password',
-                border: OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isOldPasswordObscured
-                        ? Icons.visibility
-                        : Icons.visibility_off,
-                  ),
-                  onPressed: () {
-                    setState(() {
-                      _isOldPasswordObscured =
-                          !_isOldPasswordObscured; // Toggle visibility
-                    });
-                  },
-                ),
+            // Perubahan Utama: Container untuk Close Button
+            Positioned(
+              right: -10,
+              top: -20,
+              child: IconButton(
+                padding: EdgeInsets.zero,
+                icon: Icon(Icons.close, size: 22),
+                onPressed: () => Navigator.pop(context),
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Old password is required';
-                }
-                return null;
-              },
             ),
-            SizedBox(height: 16),
-
-            // New Password Field
-            TextFormField(
-              controller: _newPasswordController,
-              obscureText: _isNewPasswordObscured, // Controlled by the state
-              decoration: InputDecoration(
-                labelText: 'New Password',
-                border: OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isNewPasswordObscured
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Judul
+                Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Change Password',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 20,
+                    ),
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _isNewPasswordObscured =
-                          !_isNewPasswordObscured; // Toggle visibility
-                    });
-                  },
                 ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'New password is required';
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: 16),
-
-            // Confirm Password Field
-            TextFormField(
-              controller: _confirmPasswordController,
-              obscureText:
-                  _isConfirmPasswordObscured, // Controlled by the state
-              decoration: InputDecoration(
-                labelText: 'Confirm Password',
-                border: OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _isConfirmPasswordObscured
-                        ? Icons.visibility
-                        : Icons.visibility_off,
+                Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      TextFormField(
+                        controller: _oldPasswordController,
+                        obscureText: _isOldPasswordObscured,
+                        focusNode: oldPasswordFocusNode,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 12, horizontal: 12),
+                          border: OutlineInputBorder(),
+                          labelText: 'Old Password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isOldPasswordObscured
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isOldPasswordObscured =
+                                    !_isOldPasswordObscured;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Old password is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+                      TextFormField(
+                        controller: _newPasswordController,
+                        focusNode: newPasswordFocusNode,
+                        obscureText: _isNewPasswordObscured,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          labelText: 'New Password',
+                          border: OutlineInputBorder(),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isNewPasswordObscured
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isNewPasswordObscured =
+                                    !_isNewPasswordObscured;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'New password is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 16),
+                      TextFormField(
+                        controller: _confirmPasswordController,
+                        focusNode: confirmPasswordFocusNode,
+                        obscureText: _isConfirmPasswordObscured,
+                        decoration: InputDecoration(
+                          filled: true,
+                          fillColor: Colors.grey[100],
+                          contentPadding: EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 12),
+                          border: OutlineInputBorder(),
+                          labelText: 'Confirm Password',
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _isConfirmPasswordObscured
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
+                            ),
+                            onPressed: () {
+                              setState(() {
+                                _isConfirmPasswordObscured =
+                                    !_isConfirmPasswordObscured;
+                              });
+                            },
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please confirm your password';
+                          }
+                          if (value != _newPasswordController.text) {
+                            return 'Passwords do not match';
+                          }
+                          return null;
+                        },
+                      ),
+                      SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (_formKey.currentState?.validate() ?? false) {
+                            String oldPassword = _oldPasswordController.text;
+                            String newPassword = _newPasswordController.text;
+                            changePassword(oldPassword, newPassword);
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red[500],
+                          padding: EdgeInsets.symmetric(
+                              vertical: 10, horizontal: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          "Submit",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                  onPressed: () {
-                    setState(() {
-                      _isConfirmPasswordObscured =
-                          !_isConfirmPasswordObscured; // Toggle visibility
-                    });
-                  },
                 ),
-              ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please confirm your password';
-                }
-                if (value != _newPasswordController.text) {
-                  return 'Passwords do not match';
-                }
-                return null;
-              },
-            ),
-            SizedBox(height: 20),
-
-            // Change Password Button
-            ElevatedButton(
-              onPressed: () {
-                if (_formKey.currentState?.validate() ?? false) {
-                  String oldPassword = _oldPasswordController.text;
-                  String newPassword = _newPasswordController.text;
-
-                  // Call the callback function passed from parent to handle password change
-                  changePassword(oldPassword, newPassword);
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red[900],
-                padding: EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: Text(
-                "Change Password",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              ],
             ),
           ],
         ),
