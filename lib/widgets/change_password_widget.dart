@@ -34,14 +34,6 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
     });
   }
 
-  // Function to show snackbar message
-  void showSnackBar(String message, Color color) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(message),
-      backgroundColor: color,
-    ));
-  }
-
   // API Call to change password
   Future<void> changePassword(String oldPassword, String newPassword) async {
     final data = {
@@ -102,6 +94,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
       child: AlertDialog(
         contentPadding: EdgeInsets.fromLTRB(16, 28, 16, 16),
         titlePadding: EdgeInsets.zero,
+        backgroundColor: Colors.white,
         content: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -120,7 +113,8 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
               children: [
                 // Judul
                 Padding(
-                  padding: EdgeInsets.only(top: 8),
+                  padding:
+                      EdgeInsets.symmetric(vertical: 15.0, horizontal: 15.0),
                   child: Text(
                     'Change Password',
                     style: TextStyle(

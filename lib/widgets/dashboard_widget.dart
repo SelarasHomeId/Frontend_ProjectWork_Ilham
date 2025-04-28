@@ -112,8 +112,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
           _basecontacts = List.from(_contacts);
         });
       }
-    } catch (e, stackTrace) {
-      print("Error fetching contacts: $e, $stackTrace");
+    } catch (e) {
+      //print("Error fetching contacts: $e, $stackTrace");
       General.showSnackBar(context, 'Gagal memuat kontak: ${e.toString()}');
     } finally {
       setState(() => _isLoadingContacts = false);
@@ -141,11 +141,9 @@ class _DashboardWidgetState extends State<DashboardWidget> {
           _baseaffiliates = List.from(_affiliates);
         });
       }
-    } catch (e, stackTrace) {
-      print("Error fetching affiliate: $e, $stackTrace");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat affiliate: ${e.toString()}')),
-      );
+    } catch (e) {
+      // print("Error fetching affiliate: $e, $stackTrace");
+      General.showSnackBar(context, 'Gagal memuat affiliate: ${e.toString()}');
     } finally {
       setState(() => _isLoadingAffiliate = false);
     }
@@ -289,7 +287,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
         directory = Directory("/storage/emulated/0/Download");
       } else {
         General.showSnackBar(context, 'Izin penyimpanan tidak diberikan.');
-        openAppSettings(); // Arahkan ke pengaturan aplikasi
+        openAppSettings();
         return;
       }
     } else if (Platform.isIOS) {
@@ -309,15 +307,11 @@ class _DashboardWidgetState extends State<DashboardWidget> {
 
         print('File berhasil disimpan di: $filePath');
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal menyimpan file: $e')),
-        );
+        General.showSnackBar(context, 'Gagal menyimpan file: $e');
         print('Gagal menyimpan file: $e');
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mendapatkan direktori penyimpanan.')),
-      );
+      General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');
     }
   }
 
@@ -342,11 +336,9 @@ class _DashboardWidgetState extends State<DashboardWidget> {
           };
         }).toList();
       });
-    } catch (e, stackTrace) {
-      print("Error fetching calculate task: $e, $stackTrace");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat affiliate: ${e.toString()}')),
-      );
+    } catch (e) {
+      // print("Error fetching calculate task: $e, $stackTrace");
+      General.showSnackBar(context, 'Gagal memuat affiliate: ${e.toString()}');
     } finally {
       setState(() => _isLoadingAffiliate = false);
     }
@@ -1067,13 +1059,8 @@ class AffiliateDataSource extends DataTableSource {
                           .externalApplication, // Buka di app eksternal
                     );
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content:
-                            Text('Gagal membuka Instagram: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    General.showSnackBar(
+                        context, 'Gagal membuka Instagram: ${e.toString()}');
                   }
                 },
               )
@@ -1140,12 +1127,8 @@ class AffiliateDataSource extends DataTableSource {
                           .externalApplication, // Buka di app eksternal
                     );
                   } catch (e) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Gagal membuka TikTok: ${e.toString()}'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                    General.showSnackBar(
+                        context, 'Gagal membuka TikTok: ${e.toString()}');
                   }
                 },
               )

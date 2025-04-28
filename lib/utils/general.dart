@@ -287,6 +287,259 @@ class General {
   }
 
   //===============Star Show Dialog==========================================
+  static Future<void> showDialogAdd({
+    required BuildContext context,
+    required String title,
+    required String hintText,
+    required TextEditingController controller,
+    required Future<bool> Function(String) onConfirm,
+    String? Function(String)? validate,
+    Color headerColor = Colors.green,
+    Color? buttonColor,
+    String confirmButtonText = 'Simpan',
+    String cancelButtonText = 'Batal',
+  }) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header Section
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: headerColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.add,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              // Title Section
+              SizedBox(height: 20),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+
+              // Input Field
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+
+              // Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Cancel Button
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      cancelButtonText,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+
+                  // Confirm Button
+                  TextButton(
+                    onPressed: () async {
+                      final input = controller.text.trim();
+
+                      // Validation
+                      if (validate != null) {
+                        final error = validate(input);
+                        if (error != null) {
+                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
+                          General.showSnackBar(context, error);
+                          return;
+                        }
+                      }
+
+                      // Execute confirmation logic
+                      try {
+                        final success = await onConfirm(input);
+                        if (success) {
+                          controller.clear();
+                          Navigator.of(context).pop();
+                        }
+                      } catch (e) {
+                        General.showSnackBar(context, 'Error: $e');
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: buttonColor ?? headerColor,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      confirmButtonText,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  static Future<bool?> showDialogConfirmDelete({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String additionalMessage,
+    required String confirmButtonText,
+    required String cancelButtonText,
+  }) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.red,
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.delete,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      message,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      additionalMessage, // Menggunakan argumen baru
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.red,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      cancelButtonText,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.red[800],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      confirmButtonText,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+    return confirm;
+  }
+
   static Future<bool?> showDialogDelete({
     required BuildContext context,
     required String title,
@@ -367,6 +620,240 @@ class General {
                     onPressed: () => Navigator.of(context).pop(true),
                     style: TextButton.styleFrom(
                       backgroundColor: Colors.red[800],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      confirmButtonText,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+    return confirm;
+  }
+
+  static Future<void> showDialogEdit({
+    required BuildContext context,
+    required TextEditingController controller,
+    required List<dynamic> existingItems,
+    required String itemName,
+    required String hintText,
+    required String emptyFieldMessage,
+    required String duplicateMessage,
+    required Future<void> Function(Map<String, dynamic> data) onSave,
+  }) async {
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 76, 81, 175),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(Icons.edit, size: 80, color: Colors.white),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Edit $itemName',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: controller,
+                  decoration: InputDecoration(
+                    hintText: hintText + itemName,
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      controller.text = '';
+                      Navigator.pop(context);
+                    },
+                    style: _buttonStyle(Colors.grey[600]!),
+                    child: Text('Batal', style: TextStyle(color: Colors.white)),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final inputText = controller.text.trim();
+
+                      if (inputText.isEmpty) {
+                        showSnackBar(context, emptyFieldMessage);
+                        return;
+                      }
+
+                      if (inputText.length > 20) {
+                        Navigator.pop(context);
+                        Future.delayed(Duration(milliseconds: 100), () {
+                          showSnackBar(context,
+                              'Nama $itemName tidak boleh lebih dari 20 karakter');
+                        });
+                        return;
+                      }
+
+                      final isDuplicate = existingItems.any((item) =>
+                          item['name'].toLowerCase() ==
+                          inputText.toLowerCase());
+                      if (isDuplicate) {
+                        Navigator.pop(context);
+                        Future.delayed(Duration(milliseconds: 100), () {
+                          showSnackBar(context, duplicateMessage);
+                        });
+                        return;
+                      }
+
+                      final confirm = await showDialogConfirmEdit(
+                        context: context,
+                        title: "Konfirmasi",
+                        message:
+                            "Apakah anda Yakin Ingin Mengubah Nama $itemName Ini?",
+                        confirmButtonText: "Ya, Ubah",
+                        cancelButtonText: "Batal",
+                      );
+
+                      if (confirm == true) {
+                        try {
+                          await onSave({'name': inputText});
+                          controller.text = "";
+                          Navigator.pop(context);
+                        } catch (e) {
+                          showSnackBar(
+                              context, 'Gagal memperbarui $itemName: $e');
+                        }
+                      }
+                    },
+                    style: _buttonStyle(Color.fromARGB(255, 76, 81, 175)),
+                    child:
+                        Text('Simpan', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  static ButtonStyle _buttonStyle(Color color) {
+    return TextButton.styleFrom(
+      backgroundColor: color,
+      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+  }
+
+  static Future<bool?> showDialogConfirmEdit({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String confirmButtonText,
+    required String cancelButtonText,
+  }) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 7, 14, 150),
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.question_mark_sharp,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      cancelButtonText,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 38, 47, 225),
                       padding:
                           EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       shape: RoundedRectangleBorder(

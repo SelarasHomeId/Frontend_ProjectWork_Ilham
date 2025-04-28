@@ -49,13 +49,32 @@ class _WidgetBoardState extends State<WidgetBoard> {
           final currentId = int.parse(columnData.id);
           await widget.moveBoard(currentId, newWorkspaceId);
         }
+
         break;
       case 'rename':
         String? newName =
             await _showRenameDialog(columnData.headerData.groupName);
         if (newName != null && newName.isNotEmpty) {
           final currentId = int.parse(columnData.id);
-          await widget.renameBoard(currentId, newName);
+
+          await General.showDialogEdit(
+            context: context,
+            controller: TextEditingController(text: newName),
+            existingItems: columnData.headerData.items,
+            itemName: 'Board',
+            hintText: 'Masukkan nama baru',
+            emptyFieldMessage: 'Nama tidak boleh kosong',
+            duplicateMessage: 'Nama sudah ada, pilih nama lain',
+            onSave: (data) async {
+              try {
+                await widget.renameBoard(currentId, data['name']);
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Gagal memperbarui board: $e')),
+                );
+              }
+            },
+          );
         }
         break;
       case 'delete':
@@ -69,41 +88,14 @@ class _WidgetBoardState extends State<WidgetBoard> {
   }
 
   Future<bool> _showDeleteConfirmationDialog() async {
-    return await showDialog<bool>(
+    return await General.showDialogConfirmDelete(
           context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text("Konfirmasi Hapus"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Kamu yakin ingin menghapus board?"),
-                  SizedBox(height: 5),
-                  Text(
-                    "Menghapus board akan menghapus semua task di dalamnya.",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.red,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pop(context, false), // Tidak jadi delete
-                  child: Text("Batal"),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pop(context, true), // Konfirmasi delete
-                  child: Text("Hapus", style: TextStyle(color: Colors.red)),
-                ),
-              ],
-            );
-          },
+          title: "Konfirmasi Hapus",
+          message: "Kamu yakin ingin menghapus board?",
+          additionalMessage:
+              "Menghapus board akan menghapus semua task di dalamnya.",
+          confirmButtonText: "Hapus",
+          cancelButtonText: "Batal",
         ) ??
         false;
   }
@@ -112,32 +104,27 @@ class _WidgetBoardState extends State<WidgetBoard> {
     TextEditingController _controller =
         TextEditingController(text: currentName);
 
-    return await showDialog<String>(
+    await General.showDialogEdit(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Rename Board"),
-          content: TextField(
-            controller: _controller,
-            decoration: InputDecoration(
-              labelText: "New Board Name",
-              border: OutlineInputBorder(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null), // Batal rename
-              child: Text("Batal"),
-            ),
-            TextButton(
-              onPressed: () =>
-                  Navigator.pop(context, _controller.text), // Konfirmasi rename
-              child: Text("Rename", style: TextStyle(color: Colors.blue)),
-            ),
-          ],
-        );
+      controller: _controller,
+      existingItems: [],
+      itemName: 'Board',
+      hintText: 'Masukkan nama baru untuk Board',
+      emptyFieldMessage: 'Nama tidak boleh kosong',
+      duplicateMessage: 'Nama sudah ada, pilih nama lain',
+      onSave: (data) async {
+        // Panggil API untuk rename
+        try {
+          await widget.renameBoard(int.parse(currentName), data['name']);
+        } catch (e) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Gagal memperbarui board: $e')),
+          );
+        }
       },
     );
+
+    return _controller.text;
   }
 
   Future<int?> _showMoveDialog(String currentWorkspaceId) async {
@@ -148,9 +135,7 @@ class _WidgetBoardState extends State<WidgetBoard> {
       final response = await ApiService.workspaceFind();
       workspaces = List<Map<String, dynamic>>.from(response);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat workspace: $e')),
-      );
+      General.showSnackBar(context, 'Gagal memuat workspace: $e');
     }
 
     return await showDialog<int>(

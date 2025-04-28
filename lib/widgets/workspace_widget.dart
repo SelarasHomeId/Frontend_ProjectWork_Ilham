@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/general.dart';
 import 'package:selarashomeid/widgets/widget_board.dart';
 import 'package:selarashomeid/widgets/board/appflowy_board.dart';
 
@@ -282,9 +283,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       });
       await onLoadListBoard();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat board: $e')),
-      );
+      General.showSnackBar(context, 'Gagal Memuat Board $e');
     }
   }
 
@@ -305,9 +304,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       });
       onLoadListBoard();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menambahkan board: $e')),
-      );
+      General.showSnackBar(context, 'Gagal Menambahkan Board $e');
     }
   }
 
@@ -327,6 +324,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         _boards = boards;
       });
       onLoadListBoard();
+      General.showSnackBar(context, 'Task Berhasil Dibuat');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal menambahkan board: $e')),
@@ -350,10 +348,9 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         _boards = boards;
       });
       onLoadListBoard();
+      General.showSnackBar(context, 'Board Sukses Dihapus');
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menghapus board: $e')),
-      );
+      General.showSnackBar(context, 'Gagal menghapus board: $e');
     }
   }
 
@@ -461,155 +458,56 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
   void _showCreateBoardDialog() {
     TextEditingController _controller = TextEditingController();
 
-    showDialog(
+    General.showDialogAdd(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Tambahkan Board',
-            style: TextStyle(
-              fontSize: MediaQuery.of(context).size.width * 0.05,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan nama board',
-                  border: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[400]!),
-                  ),
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: 12, horizontal: 0),
-                ),
-              ),
-              SizedBox(height: 16),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.grey[700],
-              ),
-              child: Text(
-                'Batal',
-                style: TextStyle(
-                    fontSize: MediaQuery.of(context).size.width * 0.04),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = _controller.text.trim();
-                if (name.isNotEmpty) {
-                  _createBoard(name);
-                  Navigator.of(context).pop();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF4C6A92),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Tambah',
-                style: TextStyle(
-                    fontSize: MediaQuery.of(context).size.width * 0.04,
-                    color: Colors.white),
-              ),
-            ),
-          ],
-        );
+      title: 'Tambahkan Board',
+      hintText: 'Masukkan nama Board',
+      controller: _controller,
+      headerColor: Color(0xFF4C6A92), // Warna sesuai kebutuhan
+      confirmButtonText: 'Tambah',
+      cancelButtonText: 'Batal',
+      validate: (input) {
+        if (input.isEmpty) return 'Nama Board tidak boleh kosong';
+        return null;
+      },
+      onConfirm: (input) async {
+        try {
+          final name = _controller.text.trim();
+          await _createBoard(name);
+          General.showSnackBar(context, 'Board berhasil ditambahkan!');
+          return true;
+        } catch (e) {
+          General.showSnackBar(context, 'Gagal menambahkan Board: $e');
+          return false;
+        }
       },
     );
   }
 
   void _showCreateTaskDialog(int boardId) {
-    TextEditingController _controller = TextEditingController();
+    final TextEditingController _controller = TextEditingController();
 
-    showDialog(
+    General.showDialogAdd(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Tambahkan Task',
-            style: TextStyle(
-              fontSize: MediaQuery.of(context).size.width * 0.05,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: _controller,
-                decoration: InputDecoration(
-                  hintText: 'Masukkan nama Task',
-                  border: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[400]!),
-                  ),
-                  contentPadding:
-                      EdgeInsets.symmetric(vertical: 12, horizontal: 0),
-                ),
-              ),
-              SizedBox(height: 16),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.grey[700],
-              ),
-              child: Text(
-                'Batal',
-                style: TextStyle(
-                    fontSize: MediaQuery.of(context).size.width * 0.04),
-              ),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                final name = _controller.text.trim();
-                if (name.isNotEmpty) {
-                  _createTask(boardId, name);
-                  Navigator.of(context).pop();
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xFF4C6A92),
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Tambah',
-                style: TextStyle(
-                    fontSize: MediaQuery.of(context).size.width * 0.04,
-                    color: Colors.white),
-              ),
-            ),
-          ],
-        );
+      title: 'Tambahkan Task',
+      hintText: 'Masukkan nama Task',
+      controller: _controller,
+      headerColor: Color(0xFF4C6A92), // Warna sesuai kebutuhan
+      confirmButtonText: 'Tambah',
+      cancelButtonText: 'Batal',
+      validate: (input) {
+        if (input.isEmpty) return 'Nama task tidak boleh kosong';
+        return null;
+      },
+      onConfirm: (input) async {
+        try {
+          await _createTask(boardId, input);
+          General.showSnackBar(context, 'Task berhasil ditambahkan!');
+          return true;
+        } catch (e) {
+          General.showSnackBar(context, 'Gagal menambahkan task: $e');
+          return false;
+        }
       },
     );
   }

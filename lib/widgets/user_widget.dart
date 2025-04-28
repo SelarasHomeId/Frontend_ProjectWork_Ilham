@@ -343,27 +343,29 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
                           position: _slideAnimation,
                           child: Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _searchController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Search by Name or Email',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    // onChanged: (text) {
-                                    // },
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                labelText: 'Search by Name or Email',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                                suffixIcon: Padding(
+                                  padding: EdgeInsets.only(right: 8),
+                                  child: IconButton(
+                                    icon: Icon(Icons.close, size: 20),
+                                    onPressed: _toggleSearchVisibility,
+                                    padding: EdgeInsets.zero,
+                                    constraints: BoxConstraints(),
                                   ),
                                 ),
-                                // Icon button for closing search
-                                IconButton(
-                                  icon: Icon(Icons.cancel,
-                                      size: 20), // Small close icon
-                                  onPressed: _toggleSearchVisibility,
-                                  // Close search field
+                                suffixIconConstraints: BoxConstraints(
+                                  maxHeight: 32,
                                 ),
-                              ],
+                              ),
+                              style: TextStyle(fontSize: 14),
                             ),
                           ),
                         )
@@ -435,6 +437,15 @@ class MyDataSource extends DataTableSource {
   final Function onDeletePressed;
   final Future<void> Function(bool) needRefresh;
 
+  Color _getStatusColor(String status) {
+    if (status == 'Unlocked') {
+      return Colors.green;
+    } else if (status == 'Locked') {
+      return Colors.red;
+    }
+    return Colors.black; // Warna default jika status tidak dikenali
+  }
+
   MyDataSource(
     this.users,
     this.pageIndex,
@@ -455,10 +466,21 @@ class MyDataSource extends DataTableSource {
       DataCell(Text('${globalRowIndex + 1}')),
       DataCell(Text(user['name'] ?? '')),
       DataCell(Text(user['email'] ?? '')),
-      DataCell(Text(user['role']['name'] ?? '')),
+      DataCell(
+        Text(
+          user['role']['name'] ?? '',
+        ),
+      ),
       DataCell(Text(user['divisi']['name'] ?? '')),
       DataCell(Text(user['login_from'] == '' ? '-' : user['login_from'])),
-      DataCell(Text(user['is_locked'] ? 'Locked' : 'Unlocked')),
+      DataCell(
+        Text(
+          user['is_locked'] ? 'Locked' : 'Unlocked',
+          style: TextStyle(
+              color: _getStatusColor(user['is_locked'] ? 'Locked' : 'Unlocked'),
+              fontWeight: FontWeight.bold),
+        ),
+      ),
       DataCell(
         Row(
           mainAxisSize: MainAxisSize.min, // Pastikan row tidak melebar

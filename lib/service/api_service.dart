@@ -402,7 +402,7 @@ class ApiService {
     if (dateFilter.isNotEmpty) {
       endpoint += '&created_at=$dateFilter';
     }
-
+    debugPrint('ini endpoint: $endpoint');
     final response = await apiRequest(
       method: 'GET',
       endpoint: endpoint,

@@ -358,11 +358,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         if (response != null && response['message'] == 'success delete!') {
           print('[DELETE_TASK] Task berhasil dihapus. Menampilkan snackbar');
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Task berhasil dihapus!')),
-          );
+          General.showSnackBar(context, 'Task berhasil dihapus!');
 
-          // ⏳ Kasih jeda 500ms sebelum navigasi
           await Future.delayed(Duration(milliseconds: 500));
 
           print('[DELETE_TASK] Navigasi ke WorkspaceWidget');
@@ -380,13 +377,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           );
         } else {
           print('[DELETE_TASK] Response tidak sesuai ekspektasi.');
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('Gagal menghapus task.')));
+          General.showSnackBar(context, 'Gagal menghapus task.');
         }
       } catch (e) {
         print('[DELETE_TASK] Terjadi error saat hapus task: $e');
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Terjadi error: $e')));
+        General.showSnackBar(context, 'Terjadi error: $e');
       }
     }
   }
@@ -430,8 +425,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       }
     } catch (e) {
       print("Error fetching users: $e");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Failed to load data: $e')));
+      General.showSnackBar(context, 'Failed to load data: $e');
     } finally {
       setState(() => _isLoading = false);
       print("Loading complete");
@@ -619,6 +613,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             },
             children: [
               ExpansionPanel(
+                backgroundColor: Colors.white,
                 headerBuilder: (context, isExpanded) {
                   return Padding(
                     padding: const EdgeInsets.all(16.0),
@@ -1005,7 +1000,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         value: 'delete',
                         child: Row(
                           children: [
-                            Icon(Icons.delete),
+                            Icon(
+                              Icons.delete,
+                              color: Colors.red[900],
+                            ),
                             SizedBox(width: 8),
                             Text('Delete Task'),
                           ],
@@ -1111,9 +1109,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                               contentType: 'application/json');
 
                           if (getUpdatedData != null && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Update Label: Berhasil')),
-                            );
+                            General.showSnackBar(
+                                context, 'Update Label: Berhasil');
                             await onLoadValue();
                           }
                         },
@@ -1180,9 +1177,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal memuat board: $e')),
-          );
+          General.showSnackBar(context, 'Gagal memuat board: $e');
         }
       }
     }
@@ -2174,6 +2169,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Widget _buildAddCommentSection(int taskId) {
+    double screenWidth = MediaQuery.of(context).size.width;
     return Container(
       padding: EdgeInsets.all(16), // Padding di dalam container
       decoration: BoxDecoration(
@@ -2201,9 +2197,27 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 builder: (context, snapshot) {
                   String initial =
                       General.getInitials(snapshot.data?['name'] ?? 'U');
-                  return CircleAvatar(
-                    backgroundColor: General.getColorFromInitial(initial),
-                    child: Text(initial),
+                  return Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.black, // Warna border
+                        width: 1, // Ketebalan border
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: screenWidth * 0.065,
+                      backgroundColor: General.getColorFromInitial(initial),
+                      child: Text(
+                        initial,
+                        style: TextStyle(
+                          fontSize: screenWidth *
+                              0.06, // Ukuran font sesuai dengan lebar layar
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1A365D), // Warna teks
+                        ),
+                      ),
+                    ),
                   );
                 },
               ),
@@ -2211,21 +2225,24 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               Expanded(
                 flex: 6,
                 child: TextField(
-                  controller: textCommentController,
+                  controller: textChecklistController,
                   decoration: InputDecoration(
-                    hintText: 'Add comment',
+                    hintText: 'Add Comment',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.all(10),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    suffixIcon: InkWell(
+                      onTap: () async {
+                        await _addComment(taskId);
+                      },
+                      child: Icon(Icons.check_circle),
+                    ),
                   ),
                 ),
               ),
-              Expanded(
-                child: InkWell(
-                    onTap: () async {
-                      await _addComment(taskId);
-                    },
-                    child: Icon(Icons.send)),
-              )
             ],
           ),
           SizedBox(height: 10),
@@ -3347,17 +3364,19 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   controller: textChecklistController,
                   decoration: InputDecoration(
                     hintText: 'Add checklist item',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
                     border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.all(10),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    suffixIcon: InkWell(
+                      onTap: () async {
+                        await _addChecklist(taskId);
+                      },
+                      child: Icon(Icons.check_circle),
+                    ),
                   ),
-                ),
-              ),
-              Expanded(
-                child: InkWell(
-                  onTap: () async {
-                    await _addChecklist(taskId);
-                  },
-                  child: Icon(Icons.check_circle),
                 ),
               ),
             ],

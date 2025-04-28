@@ -45,6 +45,9 @@ class _ProjectWidgetState extends State<ProjectWidget>
     } finally {
       setState(() => _isLoading = false);
     }
+    _searchController.addListener(() {
+      _searchProjectByName();
+    });
   }
 
   void _deleteProject(int projectId) async {
@@ -354,32 +357,33 @@ class _ProjectWidgetState extends State<ProjectWidget>
                           position: _slideAnimation,
                           child: Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _searchController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Search by Project Name',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    onChanged: (text) {
-                                      _searchProjectByName();
-                                    },
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                labelText: 'Search by Project Name',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                                suffixIcon: Padding(
+                                  padding: EdgeInsets.only(right: 8),
+                                  child: IconButton(
+                                    icon: Icon(Icons.close, size: 20),
+                                    onPressed: _toggleSearchVisibility,
+                                    padding: EdgeInsets.zero,
+                                    constraints: BoxConstraints(),
                                   ),
                                 ),
-                                // Icon button for closing search
-                                IconButton(
-                                  icon: Icon(Icons.cancel,
-                                      size: 20), // Small close icon
-                                  onPressed:
-                                      _toggleSearchVisibility, // Close search field
+                                suffixIconConstraints: BoxConstraints(
+                                  maxHeight: 32,
                                 ),
-                              ],
+                              ),
+                              style: TextStyle(fontSize: 14),
                             ),
                           ),
                         )
-                      : Container(), // When search is not visible, show an empty container
+                      : Container(),
                 ),
                 _isLoading
                     ? Center(child: CircularProgressIndicator())

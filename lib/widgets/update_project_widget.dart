@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/general.dart';
 
 class UpdateProjectWidget extends StatefulWidget {
   final int projectId;
@@ -50,10 +51,8 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
         print("No project data found");
       }
     } catch (e) {
-      print("Error fetching project data: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat data project: $e')),
-      );
+      // print("Error fetching project data: $e");
+      General.showSnackBar(context, 'Gagal memuat data project: $e');
       setState(() {
         _isLoading = false;
       });
@@ -132,24 +131,18 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
           data: data,
           // imageFile: _selectedImage, // Kirim file jika ada
         );
-        print("Update Response: $response");
+        // print("Update Response: $response");
 
         if (response != null && response['success'] == true) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Project berhasil diperbarui!')),
-          );
+          General.showSnackBar(context, 'Project berhasil diperbarui!');
           Navigator.pop(context);
         } else {
-          print("Failed to update project");
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Gagal memperbarui project')),
-          );
+          // print("Failed to update project");
+          General.showSnackBar(context, 'Gagal memperbarui project');
         }
       } catch (e) {
-        print("Error updating project: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memperbarui project: $e')),
-        );
+        // print("Error updating project: $e");
+        General.showSnackBar(context, 'Gagal memperbarui project: $e');
       }
     }
   }
@@ -171,14 +164,18 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
             ),
           ),
           child: AppBar(
+            automaticallyImplyLeading: true,
             backgroundColor: Colors.transparent,
             elevation: 0,
             title: Text(
-              "Edit Project",
+              "Update Data Project",
               style: TextStyle(
                   color: Colors.white,
                   fontSize: screenWidth * 0.07,
                   fontWeight: FontWeight.w500),
+            ),
+            iconTheme: IconThemeData(
+              color: Colors.white, // Mengubah warna ikon back jadi putih
             ),
           ),
         ),

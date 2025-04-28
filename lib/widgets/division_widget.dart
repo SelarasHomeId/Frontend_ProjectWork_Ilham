@@ -14,7 +14,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
   List<dynamic> divisions = [];
   List<dynamic> filteredDivisions = [];
   bool _isLoading = true;
-  bool _isSearchVisible = false; // Flag to toggle the visibility of search
+  bool _isSearchVisible = false;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
   int _rowsPerPage = 10;
@@ -42,6 +42,9 @@ class _DivisionWidgetState extends State<DivisionWidget>
     } finally {
       setState(() => _isLoading = false);
     }
+    _searchController.addListener(() {
+      _searchDivisionByName();
+    });
   }
 
   // Search function for divisions
@@ -110,140 +113,48 @@ class _DivisionWidgetState extends State<DivisionWidget>
   }
 
   Future<void> _addDivision() async {
-    showDialog(
+    final TextEditingController nameController = TextEditingController();
+    await General.showDialogAdd(
       context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.rectangle,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.add,
-                    size: 80,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Tambah Divisi',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    hintText: 'Masukkan nama divisi',
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.grey[600],
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Batal',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      final divisionName = nameController.text.trim();
-                      if (divisionName.isEmpty) {
-                        ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                        General.showSnackBar(
-                            context, 'Nama divisi tidak boleh kosong');
-                        return;
-                      }
+      title: 'Tambah Divisi',
+      hintText: 'Masukkan nama divisi',
+      controller: nameController,
+      headerColor: Colors.green,
+      buttonColor: Colors.green[800],
+      validate: (value) {
+        if (value.isEmpty) {
+          return 'Nama divisi tidak boleh kosong';
+        }
+        if (divisions.any((division) =>
+            division['name'].toLowerCase() == value.toLowerCase())) {
+          return 'Nama divisi sudah ada!';
+        }
+        return null;
+      },
+      onConfirm: (divisionName) async {
+        try {
+          print("Menambahkan divisi: $divisionName");
+          final response = await ApiService.handleDivision(
+            method: 'POST',
+            data: {'name': divisionName},
+          );
 
-                      bool isDuplicate = divisions.any((division) =>
-                          division['name'].toLowerCase() ==
-                          divisionName.toLowerCase());
-                      if (isDuplicate) {
-                        Navigator.of(context).pop();
-                        Future.delayed(Duration(milliseconds: 100), () {
-                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          General.showSnackBar(
-                              context, 'Nama divisi sudah ada!');
-                        });
-                        return;
-                      }
-
-                      try {
-                        print("Menambahkan divisi: $divisionName");
-                        final response = await ApiService.handleDivision(
-                          method: 'POST',
-                          data: {'name': divisionName},
-                        );
-
-                        if (response != null && response['success'] == true) {
-                          print("Divisi berhasil ditambahkan");
-                          General.showSnackBar(
-                              context, 'Divisi berhasil ditambahkan!');
-                          fetchDivisions();
-                          nameController.text = "";
-                          Navigator.pop(context);
-                        } else {
-                          print(
-                              "Gagal menambahkan divisi: ${response?['message']}");
-                          General.showSnackBar(context,
-                              'Gagal menambahkan divisi: ${response?['message']}');
-                        }
-                      } catch (e) {
-                        print("Error saat menambahkan divisi: $e");
-                        General.showSnackBar(context, 'Error: $e');
-                      }
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.green[800],
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Simpan',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-            ],
-          ),
-        );
+          if (response != null && response['success'] == true) {
+            print("Divisi berhasil ditambahkan");
+            General.showSnackBar(context, 'Divisi berhasil ditambahkan!');
+            fetchDivisions();
+            return true;
+          } else {
+            print("Gagal menambahkan divisi: ${response?['message']}");
+            General.showSnackBar(
+                context, 'Gagal menambahkan divisi: ${response?['message']}');
+            return false;
+          }
+        } catch (e) {
+          print("Error saat menambahkan divisi: $e");
+          General.showSnackBar(context, 'Error: $e');
+          return false;
+        }
       },
     );
   }
@@ -255,298 +166,52 @@ class _DivisionWidgetState extends State<DivisionWidget>
         method: 'GET',
         divisiId: divisiId,
       );
-      print("Response received: $response");
 
       if (response != null && response['data'] != null) {
         final division = response['data'];
-        print("Project Data: $divisions");
-
         setState(() {
           nameController.text = division['name'] ?? '';
           _isLoading = false;
         });
-      } else {
-        print("No Division data found");
+
+        await General.showDialogEdit(
+          context: context,
+          controller: nameController,
+          existingItems: divisions,
+          hintText: "Masukkan nama",
+          itemName: 'Divisi',
+          emptyFieldMessage: 'Nama divisi tidak boleh kosong',
+          duplicateMessage: 'Nama divisi sudah ada!',
+          onSave: (data) async {
+            final updateResponse = await ApiService.handleDivision(
+              method: 'PUT',
+              divisiId: divisiId,
+              data: data,
+            );
+
+            if (updateResponse != null && updateResponse['success'] == true) {
+              General.showSnackBar(context, 'Divisi berhasil diperbarui!');
+              fetchDivisions();
+            } else {
+              throw Exception('Failed to update division');
+            }
+          },
+        );
       }
     } catch (e) {
-      print("Error fetching Division data: $e");
+      print("Error: $e");
       General.showSnackBar(context, 'Gagal memuat data Division: $e');
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
     }
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  shape: BoxShape.rectangle,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.add,
-                    size: 80,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Edit Divisi',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    hintText: 'Masukkan nama divisi',
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      nameController.text = '';
-                      Navigator.of(context).pop(false);
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.grey[600],
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Batal',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      final divisionName = nameController.text.trim();
-                      if (divisionName.isEmpty) {
-                        ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                        General.showSnackBar(
-                            context, 'Nama divisi tidak boleh kosong');
-                        return;
-                      }
-
-                      bool isDuplicate = divisions.any((division) =>
-                          division['name'].toLowerCase() ==
-                          divisionName.toLowerCase());
-                      if (isDuplicate) {
-                        Navigator.of(context).pop();
-                        Future.delayed(Duration(milliseconds: 100), () {
-                          ScaffoldMessenger.of(context).removeCurrentSnackBar();
-                          General.showSnackBar(
-                              context, 'Nama divisi sudah ada!');
-                        });
-                        return;
-                      }
-
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: Text("Konfirmasi"),
-                            content: Text(
-                                "Apakah Anda yakin ingin mengubah data project ini?"),
-                            actions: [
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.of(context).pop(false),
-                                child: Text("Batal"),
-                              ),
-                              TextButton(
-                                onPressed: () =>
-                                    Navigator.of(context).pop(true),
-                                child: Text("Ya, Ubah"),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-
-                      if (confirm != null && confirm) {
-                        final data = {
-                          'name': nameController.text,
-                        };
-
-                        print("Updating divisi with data: $data");
-                        try {
-                          // Membuat form data dengan file
-                          final data = {
-                            'name': nameController.text,
-                          };
-
-                          // Panggil API service dengan file
-                          final response = await ApiService.handleDivision(
-                            method: 'PUT',
-                            divisiId: divisiId,
-                            data: data,
-                          );
-                          print("Update Response: $response");
-
-                          if (response != null && response['success'] == true) {
-                            General.showSnackBar(
-                                context, 'Divisi berhasil diperbarui!');
-                            fetchDivisions();
-                            nameController.text = "";
-                            Navigator.pop(context);
-                          } else {
-                            print("Failed to update divisi");
-                            General.showSnackBar(
-                                context, 'Gagal memperbarui divisi');
-                          }
-                        } catch (e) {
-                          print("Error updating divisi: $e");
-                          General.showSnackBar(
-                              context, 'Gagal memperbarui divisi: $e');
-                        }
-                      }
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.green[800],
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Simpan',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _deleteDivision(int divisiId) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  shape: BoxShape.rectangle,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                  ),
-                ),
-                child: Center(
-                  child: Icon(
-                    Icons.delete,
-                    size: 80,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                'Hapus Divisi',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black,
-                ),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: Text(
-                  'Apakah Anda yakin ingin menghapus divisi ini?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Colors.black54,
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.grey[600],
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Batal',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: () =>
-                        {fetchDivisions(), Navigator.of(context).pop(true)},
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.red[800],
-                      padding:
-                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(
-                      'Hapus',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
+    final confirm = await General.showDialogDelete(
+        context: context,
+        title: "Hapus Divisi",
+        message: "Apakah Anda Yakin Ingin Menghapus Divis Ini?",
+        confirmButtonText: "Hapus",
+        cancelButtonText: "Batal");
 
     if (confirm != null && confirm) {
       try {
@@ -647,31 +312,33 @@ class _DivisionWidgetState extends State<DivisionWidget>
                           position: _slideAnimation,
                           child: Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: _searchController,
-                                    decoration: InputDecoration(
-                                      labelText: 'Search by Name',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                    onChanged: (text) {
-                                      _searchDivisionByName();
-                                    },
+                            child: TextField(
+                              controller: _searchController,
+                              decoration: InputDecoration(
+                                labelText: 'Search by Name',
+                                border: OutlineInputBorder(),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
+                                ),
+                                suffixIcon: Padding(
+                                  padding: EdgeInsets.only(right: 8),
+                                  child: IconButton(
+                                    icon: Icon(Icons.close, size: 20),
+                                    onPressed: _toggleSearchVisibility,
+                                    padding: EdgeInsets.zero,
+                                    constraints: BoxConstraints(),
                                   ),
                                 ),
-                                // Icon button for closing search
-                                IconButton(
-                                  icon: Icon(Icons.cancel, size: 20),
-                                  onPressed:
-                                      _toggleSearchVisibility, // Close search field
+                                suffixIconConstraints: BoxConstraints(
+                                  maxHeight: 32,
                                 ),
-                              ],
+                              ),
+                              style: TextStyle(fontSize: 14),
                             ),
                           ),
                         )
-                      : Container(), // When search is not visible, show an empty container
+                      : Container(),
                 ),
                 _isLoading
                     ? Center(child: CircularProgressIndicator())

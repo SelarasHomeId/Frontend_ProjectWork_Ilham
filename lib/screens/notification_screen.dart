@@ -41,9 +41,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           isLoading = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ga ada notifikasi buat kamu hari ini')),
-        );
+        General.showSnackBar(context, 'Ga ada notifikasi buat kamu hari ini');
         return;
       }
 
@@ -55,9 +53,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
           isLoading = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ga ada notifikasi buat kamu hari ini')),
-        );
+        General.showSnackBar(context, 'Ga ada notifikasi buat kamu hari ini');
       } else {
         setState(() {
           notifications =
@@ -70,9 +66,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
         isLoading = false;
       });
       String message = response?['data']['message'];
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to get notifications, cause:$message')),
-      );
+      General.showSnackBar(
+          context, 'Failed to get notifications, cause:$message');
     }
   }
 
@@ -85,7 +80,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     if (response != null && response['success'] == true) {
       final taskDetail = await ApiService.handleDetailTask(taskId);
-      if (taskDetail != null && taskDetail['success'] == true) {
+      if (taskDetail != null && taskDetail['is_delete'] == false) {
         await Navigator.push(
           context,
           MaterialPageRoute(
@@ -102,11 +97,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
       fetchNotifications();
     } else {
       String message = response?['data']['message'];
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('Failed to set notification as read, cause:$message')),
-      );
+      General.showSnackBar(
+          context, 'Failed to set notification as read, cause:$message');
     }
   }
 
@@ -121,11 +113,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
       fetchNotifications();
     } else {
       String message = response?['data']['message'];
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-            content:
-                Text('Failed to set notification as read, cause:$message')),
-      );
+      General.showSnackBar(
+          context, 'Failed to set notification as read, cause:$message');
     }
   }
 
@@ -190,7 +179,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10.0),
                           side: BorderSide(color: Colors.black, width: 1.0))),
-                  child: Text("Unread"),
+                  child: Text(showUnreadOnly ? "Show All" : "Just Unread"),
                 ),
               ],
             ),

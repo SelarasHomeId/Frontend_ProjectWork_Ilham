@@ -51,9 +51,7 @@ class _SidebarState extends State<Sidebar> {
       });
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal memuat menu: $e')),
-        );
+        General.showSnackBar(context, 'Gagal memuat menu: $e');
       }
     }
   }
