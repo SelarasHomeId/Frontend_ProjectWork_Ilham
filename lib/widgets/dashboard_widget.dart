@@ -569,10 +569,10 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                             chartRadius:
                                 MediaQuery.of(context).size.width / 3.2,
                             colorList: [
-                              Color(0xFFFF006A),
+                              Color.fromARGB(255, 246, 1, 8),
                               Color.fromARGB(255, 0, 0, 0),
-                              Color(0xff1877F2),
-                              Colors.green
+                              Color.fromARGB(255, 1, 0, 138),
+                              Color.fromARGB(255, 128, 255, 0),
                             ],
                             gradientList: [],
                             initialAngleInDegree: 0,
@@ -631,8 +631,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                             chartRadius:
                                 MediaQuery.of(context).size.width / 3.2,
                             colorList: [
-                              Color.fromARGB(255, 8, 197, 254),
-                              Color(0xFF474441)
+                              Color.fromARGB(255, 104, 201, 208),
+                              Color.fromARGB(255, 226, 48, 108),
                             ],
                             initialAngleInDegree: 0,
                             chartType: ChartType.disc,

@@ -307,8 +307,8 @@ class _ProjectWidgetState extends State<ProjectWidget>
             padding: EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 20,
-              backgroundColor:
-                  Color(0xFFC0BCB5), // Set the background color of the circle
+              backgroundColor: Color.fromARGB(
+                  255, 13, 55, 224), // Set the background color of the circle
               child: IconButton(
                 icon: Icon(Icons.search),
                 color: Colors.white, // Set the icon color
@@ -324,8 +324,8 @@ class _ProjectWidgetState extends State<ProjectWidget>
             padding: EdgeInsets.only(right: 16),
             child: CircleAvatar(
               radius: 20, // Set the size of the CircleAvatar
-              backgroundColor:
-                  Color(0xFF4A6C6F), // Set the background color of the circle
+              backgroundColor: Color.fromARGB(
+                  255, 1, 161, 49), // Set the background color of the circle
               child: IconButton(
                 icon: Icon(Icons.add),
                 color: Colors.white, // Set the icon color

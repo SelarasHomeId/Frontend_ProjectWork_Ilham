@@ -141,41 +141,89 @@ class _WidgetBoardState extends State<WidgetBoard> {
     return await showDialog<int>(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Move to"),
-          content: StatefulBuilder(
-            builder: (context, setState) {
-              return DropdownButtonFormField<int>(
-                value: selectedWorkspaceId,
-                items: workspaces.map((workspace) {
-                  return DropdownMenuItem<int>(
-                    value: workspace['id'],
-                    child: Text(workspace['name']),
-                  );
-                }).toList(),
-                onChanged: (int? newValue) {
-                  setState(() {
-                    selectedWorkspaceId = newValue;
-                  });
-                },
-                decoration: InputDecoration(
-                  labelText: "Select Workspace",
-                  border: OutlineInputBorder(),
-                ),
-              );
-            },
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null), // Batal pindah
-              child: Text("Batal"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(
-                  context, selectedWorkspaceId), // Konfirmasi pindah
-              child: Text("Move", style: TextStyle(color: Colors.blue)),
-            ),
-          ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 13, 20, 158),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child:
+                      Icon(Icons.move_to_inbox, size: 80, color: Colors.white),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Move to Workspace',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    return DropdownButtonFormField<int>(
+                      value: selectedWorkspaceId,
+                      items: workspaces.map((workspace) {
+                        return DropdownMenuItem<int>(
+                          value: workspace['id'],
+                          child: Text(workspace['name']),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) {
+                        setState(() {
+                          selectedWorkspaceId = newValue;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Select Workspace",
+                        border: OutlineInputBorder(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, null), // Batal
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child:
+                        Text('Cancel', style: TextStyle(color: Colors.white)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(
+                        context, selectedWorkspaceId), // Konfirmasi
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text('Move', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
         );
       },
     );

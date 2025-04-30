@@ -712,14 +712,14 @@ class General {
                         return;
                       }
 
-                      if (inputText.length > 20) {
-                        Navigator.pop(context);
-                        Future.delayed(Duration(milliseconds: 100), () {
-                          showSnackBar(context,
-                              'Nama $itemName tidak boleh lebih dari 20 karakter');
-                        });
-                        return;
-                      }
+                      // if (inputText.length > 20) {
+                      //   Navigator.pop(context);
+                      //   Future.delayed(Duration(milliseconds: 100), () {
+                      //     showSnackBar(context,
+                      //         'Nama $itemName tidak boleh lebih dari 20 karakter');
+                      //   });
+                      //   return;
+                      // }
 
                       final isDuplicate = existingItems.any((item) =>
                           item['name'].toLowerCase() ==
@@ -1049,6 +1049,111 @@ class General {
                 SizedBox(height: 20),
               ],
             ),
+          ),
+        );
+      },
+    );
+  }
+
+  static Future<Map<String, int>?> showDialogMove({
+    required BuildContext context,
+    required List<Map<String, dynamic>> workspaces,
+    required int selectedWorkspaceId,
+    required String dialogTitle,
+    required String labelText,
+    required String cancelButtonText,
+    required String confirmButtonText,
+  }) async {
+    return await showDialog<Map<String, int>>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(255, 13, 20, 158),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child:
+                      Icon(Icons.move_to_inbox, size: 80, color: Colors.white),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                dialogTitle,
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    return DropdownButtonFormField<int>(
+                      value: selectedWorkspaceId,
+                      items: workspaces.map((workspace) {
+                        return DropdownMenuItem<int>(
+                          value: workspace['id'],
+                          child: Text(workspace['name']),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) {
+                        setState(() {
+                          selectedWorkspaceId = newValue!;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: labelText,
+                        border: OutlineInputBorder(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(cancelButtonText,
+                        style: TextStyle(color: Colors.white)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      {
+                        'task_checklist_id': selectedWorkspaceId,
+                      },
+                    ),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(confirmButtonText,
+                        style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
           ),
         );
       },

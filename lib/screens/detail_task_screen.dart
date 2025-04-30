@@ -48,6 +48,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late FocusNode focusNode;
   late FocusNode titleFocusNode;
   late FocusNode descFocusNode;
+  late FocusNode commentFocusNode;
+  late FocusNode editCommentFocusNode;
+  late FocusNode checklistFocusNode;
 
   late ValueNotifier<bool> onLoadingNotifier;
   late ValueNotifier<List<Map<String, dynamic>>> onFileNotifier;
@@ -134,8 +137,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     currentCover = ValueNotifier<String?>(null);
     assignedMembersNotifier = ValueNotifier<List<Map<String, dynamic>>>([]);
     isMemberExpanded = ValueNotifier<bool>(true);
+
     titleFocusNode = FocusNode();
     descFocusNode = FocusNode();
+    checklistFocusNode = FocusNode();
+    commentFocusNode = FocusNode();
 
     currentBoardId = ValueNotifier<int>(0);
     currentWorkspaceId = ValueNotifier<int>(0);
@@ -273,8 +279,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textChecklistController.dispose();
     _itemTextController.dispose();
     _checklistEditTextController.dispose();
+
     titleFocusNode.dispose();
     descFocusNode.dispose();
+    checklistFocusNode.dispose();
+    commentFocusNode.dispose();
+
     super.dispose();
   }
 
@@ -795,6 +805,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       onPopInvokedWithResult: (didPop, result) async {
         if (titleFocusNode.hasFocus) titleFocusNode.unfocus();
         if (descFocusNode.hasFocus) descFocusNode.unfocus();
+        if (checklistFocusNode.hasFocus) checklistFocusNode.unfocus();
+        if (commentFocusNode.hasFocus) commentFocusNode.unfocus();
 
         if (didPop) return;
       },
@@ -803,6 +815,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         onTap: () {
           titleFocusNode.unfocus();
           descFocusNode.unfocus();
+          checklistFocusNode.unfocus();
+          commentFocusNode.unfocus();
         },
         child: ValueListenableBuilder(
           valueListenable: onLoadingNotifier,
@@ -830,10 +844,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   border: InputBorder.none,
                 ),
                 onEditingComplete: () async {
-                  // Fungsi ini dipanggil ketika TextField selesai diedit (gagal fokus atau tekan "enter")
                   final value = textTitleController.text;
 
-                  // Pastikan nilai tidak kosong dan lakukan update API jika sudah selesai editing
                   if (value.isNotEmpty) {
                     final data = {"title": value};
 
@@ -1684,14 +1696,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white, // Warna background box
-        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1), // Warna shadow
-            spreadRadius: 2, // Jarak shadow
-            blurRadius: 5, // Ukuran blur shadow
-            offset: Offset(0, 3), // Posisi shadow
+            color: Colors.black.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(3, 3),
           ),
         ],
       ),
@@ -2108,36 +2120,22 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Future<void> _showEditCommentDialog(
       int commentId, String currentComment) async {
     textEditCommentController.text = currentComment;
-    showDialog(
+
+    await General.showDialogEdit(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit Comment'),
-          content: TextField(
-            controller: textEditCommentController,
-            decoration: InputDecoration(hintText: 'Enter comment'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                textEditCommentController.clear();
-                Navigator.pop(context);
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final comment = textEditCommentController.text.trim();
-                if (comment.isNotEmpty) {
-                  await _editComment(commentId, comment);
-                  textEditCommentController.clear();
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('Edit'),
-            ),
-          ],
-        );
+      controller: textEditCommentController,
+      existingItems: [],
+      itemName: 'Comment',
+      hintText: 'Enter your comment: ',
+      emptyFieldMessage: 'Comment cannot be empty.',
+      duplicateMessage: 'Duplicate comment found.',
+      onSave: (data) async {
+        final updatedComment = data['name'];
+        try {
+          await _editComment(commentId, updatedComment);
+        } catch (e) {
+          General.showSnackBar(context, 'Failed to update comment: $e');
+        }
       },
     );
   }
@@ -2225,7 +2223,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               Expanded(
                 flex: 6,
                 child: TextField(
-                  controller: textChecklistController,
+                  controller: textCommentController,
+                  focusNode: commentFocusNode,
                   decoration: InputDecoration(
                     hintText: 'Add Comment',
                     hintStyle: TextStyle(color: Colors.grey[500]),
@@ -2378,44 +2377,93 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Future<void> _showEditChecklistDialog(
       int checklistId, String currentTitle) async {
     _checklistEditTextController.text = currentTitle;
-    showDialog(
+    await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit Checklist'),
-          content: TextField(
-            controller: _checklistEditTextController,
-            decoration: InputDecoration(hintText: 'Enter checklist title'),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _checklistEditTextController.clear();
-                Navigator.pop(context);
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final itemTitle = _checklistEditTextController.text.trim();
-                if (itemTitle.isNotEmpty) {
-                  await _editChecklist(checklistId, itemTitle);
-                  _checklistEditTextController.clear();
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('Edit'),
-            ),
-          ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(255, 13, 20, 158),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(Icons.edit_note, size: 80, color: Colors.white),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Edit Checklist',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: _checklistEditTextController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter checklist title',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      _checklistEditTextController.clear();
+                      Navigator.pop(context);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child:
+                        Text('Cancel', style: TextStyle(color: Colors.white)),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final itemTitle =
+                          _checklistEditTextController.text.trim();
+                      if (itemTitle.isNotEmpty) {
+                        await _editChecklist(checklistId, itemTitle);
+                        _checklistEditTextController.clear();
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text('Edit', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
         );
       },
     );
   }
 
   Widget _buildItemList(int checklistId) {
-    // Ambil daftar item untuk checklist tertentu
-    final items = checklistItems.value[checklistId] ??
-        []; // Menggunakan checklistItems.value
+    final items = checklistItems.value[checklistId] ?? [];
 
     return ListView.builder(
       shrinkWrap: true,
@@ -2425,7 +2473,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         bool isChecked = item['is_completed'] ?? false;
 
         return ListTile(
-          leading: Icon(Icons.subdirectory_arrow_right),
+          leading: Icon(Icons.check_box_outlined),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2702,34 +2750,110 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Future<void> _showAddItemDialog(int checklistId) async {
-    showDialog(
+    await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Add Item'),
-          content: TextField(
-            controller: _itemTextController,
-            decoration: InputDecoration(hintText: 'Enter item title'),
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final itemTitle = _itemTextController.text.trim();
-                if (itemTitle.isNotEmpty) {
-                  await _addItemToChecklist(checklistId, itemTitle);
-                  _itemTextController.clear();
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('Add'),
-            ),
-          ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header Section
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.green,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.add,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+
+              // Title Section
+              SizedBox(height: 20),
+              Text(
+                'Add Item',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+
+              // Input Field
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: _itemTextController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter item title',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+
+              // Action Buttons
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  // Cancel Button
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+
+                  // Add Button
+                  TextButton(
+                    onPressed: () async {
+                      final itemTitle = _itemTextController.text.trim();
+                      if (itemTitle.isNotEmpty) {
+                        await _addItemToChecklist(checklistId, itemTitle);
+                        _itemTextController.clear();
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Add',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
         );
       },
     );
@@ -2771,36 +2895,22 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Future<void> _showEditChecklistItemDialog(
       int itemId, String currentTitle) async {
     _checklistEditTextController.text = currentTitle;
-    showDialog(
+
+    await General.showDialogEdit(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Edit Checklist Item'),
-          content: TextField(
-            controller: _checklistEditTextController,
-            decoration: InputDecoration(hintText: 'Enter checklist item title'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                _checklistEditTextController.clear();
-                Navigator.pop(context);
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final itemTitle = _checklistEditTextController.text.trim();
-                if (itemTitle.isNotEmpty) {
-                  await _editChecklistItem(itemId, itemTitle);
-                  _checklistEditTextController.clear();
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('Edit'),
-            ),
-          ],
-        );
+      controller: _checklistEditTextController,
+      existingItems: [],
+      itemName: 'Checklist Item',
+      hintText: 'Enter checklist item title',
+      emptyFieldMessage: 'Item title cannot be empty.',
+      duplicateMessage: 'Duplicate item title found.',
+      onSave: (data) async {
+        final updatedTitle = data['name'];
+        try {
+          await _editChecklistItem(itemId, updatedTitle);
+        } catch (e) {
+          General.showSnackBar(context, 'Failed to update checklist item: $e');
+        }
       },
     );
   }
@@ -3008,110 +3118,216 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Assigned Members',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: members.isEmpty
-            ? Text('No members assigned yet.')
-            : SizedBox(
-                width: double.maxFinite,
-                height: 400,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: members.length,
-                  itemBuilder: (context, index) {
-                    final member = members[index];
-                    return ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: General.getColorFromInitial(
-                            General.getInitials(member['name'])),
-                        child: Text(
-                          General.getInitials(member['name']),
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      title: Text(member['name']),
-                      subtitle: Text('${member['role']} - ${member['divisi']}'),
-                      trailing: IconButton(
-                        icon: Icon(Icons.close, color: Colors.red),
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (_) => AlertDialog(
-                              title: Text("Konfirmasi"),
-                              content: Text(
-                                  "Apakah yakin ingin menghapus user ini?"),
-                              actions: [
-                                TextButton(
-                                  child: Text("Batal"),
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(false),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Color.fromARGB(255, 13, 20, 158),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              ),
+              child: Column(
+                children: [
+                  Icon(Icons.people_alt, size: 50, color: Colors.white),
+                  SizedBox(height: 10),
+                  Text('Assigned Members',
+                      style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white)),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: members.isEmpty
+                  ? Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Text('No members assigned yet.',
+                          style: TextStyle(fontSize: 16)),
+                    )
+                  : SizedBox(
+                      height: 300,
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: members.length,
+                        separatorBuilder: (_, __) => Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final member = members[index];
+                          return Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              color: Colors.grey[100],
+                            ),
+                            margin: EdgeInsets.symmetric(vertical: 4),
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: General.getColorFromInitial(
+                                    General.getInitials(member['name'])),
+                                child: Text(
+                                  General.getInitials(member['name']),
+                                  style: TextStyle(color: Colors.white),
                                 ),
-                                TextButton(
-                                  child: Text("Hapus"),
-                                  onPressed: () =>
-                                      Navigator.of(context).pop(true),
-                                ),
-                              ],
+                              ),
+                              title: Text(member['name'],
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w500)),
+                              subtitle: Text(
+                                  '${member['role']} • ${member['divisi']}',
+                                  style: TextStyle(fontSize: 12)),
+                              trailing: IconButton(
+                                icon: Icon(Icons.close, size: 20),
+                                color: Colors.red[400],
+                                onPressed: () async {
+                                  final confirm = await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => Dialog(
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(16)),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            padding: EdgeInsets.all(16),
+                                            decoration: BoxDecoration(
+                                              color: Color.fromARGB(
+                                                  255, 13, 20, 158),
+                                              borderRadius:
+                                                  BorderRadius.vertical(
+                                                      top: Radius.circular(16)),
+                                            ),
+                                            child: Center(
+                                              child: Text("Konfirmasi",
+                                                  style: TextStyle(
+                                                      fontSize: 18,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Colors.white)),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: EdgeInsets.all(16),
+                                            child: Text(
+                                                "Apakah yakin ingin menghapus user ini?",
+                                                textAlign: TextAlign.center),
+                                          ),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceEvenly,
+                                            children: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                    context, false),
+                                                style: TextButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.grey[600],
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8)),
+                                                ),
+                                                child: Text('Batal',
+                                                    style: TextStyle(
+                                                        color: Colors.white)),
+                                              ),
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(
+                                                    context, true),
+                                                style: TextButton.styleFrom(
+                                                  backgroundColor:
+                                                      Colors.red[400],
+                                                  shape: RoundedRectangleBorder(
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              8)),
+                                                ),
+                                                child: Text('Hapus',
+                                                    style: TextStyle(
+                                                        color: Colors.white)),
+                                              ),
+                                            ],
+                                          ),
+                                          SizedBox(height: 16),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+
+                                  if (confirm == true) {
+                                    try {
+                                      final remainingIds = assignedMembers.value
+                                          .where((u) => u['id'] != member['id'])
+                                          .map((u) => u['id'] as int)
+                                          .toList();
+
+                                      final res =
+                                          await ApiService.handleChecklistItem(
+                                        method: 'PUT',
+                                        checklistItemId: itemId,
+                                        data: {"assign_to_user": remainingIds},
+                                      );
+
+                                      if (res != null) {
+                                        await loadChecklists();
+                                        Navigator.pop(context);
+                                        General.showSnackBar(
+                                            context, "Berhasil menghapus user");
+                                      }
+                                    } catch (e) {
+                                      General.showSnackBar(
+                                          context, "Gagal menghapus: $e");
+                                    }
+                                  }
+                                },
+                              ),
                             ),
                           );
-
-                          if (confirm == true) {
-                            try {
-                              final remainingIds = assignedMembers.value
-                                  .where((u) => u['id'] != member['id'])
-                                  .map((u) => u['id'] as int)
-                                  .toList();
-
-                              final res = await ApiService.handleChecklistItem(
-                                method: 'PUT',
-                                checklistItemId: itemId,
-                                data: {
-                                  "assign_to_user": remainingIds,
-                                },
-                              );
-
-                              if (res != null) {
-                                await loadChecklists();
-                                Navigator.pop(context);
-                                General.showSnackBar(
-                                    context, "Berhasil menghapus user");
-                              }
-                            } catch (e) {
-                              General.showSnackBar(
-                                  context, "Gagal menghapus: $e");
-                            }
-                          }
                         },
                       ),
-                    );
-                  },
-                ),
+                    ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () async {
+                      await loadChecklists();
+                      Navigator.pop(context);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text('Tutup', style: TextStyle(color: Colors.white)),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      Navigator.pop(context);
+                      _showAddMemberChecklistItemDialog(
+                          context, assignedMembers, itemId);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: Text('Add Member',
+                        style: TextStyle(color: Colors.white)),
+                  ),
+                ],
               ),
-        actions: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              TextButton(
-                onPressed: () async {
-                  await loadChecklists();
-                  Navigator.pop(context);
-                },
-                child: Text('Tutup'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  _showAddMemberChecklistItemDialog(
-                      context, assignedMembers, itemId);
-                },
-                child: Text('Add Member'),
-              ),
-            ],
-          ),
-        ],
+            ),
+            SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -3271,65 +3487,102 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           };
         }).toList();
         if (!taskChecklists.any((w) => w['id'] == selectedTaskChecklisId)) {
-          selectedTaskChecklisId =
-              taskChecklists.first['id']; // Default workspace
+          selectedTaskChecklisId = taskChecklists.first['id'];
         }
       }
     } catch (e) {
       if (mounted) {
-        General.showSnackBar(context, 'Gagal memuat workspace: $e');
+        General.showSnackBar(context, 'Gagal memuat checklist: $e');
       }
     }
 
     return await showDialog<Map<String, int>>(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Move to"),
-          content: StatefulBuilder(
-            builder: (context, setState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(255, 13, 20, 158),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child:
+                      Icon(Icons.move_to_inbox, size: 80, color: Colors.white),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Move Item',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    return DropdownButtonFormField<int>(
+                      value: selectedTaskChecklisId,
+                      items: taskChecklists.map((taskChecklist) {
+                        return DropdownMenuItem<int>(
+                          value: taskChecklist['id'],
+                          child: Text(taskChecklist['title'] ?? ''),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) {
+                        setState(() {
+                          selectedTaskChecklisId = newValue;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Select Checklist",
+                        border: OutlineInputBorder(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Dropdown Workspace
-                  DropdownButtonFormField<int>(
-                    value: selectedTaskChecklisId,
-                    items: taskChecklists.map((taskChecklist) {
-                      return DropdownMenuItem<int>(
-                        value: taskChecklist['id'],
-                        child: Text(taskChecklist['title'] ?? ''),
-                      );
-                    }).toList(),
-                    onChanged: (int? newValue) async {
-                      setState(() {
-                        selectedTaskChecklisId = newValue;
-                      });
-                      setState(() {});
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Select Checklist",
-                      border: OutlineInputBorder(),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, null),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
+                    child: Text('Batal', style: TextStyle(color: Colors.white)),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(
+                      context,
+                      {'task_checklist_id': selectedTaskChecklisId!},
+                    ),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text('Move', style: TextStyle(color: Colors.white)),
                   ),
                 ],
-              );
-            },
+              ),
+              SizedBox(height: 20),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null), // Batal
-              child: Text("Batal"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(
-                context,
-                {
-                  'task_checklist_id': selectedTaskChecklisId!,
-                },
-              ), // Konfirmasi
-              child: Text("Move", style: TextStyle(color: Colors.blue)),
-            ),
-          ],
         );
       },
     );
@@ -3362,6 +3615,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 flex: 6,
                 child: TextField(
                   controller: textChecklistController,
+                  focusNode: checklistFocusNode,
                   decoration: InputDecoration(
                     hintText: 'Add checklist item',
                     hintStyle: TextStyle(color: Colors.grey[500]),
@@ -3383,8 +3637,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           ),
           SizedBox(height: 10),
           ValueListenableBuilder(
-            valueListenable:
-                onLoadingChecklistNotifier, // Gunakan notifikasi loading untuk checklist
+            valueListenable: onLoadingChecklistNotifier,
             builder: (context, value, child) {
               return Container(
                 constraints: BoxConstraints(maxHeight: 300),

@@ -44,7 +44,8 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
           nameController.text = project['name'] ?? '';
           locationController.text = project['location'] ?? '';
           dateController.text = project['created_at'] ?? '';
-          _existingImageUrl = project['cover']['content'];
+          _existingImageUrl =
+              project['cover'] != null ? project['cover']['content'] : null;
           _isLoading = false;
         });
       } else {
