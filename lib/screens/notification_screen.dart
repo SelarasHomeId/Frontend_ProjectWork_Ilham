@@ -32,7 +32,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     // Panggil ApiService untuk mendapatkan notifikasi
     final response = await ApiService.getNotifications(token, selectedFilter);
-
+    debugPrint("Ini Respon Nottifikasi $response");
     if (response != null && response['success'] == true) {
       final dynamic data = response['data'];
       if (data == null || data['data'] == null || data['data'] is! List) {
@@ -90,9 +90,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
             ),
           ),
         );
+      } else if (taskId == 1) {
+        General.showSnackBar(context, "Notifikasi Ini Hanya Informasi.");
       } else {
-        General.showSnackBar(context,
-            "The task may have been deleted, please contact your admin.");
+        General.showSnackBar(
+            context, "Task mungkin sudah dihapus, silahkan hubungi admin.");
       }
       fetchNotifications();
     } else {

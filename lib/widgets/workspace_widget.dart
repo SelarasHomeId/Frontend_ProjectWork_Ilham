@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/utils/general.dart';
+import 'package:selarashomeid/widgets/loading_screen_widget.dart';
 import 'package:selarashomeid/widgets/widget_board.dart';
 import 'package:selarashomeid/widgets/board/appflowy_board.dart';
 
@@ -210,7 +211,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                 for (int i = 0; i < tasks.length; i++) {
                   updateFutures.add(_editTask(
                     taskId: tasks[i]['id'],
-                    sortNumber: i + 1,
+                    sortNumber: tasks.length - i,
                   ));
                 }
                 await Future.wait(updateFutures);
@@ -246,14 +247,14 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
               await _editTask(
                 taskId: task['id'],
                 boardId: int.parse(toGroupId),
-                sortNumber: toIndex + 1,
+                sortNumber: tasksTo.length - toIndex,
               );
 
               List<Future<void>> updateFuturesFrom = [];
               for (int i = 0; i < tasksFrom.length; i++) {
                 updateFuturesFrom.add(_editTask(
                   taskId: tasksFrom[i]['id'],
-                  sortNumber: i + 1,
+                  sortNumber: tasksFrom.length - i,
                 ));
               }
 
@@ -261,7 +262,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
               for (int i = 0; i < tasksTo.length; i++) {
                 updateFuturesTo.add(_editTask(
                   taskId: tasksTo[i]['id'],
-                  sortNumber: i + 1,
+                  sortNumber: tasksTo.length - i,
                 ));
               }
 
@@ -471,12 +472,20 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         return null;
       },
       onConfirm: (input) async {
+        Navigator.pop(context);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => loadingScreenWidget(context),
+        );
         try {
           final name = _controller.text.trim();
           await _createBoard(name);
+          Navigator.pop(context);
           General.showSnackBar(context, 'Board berhasil ditambahkan!');
           return true;
         } catch (e) {
+          Navigator.pop(context);
           General.showSnackBar(context, 'Gagal menambahkan Board: $e');
           return false;
         }
@@ -492,7 +501,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
       title: 'Tambahkan Task',
       hintText: 'Masukkan nama Task',
       controller: _controller,
-      headerColor: Color(0xFF4C6A92), // Warna sesuai kebutuhan
+      headerColor: Color(0xFF4C6A92),
       confirmButtonText: 'Tambah',
       cancelButtonText: 'Batal',
       validate: (input) {
@@ -500,11 +509,20 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         return null;
       },
       onConfirm: (input) async {
+        Navigator.pop(context);
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => loadingScreenWidget(context),
+        );
         try {
           await _createTask(boardId, input);
+          Navigator.pop(context);
           General.showSnackBar(context, 'Task berhasil ditambahkan!');
+          await onLoadListBoard();
           return true;
         } catch (e) {
+          Navigator.pop(context);
           General.showSnackBar(context, 'Gagal menambahkan task: $e');
           return false;
         }
@@ -543,27 +561,37 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
           Padding(
             padding: EdgeInsets.only(right: 16),
             child: OutlinedButton(
-              onPressed: () {
-                _showCreateBoardDialog();
-              },
-              style: OutlinedButton.styleFrom(
-                backgroundColor: Color(0xFF4C6A92),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+                onPressed: () {
+                  _showCreateBoardDialog();
+                },
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Color(0xFF4C6A92),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: MediaQuery.of(context).size.width * 0.04,
+                    vertical: MediaQuery.of(context).size.height * 0.01,
+                  ),
                 ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: MediaQuery.of(context).size.width * 0.04,
-                  vertical: MediaQuery.of(context).size.height * 0.01,
-                ),
-              ),
-              child: Text(
-                "+ Add Board",
-                style: TextStyle(
-                  fontSize: MediaQuery.of(context).size.width * 0.04,
-                ),
-              ),
-            ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.add_circle_rounded,
+                      color: Colors.white,
+                      size: MediaQuery.of(context).size.width * 0.065,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      "Board",
+                      style: TextStyle(
+                        fontSize: MediaQuery.of(context).size.width * 0.04,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                )),
           ),
         ],
       ),

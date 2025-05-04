@@ -1,21 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/notification_screen.dart';
 import 'package:selarashomeid/screens/search_screen.dart';
+import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/general.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
+class AppBarWidget extends StatefulWidget implements PreferredSizeWidget {
   @override
   final Size preferredSize;
 
   AppBarWidget({Key? key})
-      : preferredSize = Size.fromHeight(kToolbarHeight),
+      : preferredSize = const Size.fromHeight(kToolbarHeight),
         super(key: key);
+
+  @override
+  _AppBarWidgetState createState() => _AppBarWidgetState();
+}
+
+class _AppBarWidgetState extends State<AppBarWidget> {
+  bool isLoading = false;
+  int notificationCount = 0;
+  String selectedFilter = "Today";
 
   Route _createRoute(Widget targetScreen) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => targetScreen,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0); // Mulai dari kanan
-        const end = Offset.zero; // Berakhir di posisi normal
+        const begin = Offset(1.0, 0.0);
+        const end = Offset.zero;
         const curve = Curves.easeInOut;
 
         var tween =
@@ -30,22 +42,57 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
     );
   }
 
+  Future<void> fetchNotifications() async {
+    setState(() => isLoading = true);
+
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token') ?? '';
+
+    try {
+      final response = await ApiService.getNotifications(token, selectedFilter);
+
+      if (response != null && response['success'] == true) {
+        final data = response['data'];
+        if (data != null) {
+          setState(() {
+            notificationCount = data['count_unread'] ?? 0;
+            isLoading = false;
+          });
+          return;
+        }
+      }
+      setState(() {
+        notificationCount = 0;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() => isLoading = false);
+      General.showSnackBar(context, 'Gagal memuat notifikasi: $e');
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    fetchNotifications();
+  }
+
   @override
   Widget build(BuildContext context) {
     return AppBar(
       backgroundColor: Colors.red[900],
       leading: Builder(
         builder: (context) => IconButton(
-          icon: Icon(Icons.menu),
+          icon: const Icon(Icons.menu),
           color: Colors.white,
-          onPressed: () {
-            Scaffold.of(context).openDrawer();
-          },
+          onPressed: () => Scaffold.of(context).openDrawer(),
         ),
       ),
       actions: [
         TextButton(
-          child: Text(
+          onPressed: () =>
+              Navigator.push(context, _createRoute(SearchScreen())),
+          child: const Text(
             'Search Task',
             style: TextStyle(
               color: Colors.white,
@@ -53,16 +100,41 @@ class AppBarWidget extends StatelessWidget implements PreferredSizeWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
-          onPressed: () {
-            Navigator.of(context).push(_createRoute(SearchScreen()));
-          },
         ),
-        IconButton(
-          icon: Icon(Icons.notifications),
-          color: Colors.white,
-          onPressed: () {
-            Navigator.of(context).push(_createRoute(NotificationScreen()));
-          },
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.notifications),
+              color: Colors.white,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  _createRoute(NotificationScreen()),
+                ).then((_) => fetchNotifications());
+              },
+            ),
+            if (notificationCount > 0)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: const Color.fromARGB(255, 6, 22, 144),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Text(
+                    notificationCount.toString(),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              )
+          ],
         ),
       ],
     );

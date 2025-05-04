@@ -52,30 +52,8 @@ class _WidgetBoardState extends State<WidgetBoard> {
 
         break;
       case 'rename':
-        String? newName =
-            await _showRenameDialog(columnData.headerData.groupName);
-        if (newName != null && newName.isNotEmpty) {
-          final currentId = int.parse(columnData.id);
-
-          await General.showDialogEdit(
-            context: context,
-            controller: TextEditingController(text: newName),
-            existingItems: columnData.headerData.items,
-            itemName: 'Board',
-            hintText: 'Masukkan nama baru',
-            emptyFieldMessage: 'Nama tidak boleh kosong',
-            duplicateMessage: 'Nama sudah ada, pilih nama lain',
-            onSave: (data) async {
-              try {
-                await widget.renameBoard(currentId, data['name']);
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Gagal memperbarui board: $e')),
-                );
-              }
-            },
-          );
-        }
+        final currentId = int.parse(columnData.id);
+        await _showRenameDialog(currentId, columnData.headerData.groupName);
         break;
       case 'delete':
         bool confirmed = await _showDeleteConfirmationDialog();
@@ -100,11 +78,11 @@ class _WidgetBoardState extends State<WidgetBoard> {
         false;
   }
 
-  Future<String?> _showRenameDialog(String currentName) async {
+  Future _showRenameDialog(int currentId, String currentName) async {
     TextEditingController _controller =
         TextEditingController(text: currentName);
 
-    await General.showDialogEdit(
+    General.showDialogEdit(
       context: context,
       controller: _controller,
       existingItems: [],
@@ -113,9 +91,9 @@ class _WidgetBoardState extends State<WidgetBoard> {
       emptyFieldMessage: 'Nama tidak boleh kosong',
       duplicateMessage: 'Nama sudah ada, pilih nama lain',
       onSave: (data) async {
-        // Panggil API untuk rename
         try {
-          await widget.renameBoard(int.parse(currentName), data['name']);
+          await widget.renameBoard(currentId, data['name']);
+          General.showSnackBar(context, "Berhasil Update Board");
         } catch (e) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Gagal memperbarui board: $e')),
@@ -123,8 +101,6 @@ class _WidgetBoardState extends State<WidgetBoard> {
         }
       },
     );
-
-    return _controller.text;
   }
 
   Future<int?> _showMoveDialog(String currentWorkspaceId) async {
@@ -244,57 +220,128 @@ class _WidgetBoardState extends State<WidgetBoard> {
         return AppFlowyGroupCard(
           key: ValueKey(groupItem.id),
           child: InkWell(
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => DetailTaskScreen(
-                      boardId: int.tryParse(group.id)!,
-                      taskId: int.tryParse(groupItem.id)!,
-                    ),
+            onTap: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DetailTaskScreen(
+                    boardId: int.tryParse(group.id)!,
+                    taskId: int.tryParse(groupItem.id)!,
                   ),
-                );
-
-                await widget.onLoadBoard();
-              },
-              child: _buildCard(groupItem)),
+                ),
+              );
+              await widget.onLoadBoard();
+            },
+            child: _buildCard(groupItem),
+          ),
         );
       },
       boardScrollController: widget.boardController,
       footerBuilder: (context, columnData) {
-        return AppFlowyGroupFooter(
-          icon: const Icon(Icons.add, size: 20),
-          title: const Text('Add Task'),
-          height: 50,
-          margin: config.groupBodyPadding,
-          onAddButtonClick: () async {
+        double screenWidth = MediaQuery.of(context).size.width;
+        double paddingValueHorizontal = screenWidth * 0.22;
+        double paddingValueVertical = screenWidth * 0.025;
+        double iconSize = screenWidth * 0.06;
+        double textFontSize = screenWidth * 0.04;
+
+        return TextButton(
+          style: TextButton.styleFrom(
+            backgroundColor: Colors.blueGrey,
+            padding: EdgeInsets.symmetric(
+                horizontal: paddingValueHorizontal,
+                vertical: paddingValueVertical),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: () async {
             final currentId = int.parse(columnData.id);
             await widget.addTask(currentId);
           },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.add, size: iconSize, color: Colors.white),
+              SizedBox(width: screenWidth * 0.02),
+              Text(
+                'Add Task',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: textFontSize,
+                ),
+              ),
+            ],
+          ),
         );
       },
       headerBuilder: (context, columnData) {
+        double screenWidth = MediaQuery.of(context).size.width;
+        double iconSize = screenWidth * 0.07;
+        double spacing = screenWidth * 0.01;
+
         return AppFlowyGroupHeader(
-          icon: const Icon(Icons.lightbulb_circle),
+          icon: const Icon(Icons.lightbulb_circle,
+              size: 20, color: Colors.black87),
           title: Expanded(
-              child: Text(
-                  '${columnData.headerData.groupName} (${columnData.headerData.groupTaskTotal})')),
-          moreIcon: PopupMenuButton<String>(
-            icon: const Icon(Icons.more_horiz, size: 20), // Icon More
-            onSelected: (String value) => onMenuSelected(value, columnData),
-            offset: Offset(0, 40),
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
-                value: 'move',
-                child: Text('Move'),
+            child: Text(
+              '${columnData.headerData.groupName} (${columnData.headerData.groupTaskTotal})',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
+          moreIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.add_circle,
+                  size: iconSize,
+                  color: Colors.black87,
+                ),
+                onPressed: () async {
+                  final currentId = int.parse(columnData.id);
+                  await widget.addTask(currentId);
+                },
               ),
-              PopupMenuItem<String>(
-                value: 'rename',
-                child: Text('Rename'),
-              ),
-              PopupMenuItem<String>(
-                value: 'delete',
-                child: Text('Delete'),
+              SizedBox(width: spacing),
+              PopupMenuButton<String>(
+                icon: Icon(
+                  Icons.more_horiz,
+                  size: iconSize,
+                  color: Colors.black87,
+                ),
+                onSelected: (String value) => onMenuSelected(value, columnData),
+                itemBuilder: (BuildContext context) => [
+                  PopupMenuItem<String>(
+                    value: 'move',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.move_to_inbox, size: 18),
+                      title: const Text('Move', style: TextStyle(fontSize: 13)),
+                    ),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'rename',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.edit, size: 18),
+                      title:
+                          const Text('Rename', style: TextStyle(fontSize: 13)),
+                    ),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.delete, size: 18),
+                      title:
+                          const Text('Delete', style: TextStyle(fontSize: 13)),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

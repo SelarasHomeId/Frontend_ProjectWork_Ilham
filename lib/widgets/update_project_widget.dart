@@ -74,25 +74,12 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
   }
 
   void _updateProject() async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Konfirmasi"),
-          content: Text("Apakah Anda yakin ingin mengubah data project ini?"),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text("Batal"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text("Ya, Ubah"),
-            ),
-          ],
-        );
-      },
-    );
+    final confirm = await General.showDialogConfirmEdit(
+        context: context,
+        title: "Edit Project",
+        message: "Apakah Anda Yakin Ingin Mengubah Project ?",
+        confirmButtonText: "Ya, Ubah",
+        cancelButtonText: "Batal");
 
     if (confirm != null && confirm) {
       try {
