@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:photo_view/photo_view.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/widgets/add_project_widget.dart';
 import 'package:selarashomeid/widgets/update_project_widget.dart';
@@ -413,6 +414,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
                                       },
                                     ),
                                     DataColumn(label: Text('Location')),
+                                    DataColumn(label: Text('Cover')),
                                     DataColumn(label: Text('Date Created')),
                                     DataColumn(
                                       label: IntrinsicWidth(
@@ -445,6 +447,25 @@ class _ProjectWidgetState extends State<ProjectWidget>
 }
 
 class MyDataSource extends DataTableSource {
+  void showImagePreview(BuildContext context, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: PhotoView(
+            imageProvider: NetworkImage(url),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 2,
+          ),
+        ),
+      ),
+    );
+  }
+
   final List<dynamic> projects;
 
   final int pageIndex;
@@ -468,6 +489,14 @@ class MyDataSource extends DataTableSource {
 
     final String? location = project['location'];
     final Uri? locationUri = location != null ? Uri.parse(location) : null;
+    final Map<String, dynamic> cover = project['cover'] != null
+        ? {
+            "view": project["cover"]?["view"] ?? "",
+            "content": project["cover"]?["content"] ?? "",
+            "id": project["cover"]?["id"] ?? "",
+            "name": project["cover"]?["name"] ?? "",
+          }
+        : {};
     return DataRow(cells: [
       DataCell(Text('${globalRowIndex + 1}')),
       DataCell(Text(project['name'] ?? '')),
@@ -489,6 +518,21 @@ class MyDataSource extends DataTableSource {
               )
             else
               Text('No Location'),
+          ],
+        ),
+      ),
+      DataCell(
+        Row(
+          children: [
+            if (cover.isNotEmpty)
+              IconButton(
+                icon: Icon(Icons.image),
+                onPressed: () async {
+                  showImagePreview(context, cover['view']);
+                },
+              )
+            else
+              Text('No Cover'),
           ],
         ),
       ),
