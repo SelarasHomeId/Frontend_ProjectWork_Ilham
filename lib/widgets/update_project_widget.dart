@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/utils/general.dart';
+import 'package:http/http.dart' as http;
 
 class UpdateProjectWidget extends StatefulWidget {
   final int projectId;
@@ -16,7 +17,7 @@ class UpdateProjectWidget extends StatefulWidget {
 class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
-  TextEditingController dateController = TextEditingController();
+
   bool _isLoading = true;
   File? _selectedImage;
   String? _existingImageUrl;
@@ -43,7 +44,6 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
         setState(() {
           nameController.text = project['name'] ?? '';
           locationController.text = project['location'] ?? '';
-          dateController.text = project['created_at'] ?? '';
           _existingImageUrl =
               project['cover'] != null ? project['cover']['content'] : null;
           _isLoading = false;
@@ -56,21 +56,6 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
       General.showSnackBar(context, 'Gagal memuat data project: $e');
       setState(() {
         _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? selectedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-    );
-
-    if (selectedDate != null) {
-      setState(() {
-        dateController.text = "${selectedDate.toLocal()}".split(' ')[0];
       });
     }
   }
@@ -110,39 +95,45 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
     );
 
     if (confirm != null && confirm) {
-      final data = {
-        'name': nameController.text,
-        'location': locationController.text,
-        'date_created': dateController.text,
-      };
-
-      print("Updating project with data: $data");
       try {
-        // Membuat form data dengan file
         final data = {
           'name': nameController.text,
           'location': locationController.text,
-          'date_created': dateController.text,
         };
 
-        // Panggil API service dengan file
-        final response = await ApiService.handleProject(
-          method: 'PUT',
-          projectId: widget.projectId,
-          data: data,
-          // imageFile: _selectedImage, // Kirim file jika ada
-        );
+        var response = null;
+        if (_selectedImage != null) {
+          final fileStream = await http.MultipartFile.fromPath(
+            'cover',
+            _selectedImage!.path,
+          );
+
+          response = await ApiService.handleProject(
+            method: 'PUT',
+            projectId: widget.projectId,
+            data: data,
+            listFile: [fileStream],
+          );
+        } else {
+          response = await ApiService.handleProject(
+            method: 'PUT',
+            projectId: widget.projectId,
+            data: data,
+          );
+        }
+
         // print("Update Response: $response");
 
         if (response != null && response['success'] == true) {
           General.showSnackBar(context, 'Project berhasil diperbarui!');
           Navigator.pop(context);
         } else {
-          // print("Failed to update project");
+          debugPrint("masuk else");
           General.showSnackBar(context, 'Gagal memperbarui project');
         }
-      } catch (e) {
-        // print("Error updating project: $e");
+      } catch (e, stackTrace) {
+        debugPrint("masuk catch $e: $stackTrace");
+
         General.showSnackBar(context, 'Gagal memperbarui project: $e');
       }
     }
@@ -220,7 +211,6 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
                       ),
                     ),
                     SizedBox(height: screenHeight * 0.02),
-
                     // Lokasi Project
                     Padding(
                       padding: const EdgeInsets.only(left: 8.0),
@@ -244,35 +234,6 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
                           borderRadius: BorderRadius.circular(25),
                         ),
                       ),
-                    ),
-                    SizedBox(height: screenHeight * 0.02),
-
-                    // Tanggal Dibuat
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
-                      child: Text(
-                        "Tanggal Dibuat",
-                        style: TextStyle(
-                            fontSize: screenWidth * 0.04,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    SizedBox(height: screenHeight * 0.01),
-                    TextField(
-                      controller: dateController,
-                      readOnly: true,
-                      decoration: InputDecoration(
-                        hintText: "Pilih tanggal",
-                        hintStyle:
-                            TextStyle(color: Colors.black.withOpacity(0.5)),
-                        filled: true,
-                        fillColor: Colors.grey[100],
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(25),
-                        ),
-                        suffixIcon: Icon(Icons.calendar_today),
-                      ),
-                      onTap: () => _selectDate(context),
                     ),
                     SizedBox(height: screenHeight * 0.02),
                     Column(

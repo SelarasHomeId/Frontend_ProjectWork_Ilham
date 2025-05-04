@@ -944,7 +944,8 @@ class ApiService {
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? projectId,
     Map<String, dynamic>? data,
-    Map<String, String>? params, // Body data untuk Create atau Update
+    Map<String, String>? params,
+    List<http.MultipartFile> listFile = const [],
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -970,6 +971,7 @@ class ApiService {
       endpoint: endpoint,
       body: data,
       token: token,
+      listFile: listFile,
       contentType: method == 'PUT' || method == 'POST'
           ? 'multipart/form-data'
           : 'application/json',

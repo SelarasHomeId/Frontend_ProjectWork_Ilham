@@ -15,6 +15,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:photo_view/photo_view.dart';
 
 class DetailTaskScreen extends StatefulWidget {
   final int boardId;
@@ -300,7 +301,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       });
 
       final fileStream = await http.MultipartFile.fromPath(
-        'cover', // nama field yang diharapkan backend
+        'cover',
         _selectedCover!.path,
       );
 
@@ -721,6 +722,25 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             url,
             canShowScrollHead: true,
             canShowScrollStatus: true,
+          ),
+        ),
+      ),
+    );
+  }
+
+  void showImagePreview(BuildContext context, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+          ),
+          body: PhotoView(
+            imageProvider: NetworkImage(url),
+            minScale: PhotoViewComputedScale.contained,
+            maxScale: PhotoViewComputedScale.covered * 2,
           ),
         ),
       ),
@@ -2268,8 +2288,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 //======================Start Checklist=========================================
   Widget _buildChecklistList() {
     return ValueListenableBuilder(
-      valueListenable:
-          onChecklistNotifier, // Memastikan onChecklistNotifier yang berisi data checklist
+      valueListenable: onChecklistNotifier,
       builder: (context, checklistList, child) {
         if (checklistList.isEmpty) {
           return Center(child: Text('Belum ada checklist'));
@@ -2473,7 +2492,19 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         bool isChecked = item['is_completed'] ?? false;
 
         return ListTile(
-          leading: Icon(Icons.check_box_outlined),
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: MediaQuery.of(context).size.width * 0.025,
+          ),
+          leading: Checkbox(
+            key: ValueKey(isChecked),
+            value: isChecked,
+            onChanged: (bool? value) async {
+              await _toggleItemCompletion(item['id'], !isChecked);
+            },
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -2481,58 +2512,63 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 onTap: () {
                   _showEditChecklistItemDialog(item['id'], item['title']);
                 },
-                child: Row(
-                  children: [
-                    Text(
+                child: Container(
+                  constraints: BoxConstraints(
+                    maxWidth: MediaQuery.of(context).size.width * 0.9,
+                    maxHeight: MediaQuery.of(context).size.height * 0.06,
+                  ),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Text(
                       item['title'] ?? 'No item',
                       style: TextStyle(
-                        decoration: isChecked
-                            ? TextDecoration.lineThrough
-                            : null, // Menandai teks yang sudah dicentang
+                        color: isChecked ? Colors.grey : Colors.black,
+                        decoration:
+                            isChecked ? TextDecoration.lineThrough : null,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.fade,
+                      softWrap: true,
                     ),
-                  ],
+                  ),
                 ),
               ),
-              if (item['due_date'] != null) ...[
-                SizedBox(height: 5),
-                Wrap(
-                  spacing: 5,
-                  runSpacing: 3,
-                  children: [
+              if (item['due_date'] != null || item['assign_to_user'] != null)
+                SizedBox(height: MediaQuery.of(context).size.height * 0.006),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item['due_date'] != null)
                     Container(
                       padding: EdgeInsets.symmetric(
-                          horizontal: 5,
-                          vertical: 3), // Padding untuk ikon dan teks
+                        horizontal: MediaQuery.of(context).size.width * 0.012,
+                        vertical: MediaQuery.of(context).size.height * 0.004,
+                      ),
                       decoration: BoxDecoration(
                         color: isChecked
-                            ? Colors.green.withOpacity(
-                                0.2) // Background hijau jika completed
+                            ? Colors.green.withOpacity(0.2)
                             : (DateTime.parse(item['due_date'])
                                     .isBefore(DateTime.now())
-                                ? Colors.red.withOpacity(
-                                    0.2) // Background merah jika overdue
-                                : Colors.black.withOpacity(
-                                    0.1)), // Background hitam jika belum overdue
-                        borderRadius: BorderRadius.circular(
-                            50), // Membuat sudut melengkung pada background
+                                ? Colors.red.withOpacity(0.2)
+                                : Colors.black.withOpacity(0.1)),
+                        borderRadius: BorderRadius.circular(50),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.alarm, // Ikon jam
-                            size: 20, // Ukuran ikon
+                            Icons.alarm,
+                            size: MediaQuery.of(context).size.width * 0.05,
                             color: isChecked
                                 ? Colors.green
                                 : (DateTime.parse(item['due_date'])
                                         .isBefore(DateTime.now())
                                     ? Colors.red
-                                    : Colors.black), // Menentukan warna ikon
+                                    : Colors.black),
                           ),
-                          SizedBox(width: 8),
+                          SizedBox(
+                              width: MediaQuery.of(context).size.width * 0.02),
                           Text(
-                            // Format tanggal sesuai kondisi
                             DateFormat(item['due_date'].substring(0, 4) !=
                                         DateTime.now().year.toString()
                                     ? 'MMM dd, yyyy'
@@ -2544,42 +2580,51 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                   : (DateTime.parse(item['due_date'])
                                           .isBefore(DateTime.now())
                                       ? Colors.red
-                                      : Colors
-                                          .black), // Menentukan warna teks berdasarkan kondisi
+                                      : Colors.black),
                             ),
                           ),
-                          SizedBox(width: 8),
                         ],
                       ),
                     ),
-                  ],
-                ),
-              ],
-              if (item['assign_to_user'] != null) ...[
-                SizedBox(height: 5),
-                Wrap(
-                  spacing: 5, // Jarak antar ikon
-                  runSpacing: 3, // Jarak antar baris jika ikon terlalu banyak
-                  children: [
-                    for (var member in item['assign_to_user']["data"] as List)
-                      Row(
+                  if (item['due_date'] != null &&
+                      item['assign_to_user'] != null)
+                    SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.008),
+                  if (item['assign_to_user'] != null)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor: General.getColorFromInitial(
-                                General.getInitials(member['name'])),
-                            child: Text(
-                              General.getInitials(member['name']),
-                              style:
-                                  TextStyle(fontSize: 12, color: Colors.black),
+                          for (var member
+                              in item['assign_to_user']["data"] as List)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                  right: MediaQuery.of(context).size.width *
+                                      0.013),
+                              child: CircleAvatar(
+                                radius:
+                                    MediaQuery.of(context).size.width * 0.042,
+                                backgroundColor: General.getColorFromInitial(
+                                    General.getInitials(member['name'])),
+                                child: FittedBox(
+                                  child: Text(
+                                    General.getInitials(member['name']),
+                                    style: TextStyle(
+                                      fontSize:
+                                          MediaQuery.of(context).size.width *
+                                              0.03,
+                                      color: Colors.black,
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
                         ],
                       ),
-                  ],
-                ),
-              ]
+                    ),
+                ],
+              ),
             ],
           ),
           trailing: PopupMenuButton<String>(
@@ -2587,12 +2632,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               Icons.more_vert,
               color: Colors.black,
             ),
-            offset: Offset(0, 40),
+            offset: Offset(0, MediaQuery.of(context).size.height * 0.05),
             onSelected: (String result) async {
               switch (result) {
-                case 'complete_toggle':
-                  await _toggleItemCompletion(item['id'], !isChecked);
-                  break;
                 case 'move':
                   Map<String, int>? dataDialog =
                       await _showMoveItemDialog(checklistId);
@@ -2642,21 +2684,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               }
             },
             itemBuilder: (BuildContext context) => [
-              PopupMenuItem<String>(
-                value: 'complete_toggle',
-                child: Row(
-                  children: [
-                    Icon(
-                      isChecked ? Icons.unpublished_outlined : Icons.check,
-                      color: isChecked ? Colors.red : Colors.green,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      isChecked ? "Mark item Incomplete" : "Mark item Complete",
-                    ),
-                  ],
-                ),
-              ),
               PopupMenuItem<String>(
                 value: 'move',
                 child: Row(
@@ -3358,7 +3385,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               ),
               content: SizedBox(
                 width: double.maxFinite,
-                height: 500, // <-- batasi tinggi dialog
+                height: 500,
                 child: Column(
                   children: [
                     Padding(
@@ -3812,6 +3839,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             showPDFPreview(context, fileDownload);
                           } else if (fileType.toLowerCase() == "mp3") {
                             showAudioPreview(context, fileDownload);
+                          } else if (fileType.toLowerCase() == "png" ||
+                              fileType.toLowerCase() == "jpg" ||
+                              fileType.toLowerCase() == "jpeg") {
+                            showImagePreview(context, filePath);
                           } else {
                             showDialog(
                               context: context,

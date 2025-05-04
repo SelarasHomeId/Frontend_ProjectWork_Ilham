@@ -14,7 +14,7 @@ class AddProjectWidget extends StatefulWidget {
 class _AddProjectWidgetState extends State<AddProjectWidget> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
-  TextEditingController dateController = TextEditingController();
+
   FocusNode _nameFocusNode = FocusNode();
   FocusNode _locationFocusNode = FocusNode();
   File? _selectedImage;
@@ -23,8 +23,6 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
   void initState() {
     super.initState();
     // Set default date to today's date
-    dateController.text =
-        DateTime.now().toIso8601String().split('T')[0]; // Format: YYYY-MM-DD
   }
 
   @override
@@ -32,23 +30,6 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
     _nameFocusNode.dispose();
     _locationFocusNode.dispose();
     super.dispose();
-  }
-
-  // Fungsi untuk menampilkan date picker dan memilih tanggal
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? selectedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(), // Tanggal awal adalah hari ini
-      firstDate: DateTime(2000), // Tanggal awal (bisa disesuaikan)
-      lastDate: DateTime(2101), // Tanggal akhir (bisa disesuaikan)
-    );
-
-    if (selectedDate != null && selectedDate != DateTime.now()) {
-      setState(() {
-        dateController.text = "${selectedDate.toLocal()}"
-            .split(' ')[0]; // Set tanggal yang dipilih
-      });
-    }
   }
 
   void showAutoDismissDialog(BuildContext context, String message) {
@@ -106,9 +87,7 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
 
   // Fungsi untuk menambah project
   void _addProject(BuildContext context) async {
-    if (nameController.text.isEmpty ||
-        locationController.text.isEmpty ||
-        dateController.text.isEmpty) {
+    if (nameController.text.isEmpty || locationController.text.isEmpty) {
       showAutoDismissDialog(context, "Semua field harus diisi");
       return;
     }
@@ -129,7 +108,6 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
 
       request.fields['name'] = nameController.text;
       request.fields['location'] = locationController.text;
-      request.fields['date_created'] = dateController.text;
 
       if (_selectedImage != null) {
         request.files.add(
@@ -268,36 +246,6 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
                     ),
                   ),
                   SizedBox(height: screenHeight * 0.02),
-
-                  // Tanggal Dibuat
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Text(
-                      "Tanggal Dibuat",
-                      style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.01),
-                  TextField(
-                    controller: dateController,
-                    readOnly: true,
-                    decoration: InputDecoration(
-                      hintText: "Pilih tanggal",
-                      hintStyle:
-                          TextStyle(color: Colors.black.withOpacity(0.5)),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      suffixIcon: Icon(Icons.calendar_today),
-                    ),
-                    onTap: () => _selectDate(context),
-                  ),
-                  SizedBox(height: screenHeight * 0.02),
-
                   // Pilih Gambar
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
