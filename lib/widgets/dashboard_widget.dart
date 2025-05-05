@@ -303,7 +303,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
           ..writeAsBytesSync(excel.encode()!);
 
         General.showSnackBar(
-            context, 'File Excel berhasil disimpan di: $filePath');
+            context, 'File Excel berhasil disimpan di folder Download',
+            durationSeconds: 5);
 
         print('File berhasil disimpan di: $filePath');
       } catch (e) {
@@ -708,7 +709,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                           },
                         ),
                         SizedBox(height: 10.0),
-                        _isLoadingContacts || _contacts.isEmpty
+                        _isLoadingContacts
                             ? Center(child: CircularProgressIndicator())
                             : _contacts.isEmpty
                                 ? Center(child: Text('No contacts to display'))
@@ -790,7 +791,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                           },
                         ),
                         SizedBox(height: 10.0),
-                        _isLoadingAffiliate || _affiliates.isEmpty
+                        _isLoadingAffiliate
                             ? Center(child: CircularProgressIndicator())
                             : _affiliates.isEmpty
                                 ? Center(
@@ -930,31 +931,6 @@ class _DashboardWidgetState extends State<DashboardWidget> {
       ),
     );
   }
-
-  // Widget _buildWorkspaceCards(Map<String, dynamic> workspace) {
-  //   return Container(
-  //     height: 200, // Sesuaikan tinggi
-  //     child: ListView.builder(
-  //       scrollDirection: Axis.horizontal,
-  //       itemCount: workspace['boards']?.length ?? 0,
-  //       itemBuilder: (context, index) {
-  //         var board = workspace['boards'][index];
-  //         return Container(
-  //           width: 280, // Lebar card
-  //           margin: EdgeInsets.only(right: 16),
-  //           child: createCard(
-  //             label1: "Office",
-  //             label2: "Priority",
-  //             description: board['name'],
-  //             date: DateFormat('EEE.ddMMM y').format(
-  //               DateTime.parse(board['updated_at']).toLocal(),
-  //             ),
-  //           ),
-  //         );
-  //       },
-  //     ),
-  //   );
-  // }
 }
 
 class ContactDataSource extends DataTableSource {

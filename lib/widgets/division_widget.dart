@@ -209,7 +209,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
     final confirm = await General.showDialogDelete(
         context: context,
         title: "Hapus Divisi",
-        message: "Apakah Anda Yakin Ingin Menghapus Divis Ini?",
+        message: "Apakah Anda Yakin Ingin Menghapus Divisi Ini?",
         confirmButtonText: "Hapus",
         cancelButtonText: "Batal");
 

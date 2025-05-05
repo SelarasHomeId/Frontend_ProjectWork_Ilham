@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/home_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
@@ -82,7 +80,7 @@ class _LoginScreenState extends State<LoginScreen> {
           if (response != null && response['data'] != null) {
             if (response['data']['error'] == 'unauthorized' &&
                 response['data']['message'] == 'this account is locked') {
-              _showAccountLockedDialog(); // Tampilkan dialog jika akun terkunci
+              _showAccountLockedDialog();
             } else {
               _showErrorDialog(
                   response['message'] ?? 'Username atau password salah');
@@ -460,7 +458,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               General.showDialogError(
                                   context: context,
                                   title: "error",
-                                  message: 'Email Tidak Terdaftar: $e',
+                                  message: 'Email Tidak Terdaftar!',
                                   confirmButtonText: "oke");
                             }
                           } catch (e) {

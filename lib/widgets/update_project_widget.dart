@@ -83,7 +83,7 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
 
     if (confirm != null && confirm) {
       try {
-        final data = {
+        Map<String, dynamic> data = {
           'name': nameController.text,
           'location': locationController.text,
         };
@@ -100,6 +100,13 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
             projectId: widget.projectId,
             data: data,
             listFile: [fileStream],
+          );
+        } else if (_selectedImage == null && _existingImageUrl == null) {
+          data['delete_cover'] = true;
+          response = await ApiService.handleProject(
+            method: 'PUT',
+            projectId: widget.projectId,
+            data: data,
           );
         } else {
           response = await ApiService.handleProject(

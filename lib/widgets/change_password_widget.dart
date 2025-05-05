@@ -51,7 +51,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
 
       if (response != null && response['success'] == true) {
         General.showSnackBar(context, 'Password berhasil diubah!');
-        Navigator.pop(context); // Kembali ke halaman sebelumnya
+        Navigator.pop(context);
       } else {
         print("Response tidak valid atau gagal: $response");
         General.showSnackBar(context, 'Gagal mengupdate password');
@@ -61,7 +61,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
         context: context,
         builder: (BuildContext context) {
           Future.delayed(Duration(seconds: 3), () {
-            Navigator.of(context).pop(); // Close the dialog after 3 seconds
+            Navigator.of(context).pop();
           });
 
           return AlertDialog(
@@ -137,7 +137,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                           contentPadding: EdgeInsets.symmetric(
                               vertical: 12, horizontal: 12),
                           border: OutlineInputBorder(),
-                          labelText: 'Old Password',
+                          labelText: 'Password Lama',
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isOldPasswordObscured
@@ -153,10 +153,9 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Old password is required';
-                          }
-                          return null;
+                          String? message =
+                              General.validatePassword("Password Lama", value);
+                          return message;
                         },
                       ),
                       SizedBox(height: 16),
@@ -169,7 +168,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                           fillColor: Colors.grey[100],
                           contentPadding: EdgeInsets.symmetric(
                               vertical: 10, horizontal: 12),
-                          labelText: 'New Password',
+                          labelText: 'Password Baru',
                           border: OutlineInputBorder(),
                           suffixIcon: IconButton(
                             icon: Icon(
@@ -186,10 +185,12 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'New password is required';
+                          if (value != _oldPasswordController.text) {
+                            return 'Password Baru Tidak Boleh Sama dengan Password Lama';
                           }
-                          return null;
+                          String? message =
+                              General.validatePassword("Password Baru", value);
+                          return message;
                         },
                       ),
                       SizedBox(height: 16),
@@ -203,7 +204,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                           contentPadding: EdgeInsets.symmetric(
                               vertical: 10, horizontal: 12),
                           border: OutlineInputBorder(),
-                          labelText: 'Confirm Password',
+                          labelText: 'Konfirmasi Password',
                           suffixIcon: IconButton(
                             icon: Icon(
                               _isConfirmPasswordObscured
@@ -219,13 +220,12 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                           ),
                         ),
                         validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please confirm your password';
-                          }
                           if (value != _newPasswordController.text) {
-                            return 'Passwords do not match';
+                            return 'Konfirmasi Password Tidak Sesuai';
                           }
-                          return null;
+                          String? message = General.validatePassword(
+                              "Konfirmasi Password", value);
+                          return message;
                         },
                       ),
                       SizedBox(height: 20),

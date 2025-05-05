@@ -128,7 +128,10 @@ class General {
   }
 
   static Future<void> showSnackBar(
-      BuildContext context, dynamic message) async {
+    BuildContext context,
+    dynamic message, {
+    int? durationSeconds,
+  }) async {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: SizedBox(
@@ -141,7 +144,7 @@ class General {
             ),
           ),
         ),
-        duration: Duration(seconds: 2),
+        duration: Duration(seconds: durationSeconds ?? 2),
         behavior: SnackBarBehavior.floating, // Supaya tidak full width
         margin: EdgeInsets.symmetric(horizontal: 50, vertical: 20),
         shape: RoundedRectangleBorder(
@@ -1158,6 +1161,28 @@ class General {
         );
       },
     );
+  }
+
+  static String? validatePassword(
+    String flag,
+    String? value,
+  ) {
+    if (value == null || value.isEmpty) {
+      return '$flag wajib diisi';
+    }
+    if (value.length < 8) {
+      return '$flag minimal 8 karakter';
+    }
+    if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
+      return '$flag harus mengandung huruf';
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return '$flag harus mengandung angka';
+    }
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+      return '$flag harus mengandung karakter khusus (!@#\$%^&* dll)';
+    }
+    return null;
   }
 }
 

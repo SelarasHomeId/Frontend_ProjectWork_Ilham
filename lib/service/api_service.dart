@@ -367,12 +367,11 @@ class ApiService {
         method: 'POST',
         endpoint: '/auth/send-email/forgot-password',
         body: {'email': email},
-        token: null, // Tidak ada token yang dibutuhkan
+        token: null,
         contentType: 'application/json',
       );
 
       if (response != null && response['code'] == 401) {
-        // Jika kode status 401, email tidak ditemukan
         return {
           'success': false,
           'message': 'Email tidak terdaftar',

@@ -86,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> {
           "Tekan kembali untuk keluar",
         );
       } else {
-        // Jika tombol back ditekan dua kali dalam 800ms, keluar aplikasi
         SystemNavigator.pop();
       }
     }
@@ -95,19 +94,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: false, // Tangani back secara manual
+      canPop: false,
       onPopInvokedWithResult: _onPopInvoked,
       child: Scaffold(
-        appBar: AppBarWidget(), // AppBar custom
+        appBar: AppBarWidget(),
         backgroundColor: const Color.fromARGB(255, 248, 248, 248),
         drawer: Drawer(
           child: Sidebar(
-            roleId: widget.roleId, // Role pengguna
-            onMenuItemSelected: _onMenuItemSelected, // Callback untuk menu
+            roleId: widget.roleId,
+            onMenuItemSelected: _onMenuItemSelected,
           ),
         ),
         body: SafeArea(
-          child: _currentWidget, // Tampilkan widget sesuai menu
+          child: _currentWidget,
         ),
       ),
     );
