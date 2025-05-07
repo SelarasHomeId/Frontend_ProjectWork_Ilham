@@ -58,6 +58,8 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   void dispose() {
     _searchMessageController.dispose();
     _searchMessageFocusNode.dispose();
+    _searchAffiliateController.dispose();
+    _searchAffiliateFocusNode.dispose();
     super.dispose();
   }
 

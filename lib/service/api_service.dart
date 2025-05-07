@@ -156,7 +156,7 @@ class ApiService {
       final response = await apiRequest(
         method: 'POST',
         endpoint: '/auth/logout',
-        body: null,
+        body: {'logout_from': 'mobile'},
         token: token,
         contentType: 'application/json',
       );
