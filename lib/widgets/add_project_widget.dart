@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:selarashomeid/utils/connection_checker.dart';
 import 'package:selarashomeid/utils/general.dart';
 
 class AddProjectWidget extends StatefulWidget {
@@ -18,6 +19,7 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
   FocusNode _nameFocusNode = FocusNode();
   FocusNode _locationFocusNode = FocusNode();
   File? _selectedImage;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -88,11 +90,14 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
   // Fungsi untuk menambah project
   void _addProject(BuildContext context) async {
     if (nameController.text.isEmpty || locationController.text.isEmpty) {
-      showAutoDismissDialog(context, "Semua field harus diisi");
+      showAutoDismissDialog(context, "Nama project dan lokasi tidak boleh kosong");
       return;
     }
 
     try {
+      setState(() {
+        _isLoading = true;
+      });
       var request = http.MultipartRequest(
         'POST',
         Uri.parse(ApiService.getProjectUrl()),
@@ -119,6 +124,9 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
       var response = await request.send();
       var responseData = await response.stream.bytesToString();
 
+      setState(() {
+        _isLoading = false;
+      });
       if (response.statusCode == 200) {
         Navigator.pop(context);
         General.showSnackBar(context, 'Project berhasil ditambahkan!');
@@ -137,231 +145,235 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
-    return PopScope(
-      canPop: !_nameFocusNode.hasFocus && !_locationFocusNode.hasFocus,
-      onPopInvokedWithResult: (didPop, result) {
-        if (_nameFocusNode.hasFocus) {
-          _nameFocusNode.unfocus();
-        }
-        if (_locationFocusNode.hasFocus) {
-          _locationFocusNode.unfocus();
-        }
-      },
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          _nameFocusNode.unfocus();
-          _locationFocusNode.unfocus();
+    return ConnectionChecker(
+      child: PopScope(
+        canPop: !_nameFocusNode.hasFocus && !_locationFocusNode.hasFocus,
+        onPopInvokedWithResult: (didPop, result) {
+          if (_nameFocusNode.hasFocus) {
+            _nameFocusNode.unfocus();
+          }
+          if (_locationFocusNode.hasFocus) {
+            _locationFocusNode.unfocus();
+          }
         },
-        child: Scaffold(
-          appBar: PreferredSize(
-            preferredSize: Size.fromHeight(screenHeight * 0.09),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.red[900],
-                borderRadius: BorderRadius.only(
-                  bottomLeft: Radius.circular(15),
-                  bottomRight: Radius.circular(15),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            _nameFocusNode.unfocus();
+            _locationFocusNode.unfocus();
+          },
+          child: Scaffold(
+            appBar: PreferredSize(
+              preferredSize: Size.fromHeight(screenHeight * 0.09),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.red[900],
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(15),
+                    bottomRight: Radius.circular(15),
+                  ),
                 ),
-              ),
-              child: AppBar(
-                automaticallyImplyLeading: true,
-                backgroundColor: Colors.transparent,
-                elevation: 0,
-                title: Text(
-                  "Tambah Project",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: screenWidth * 0.07,
-                      fontWeight: FontWeight.w500),
-                ),
-                iconTheme: IconThemeData(
-                  color: Colors.white, // Mengubah warna ikon back jadi putih
+                child: AppBar(
+                  automaticallyImplyLeading: true,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  title: Text(
+                    "Tambah Project",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: screenWidth * 0.07,
+                        fontWeight: FontWeight.w500),
+                  ),
+                  iconTheme: IconThemeData(
+                    color: Colors.white, // Mengubah warna ikon back jadi putih
+                  ),
                 ),
               ),
             ),
-          ),
-          body: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.all(screenWidth * 0.04),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Silahkan Masukkan Data Proyek Baru",
-                    style: TextStyle(fontSize: screenWidth * 0.05),
-                  ),
-                  SizedBox(height: screenHeight * 0.02),
+            body: _isLoading
+            ? Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(screenWidth * 0.04),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Silahkan Masukkan Data Proyek Baru",
+                      style: TextStyle(fontSize: screenWidth * 0.05),
+                    ),
+                    SizedBox(height: screenHeight * 0.02),
 
-                  // Nama Project
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Text(
-                      "Nama Project",
-                      style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.01),
-                  TextField(
-                    controller: nameController,
-                    focusNode: _nameFocusNode,
-                    decoration: InputDecoration(
-                      hintText: "Masukkan nama project",
-                      hintStyle:
-                          TextStyle(color: Colors.black.withOpacity(0.5)),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.02),
-
-                  // Lokasi Project
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8.0),
-                    child: Text(
-                      "Lokasi Project",
-                      style: TextStyle(
-                          fontSize: screenWidth * 0.04,
-                          fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.01),
-                  TextField(
-                    controller: locationController,
-                    focusNode: _locationFocusNode,
-                    decoration: InputDecoration(
-                      hintText: "Masukkan link lokasi project",
-                      hintStyle:
-                          TextStyle(color: Colors.black.withOpacity(0.5)),
-                      filled: true,
-                      fillColor: Colors.grey[100],
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: screenHeight * 0.02),
-                  // Pilih Gambar
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: Text(
-                          "Gambar Cover",
-                          style: TextStyle(
+                    // Nama Project
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Text(
+                        "Nama Project",
+                        style: TextStyle(
                             fontSize: screenWidth * 0.04,
-                            fontWeight: FontWeight.bold,
-                          ),
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.01),
+                    TextField(
+                      controller: nameController,
+                      focusNode: _nameFocusNode,
+                      decoration: InputDecoration(
+                        hintText: "Masukkan nama project",
+                        hintStyle:
+                            TextStyle(color: Colors.black.withOpacity(0.5)),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
                         ),
                       ),
-                      SizedBox(height: screenHeight * 0.01),
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _pickImage,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons
-                                    .cloud_upload, // Ganti dengan ikon yang diinginkan
-                                color: Colors.white,
-                                size: screenWidth * 0.06,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                "Pilih Gambar",
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: screenWidth * 0.04),
-                              ),
-                            ],
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF7EA0B7),
-                            padding: EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
+                    ),
+                    SizedBox(height: screenHeight * 0.02),
+
+                    // Lokasi Project
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: Text(
+                        "Lokasi Project",
+                        style: TextStyle(
+                            fontSize: screenWidth * 0.04,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.01),
+                    TextField(
+                      controller: locationController,
+                      focusNode: _locationFocusNode,
+                      decoration: InputDecoration(
+                        hintText: "Masukkan link lokasi project",
+                        hintStyle:
+                            TextStyle(color: Colors.black.withOpacity(0.5)),
+                        filled: true,
+                        fillColor: Colors.grey[100],
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(25),
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: screenHeight * 0.02),
+                    // Pilih Gambar
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Text(
+                            "Gambar Cover",
+                            style: TextStyle(
+                              fontSize: screenWidth * 0.04,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(height: screenHeight * 0.02),
-                      _selectedImage != null
-                          ? Stack(
-                              alignment: Alignment.topRight,
+                        SizedBox(height: screenHeight * 0.01),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _pickImage,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Image.file(
-                                  _selectedImage!,
-                                  width: 100,
-                                  height: 100,
-                                  fit: BoxFit.cover,
+                                Icon(
+                                  Icons
+                                      .cloud_upload, // Ganti dengan ikon yang diinginkan
+                                  color: Colors.white,
+                                  size: screenWidth * 0.06,
                                 ),
-                                GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      _selectedImage = null;
-                                    });
-                                  },
-                                  child: Container(
-                                    margin: EdgeInsets.all(4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    child: Icon(
-                                      Icons.close,
+                                SizedBox(width: 8),
+                                Text(
+                                  "Pilih Gambar",
+                                  style: TextStyle(
                                       color: Colors.white,
-                                      size: 20,
-                                    ),
-                                  ),
+                                      fontSize: screenWidth * 0.04),
                                 ),
                               ],
-                            )
-                          : Text(
-                              "Tidak ada gambar",
-                              style: TextStyle(color: Colors.grey),
                             ),
-                    ],
-                  ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color(0xFF7EA0B7),
+                              padding: EdgeInsets.symmetric(vertical: 15),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(height: screenHeight * 0.02),
+                        _selectedImage != null
+                            ? Stack(
+                                alignment: Alignment.topRight,
+                                children: [
+                                  Image.file(
+                                    _selectedImage!,
+                                    width: 100,
+                                    height: 100,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        _selectedImage = null;
+                                      });
+                                    },
+                                    child: Container(
+                                      margin: EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : Text(
+                                "Tidak ada gambar",
+                                style: TextStyle(color: Colors.grey),
+                              ),
+                      ],
+                    ),
 
-                  SizedBox(
-                    height: 10,
-                  ),
+                    SizedBox(
+                      height: 10,
+                    ),
 
-                  // Tombol Submit
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () {
-                        _addProject(context);
-                      },
-                      child: Text(
-                        "Tambah Project",
-                        style: TextStyle(
-                            color: Colors.white, fontSize: screenWidth * 0.05),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF7EA0B7),
-                        padding: EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
+                    // Tombol Submit
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          _addProject(context);
+                        },
+                        child: Text(
+                          "Tambah Project",
+                          style: TextStyle(
+                              color: Colors.white, fontSize: screenWidth * 0.05),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF7EA0B7),
+                          padding: EdgeInsets.symmetric(vertical: 15),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
-    );
+      )
+    ); 
   }
 }

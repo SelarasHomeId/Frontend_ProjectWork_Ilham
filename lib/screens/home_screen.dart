@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:selarashomeid/utils/connection_checker.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:selarashomeid/widgets/division_widget.dart';
 import 'package:selarashomeid/widgets/project_widget.dart';
@@ -93,22 +94,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: _onPopInvoked,
-      child: Scaffold(
-        appBar: AppBarWidget(),
-        backgroundColor: const Color.fromARGB(255, 248, 248, 248),
-        drawer: Drawer(
-          child: Sidebar(
-            roleId: widget.roleId,
-            onMenuItemSelected: _onMenuItemSelected,
+    return ConnectionChecker(
+      child: PopScope(
+        canPop: false,
+        onPopInvokedWithResult: _onPopInvoked,
+        child: Scaffold(
+          appBar: AppBarWidget(),
+          backgroundColor: const Color.fromARGB(255, 248, 248, 248),
+          drawer: Drawer(
+            child: Sidebar(
+              roleId: widget.roleId,
+              onMenuItemSelected: _onMenuItemSelected,
+            ),
+          ),
+          body: SafeArea(
+            child: _currentWidget,
           ),
         ),
-        body: SafeArea(
-          child: _currentWidget,
-        ),
-      ),
+      )
     );
   }
 }

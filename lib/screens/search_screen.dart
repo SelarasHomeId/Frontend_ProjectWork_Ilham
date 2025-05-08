@@ -3,6 +3,7 @@ import 'dart:developer';
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/detail_task_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/connection_checker.dart';
 
 class SearchScreen extends StatefulWidget {
   @override
@@ -79,66 +80,68 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.red[900],
-        foregroundColor: Colors.white,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back),
-          color: Colors.white,
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        title: TextField(
-          controller: _searchController,
-          focusNode: _focusNode,
-          cursorColor: Colors.white,
-          style: TextStyle(color: Colors.white),
-          decoration: InputDecoration(
-            hintText: 'Search task...',
-            hintStyle: TextStyle(color: Colors.white70),
-            border: InputBorder.none,
+    return ConnectionChecker(
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: Colors.red[900],
+          foregroundColor: Colors.white,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back),
+            color: Colors.white,
+            onPressed: () {
+              Navigator.pop(context);
+            },
+          ),
+          title: TextField(
+            controller: _searchController,
+            focusNode: _focusNode,
+            cursorColor: Colors.white,
+            style: TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search task...',
+              hintStyle: TextStyle(color: Colors.white70),
+              border: InputBorder.none,
+            ),
           ),
         ),
-      ),
-      body: Column(
-        children: [
-          if (isLoading) LinearProgressIndicator(),
-          Expanded(
-            child: searchResults.isEmpty
-                ? Center(child: Text("No tasks found"))
-                : ListView.builder(
-                    itemCount: searchResults.length,
-                    itemBuilder: (context, index) {
-                      final task = searchResults[index];
-                      return ListTile(
-                        title: Text(task["title"] ?? "No Title",
-                            style: TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(
-                          task["description"] is bool
-                              ? (task["description"]
-                                  ? "Has Description"
-                                  : "No Description")
-                              : (task["description"] ?? "No Description"),
-                        ),
-                        onTap: () async {
-                          await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => DetailTaskScreen(
-                                boardId: task['board_id'],
-                                taskId: task['id'],
+        body: Column(
+          children: [
+            if (isLoading) LinearProgressIndicator(),
+            Expanded(
+              child: searchResults.isEmpty
+                  ? Center(child: Text("No tasks found"))
+                  : ListView.builder(
+                      itemCount: searchResults.length,
+                      itemBuilder: (context, index) {
+                        final task = searchResults[index];
+                        return ListTile(
+                          title: Text(task["title"] ?? "No Title",
+                              style: TextStyle(fontWeight: FontWeight.bold)),
+                          subtitle: Text(
+                            task["description"] is bool
+                                ? (task["description"]
+                                    ? "Has Description"
+                                    : "No Description")
+                                : (task["description"] ?? "No Description"),
+                          ),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => DetailTaskScreen(
+                                  boardId: task['board_id'],
+                                  taskId: task['id'],
+                                ),
                               ),
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
-          ),
-        ],
-      ),
+                            );
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      )
     );
   }
 }

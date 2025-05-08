@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/detail_task_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/utils/connection_checker.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -122,107 +123,110 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.close),
-          onPressed: () {
-            Navigator.pop(context);
-          },
-        ),
-        backgroundColor: Colors.red[900],
-        title: Text("Notifications"),
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: Icon(Icons.done_all),
+    
+    return ConnectionChecker(
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: Icon(Icons.close),
             onPressed: () {
-              notifications.forEach((item) {
-                setNotificationAsAllRead(item.id);
-              });
+              Navigator.pop(context);
             },
           ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                DropdownButton<String>(
-                  value: selectedFilter,
-                  items: ["Today", "This Week", "This Month"]
-                      .map((filter) => DropdownMenuItem(
-                            value: filter,
-                            child: Text(filter),
-                          ))
-                      .toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      selectedFilter = value!;
-                      fetchNotifications();
-                    });
-                  },
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    setState(() {
-                      showUnreadOnly = !showUnreadOnly;
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          showUnreadOnly ? Colors.white : Colors.grey[700],
-                      foregroundColor:
-                          showUnreadOnly ? Colors.black : Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10.0),
-                          side: BorderSide(color: Colors.black, width: 1.0))),
-                  child: Text(showUnreadOnly ? "Show All" : "Just Unread"),
-                ),
-              ],
-            ),
-            SizedBox(height: 16),
-            Expanded(
-              child: isLoading
-                  ? Center(child: CircularProgressIndicator())
-                  : notifications.isEmpty
-                      ? Center(child: Text("No notifications"))
-                      : ListView.builder(
-                          itemCount: notifications.length,
-                          itemBuilder: (context, index) {
-                            final notification = notifications[index];
-                            if (showUnreadOnly && notification.isRead) {
-                              return SizedBox
-                                  .shrink(); // Skip if marked as read
-                            }
-
-                            return ListTile(
-                              leading: Icon(Icons.notifications),
-                              title: Text(notification.title),
-                              subtitle: Text(notification.message),
-                              trailing: Icon(
-                                notification.isRead
-                                    ? Icons.check_circle
-                                    : Icons.radio_button_unchecked,
-                                color: notification.isRead
-                                    ? Colors.green
-                                    : Colors.red,
-                              ),
-                              onTap: () async {
-                                setNotificationAsRead(
-                                    notification.id, notification.task_id);
-                              },
-                            );
-                          },
-                        ),
+          backgroundColor: Colors.red[900],
+          title: Text("Notifications"),
+          foregroundColor: Colors.white,
+          actions: [
+            IconButton(
+              icon: Icon(Icons.done_all),
+              onPressed: () {
+                notifications.forEach((item) {
+                  setNotificationAsAllRead(item.id);
+                });
+              },
             ),
           ],
         ),
-      ),
+        body: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  DropdownButton<String>(
+                    value: selectedFilter,
+                    items: ["Today", "This Week", "This Month"]
+                        .map((filter) => DropdownMenuItem(
+                              value: filter,
+                              child: Text(filter),
+                            ))
+                        .toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedFilter = value!;
+                        fetchNotifications();
+                      });
+                    },
+                  ),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        showUnreadOnly = !showUnreadOnly;
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                        backgroundColor:
+                            showUnreadOnly ? Colors.white : Colors.grey[700],
+                        foregroundColor:
+                            showUnreadOnly ? Colors.black : Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10.0),
+                            side: BorderSide(color: Colors.black, width: 1.0))),
+                    child: Text(showUnreadOnly ? "Show All" : "Just Unread"),
+                  ),
+                ],
+              ),
+              SizedBox(height: 16),
+              Expanded(
+                child: isLoading
+                    ? Center(child: CircularProgressIndicator())
+                    : notifications.isEmpty
+                        ? Center(child: Text("No notifications"))
+                        : ListView.builder(
+                            itemCount: notifications.length,
+                            itemBuilder: (context, index) {
+                              final notification = notifications[index];
+                              if (showUnreadOnly && notification.isRead) {
+                                return SizedBox
+                                    .shrink(); // Skip if marked as read
+                              }
+
+                              return ListTile(
+                                leading: Icon(Icons.notifications),
+                                title: Text(notification.title),
+                                subtitle: Text(notification.message),
+                                trailing: Icon(
+                                  notification.isRead
+                                      ? Icons.check_circle
+                                      : Icons.radio_button_unchecked,
+                                  color: notification.isRead
+                                      ? Colors.green
+                                      : Colors.red,
+                                ),
+                                onTap: () async {
+                                  setNotificationAsRead(
+                                      notification.id, notification.task_id);
+                                },
+                              );
+                            },
+                          ),
+              ),
+            ],
+          ),
+        ),
+      )
     );
   }
 }

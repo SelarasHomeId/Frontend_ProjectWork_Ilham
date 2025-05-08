@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/home_screen.dart';
 import 'package:selarashomeid/screens/login_screen.dart';
+import 'package:selarashomeid/utils/connection_checker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -55,11 +56,12 @@ class _MyAppState extends State<MyApp> {
               tilePadding: EdgeInsets.symmetric(horizontal: 8))),
       initialRoute: '/',
       routes: {
-        '/': (context) => FutureBuilder<Map<String, dynamic>>(
+        '/': (context) => ConnectionChecker(
+            child: FutureBuilder<Map<String, dynamic>>(
               future: _checkLoginStatus,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return Center(child: CircularProgressIndicator());
+                  return SplashScreen();
                 } else if (snapshot.hasData) {
                   var data = snapshot.data!;
                   bool isLoggedIn = data['isLoggedIn'];
@@ -75,8 +77,79 @@ class _MyAppState extends State<MyApp> {
                   return LoginScreen();
                 }
               },
-            ),
+            )
+        )
       },
+    );
+  }
+}
+
+class SplashScreen extends StatelessWidget {
+  const SplashScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: 1),
+          duration: Duration(seconds: 1),
+          builder: (context, value, child) {
+            return Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    if (value < 1.0)
+                      Transform.rotate(
+                        angle: 3.14,
+                        child: SizedBox(
+                          width: 150,
+                          height: 150,
+                          child: CircularProgressIndicator(
+                            value: value,
+                            strokeWidth: 5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.green),
+                            backgroundColor: Colors.grey.shade200,
+                          ),
+                        ),
+                      ),
+                    Image.asset(
+                      'assets/selaras_logo2.png',
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.contain,
+                    ),
+                  ],
+                ),
+                if (value >= 1.0) ...[
+                  const SizedBox(height: 24),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Image.asset(
+                        'assets/animation_say_hello.gif',
+                        width: 50,
+                        height: 50,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Hello Developer Selaras!',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.green.shade700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+      ),
     );
   }
 }
