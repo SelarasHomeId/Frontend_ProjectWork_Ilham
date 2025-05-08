@@ -95,23 +95,24 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return ConnectionChecker(
-      child: PopScope(
-        canPop: false,
-        onPopInvokedWithResult: _onPopInvoked,
-        child: Scaffold(
-          appBar: AppBarWidget(),
-          backgroundColor: const Color.fromARGB(255, 248, 248, 248),
-          drawer: Drawer(
-            child: Sidebar(
-              roleId: widget.roleId,
-              onMenuItemSelected: _onMenuItemSelected,
-            ),
+        child: PopScope(
+      canPop: false,
+      onPopInvokedWithResult: _onPopInvoked,
+      child: Scaffold(
+        appBar: AppBarWidget(),
+        backgroundColor: const Color.fromARGB(255, 248, 248, 248),
+        drawer: Drawer(
+          child: Sidebar(
+            roleId: widget.roleId,
+            onMenuItemSelected: _onMenuItemSelected,
           ),
-          body: SafeArea(
+        ),
+        body: ConnectionChecker(
+          child: SafeArea(
             child: _currentWidget,
           ),
         ),
-      )
-    );
+      ),
+    ));
   }
 }

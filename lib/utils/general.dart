@@ -712,11 +712,10 @@ class General {
 
                       if (inputText.isEmpty) {
                         General.showDialogError(
-                          context: context, 
-                          title: 'Error', 
-                          message: emptyFieldMessage, 
-                          confirmButtonText: "Oke"
-                        );
+                            context: context,
+                            title: 'Error',
+                            message: emptyFieldMessage,
+                            confirmButtonText: "Oke");
                         return;
                       }
 
@@ -734,11 +733,10 @@ class General {
                           inputText.toLowerCase());
                       if (isDuplicate) {
                         General.showDialogError(
-                          context: context, 
-                          title: 'Error', 
-                          message: duplicateMessage, 
-                          confirmButtonText: "Oke"
-                        );
+                            context: context,
+                            title: 'Error',
+                            message: duplicateMessage,
+                            confirmButtonText: "Oke");
                         return;
                       }
 
@@ -947,6 +945,86 @@ class General {
                 onPressed: () => Navigator.of(context).pop(),
                 style: TextButton.styleFrom(
                   backgroundColor: Colors.red[800],
+                  padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  confirmButtonText,
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+    return confirm;
+  }
+
+  static Future<bool?> showDialogInfo({
+    required BuildContext context,
+    required String title,
+    required String message,
+    required String confirmButtonText,
+  }) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.blue,
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.info,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.black54,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: TextButton.styleFrom(
+                  backgroundColor: Colors.blue[800],
                   padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),

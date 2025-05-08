@@ -80,7 +80,7 @@ class ApiService {
           header['Authorization'] = 'Bearer $newToken';
           response = await hitAPI();
         } else {
-          throw Exception('Failed to refresh token');
+          throw Exception('Your Session Is Expired, Please Re-Login...');
         }
       }
 
@@ -114,13 +114,9 @@ class ApiService {
   // function refresh token
   static Future<String?> _refreshToken(String? token) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/refresh-token'),
-        headers: {'Authorization': 'Bearer $token'},
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final newToken = data['data']['token'];
+      final response = await authRefeshToken(token!);
+      if (response!['success'] == true) {
+        final newToken = response['data']['token'];
         General.editSharedPreferences('token', newToken);
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('token');
@@ -143,6 +139,16 @@ class ApiService {
         endpoint: '/auth/login',
         body: {'email': email, 'password': password, 'login_from': 'mobile'},
         token: null,
+        contentType: 'application/json');
+
+    return response;
+  }
+
+  static Future<Map<String, dynamic>?> authRefeshToken(String token) async {
+    final response = await apiRequest(
+        method: 'POST',
+        endpoint: '/auth/refresh-token',
+        token: token,
         contentType: 'application/json');
 
     return response;
