@@ -4,6 +4,8 @@ import 'package:selarashomeid/screens/login_screen.dart';
 import 'package:selarashomeid/utils/connection_checker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(MyApp());
 }
@@ -48,6 +50,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       title: 'SelarasHome App',
       theme: ThemeData(
