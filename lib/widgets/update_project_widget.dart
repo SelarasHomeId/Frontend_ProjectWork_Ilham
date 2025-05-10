@@ -19,6 +19,9 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
   final TextEditingController nameController = TextEditingController();
   final TextEditingController locationController = TextEditingController();
 
+  FocusNode _nameFocusNode = FocusNode();
+  FocusNode _locationFocusNode = FocusNode();
+
   bool _isLoading = true;
   File? _selectedImage;
   String? _existingImageUrl;
@@ -28,6 +31,13 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
   void initState() {
     super.initState();
     _loadProjectData(widget.projectId);
+  }
+
+  @override
+  void dispose() {
+    _nameFocusNode.dispose();
+    _locationFocusNode.dispose();
+    super.dispose();
   }
 
   void _loadProjectData(int projectId) async {
@@ -147,202 +157,222 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
     double screenWidth = MediaQuery.of(context).size.width;
 
     return ConnectionChecker(
-      child: Scaffold(
-        appBar: PreferredSize(
-          preferredSize: Size.fromHeight(screenHeight * 0.09),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.red[900],
-              borderRadius: BorderRadius.only(
-                bottomLeft: Radius.circular(15),
-                bottomRight: Radius.circular(15),
+      child: PopScope(
+        canPop: !_nameFocusNode.hasFocus && !_locationFocusNode.hasFocus,
+        onPopInvokedWithResult: (didPop, result) {
+          if (_nameFocusNode.hasFocus) {
+            _nameFocusNode.unfocus();
+          }
+          if (_locationFocusNode.hasFocus) {
+            _locationFocusNode.unfocus();
+          }
+        },
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            _nameFocusNode.unfocus();
+            _locationFocusNode.unfocus();
+          },
+          child: Scaffold(
+            appBar: PreferredSize(
+              preferredSize: Size.fromHeight(screenHeight * 0.09),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.red[900],
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(15),
+                    bottomRight: Radius.circular(15),
+                  ),
+                ),
+                child: AppBar(
+                  automaticallyImplyLeading: true,
+                  backgroundColor: Colors.transparent,
+                  elevation: 0,
+                  title: Text(
+                    "Update Data Project",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: screenWidth * 0.07,
+                        fontWeight: FontWeight.w500),
+                  ),
+                  iconTheme: IconThemeData(
+                    color: Colors.white, // Mengubah warna ikon back jadi putih
+                  ),
+                ),
               ),
             ),
-            child: AppBar(
-              automaticallyImplyLeading: true,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              title: Text(
-                "Update Data Project",
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: screenWidth * 0.07,
-                    fontWeight: FontWeight.w500),
-              ),
-              iconTheme: IconThemeData(
-                color: Colors.white, // Mengubah warna ikon back jadi putih
-              ),
-            ),
-          ),
-        ),
-        body: _isLoading
-            ? Center(child: CircularProgressIndicator())
-            : SingleChildScrollView(
-                child: Padding(
-                  padding: EdgeInsets.all(screenWidth * 0.04),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Silahkan Perbarui Data Proyek",
-                        style: TextStyle(fontSize: screenWidth * 0.05),
-                      ),
-                      SizedBox(height: screenHeight * 0.02),
-
-                      // Nama Project
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: Text(
-                          "Nama Project",
-                          style: TextStyle(
-                              fontSize: screenWidth * 0.04,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      TextField(
-                        controller: nameController,
-                        decoration: InputDecoration(
-                          hintText: "Masukkan nama project",
-                          hintStyle:
-                              TextStyle(color: Colors.black.withOpacity(0.5)),
-                          filled: true,
-                          fillColor: Colors.grey[100],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: screenHeight * 0.02),
-                      // Lokasi Project
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: Text(
-                          "Lokasi Project",
-                          style: TextStyle(
-                              fontSize: screenWidth * 0.04,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      SizedBox(height: screenHeight * 0.01),
-                      TextField(
-                        controller: locationController,
-                        decoration: InputDecoration(
-                          hintText: "Masukkan link lokasi project",
-                          hintStyle:
-                              TextStyle(color: Colors.black.withOpacity(0.5)),
-                          filled: true,
-                          fillColor: Colors.grey[100],
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(25),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: screenHeight * 0.02),
-                      Column(
+            body: _isLoading
+                ? Center(child: CircularProgressIndicator())
+                : SingleChildScrollView(
+                    child: Padding(
+                      padding: EdgeInsets.all(screenWidth * 0.04),
+                      child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Text(
+                            "Silahkan Perbarui Data Proyek",
+                            style: TextStyle(fontSize: screenWidth * 0.05),
+                          ),
+                          SizedBox(height: screenHeight * 0.02),
+
+                          // Nama Project
                           Padding(
                             padding: const EdgeInsets.only(left: 8.0),
                             child: Text(
-                              "Gambar Cover",
+                              "Nama Project",
                               style: TextStyle(
-                                fontSize: screenWidth * 0.04,
-                                fontWeight: FontWeight.bold,
-                              ),
+                                  fontSize: screenWidth * 0.04,
+                                  fontWeight: FontWeight.bold),
                             ),
                           ),
                           SizedBox(height: screenHeight * 0.01),
+                          TextField(
+                            controller: nameController,
+                            focusNode: _nameFocusNode,
+                            decoration: InputDecoration(
+                              hintText: "Masukkan nama project",
+                              hintStyle:
+                                  TextStyle(color: Colors.black.withOpacity(0.5)),
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: screenHeight * 0.02),
+                          // Lokasi Project
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8.0),
+                            child: Text(
+                              "Lokasi Project",
+                              style: TextStyle(
+                                  fontSize: screenWidth * 0.04,
+                                  fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                          SizedBox(height: screenHeight * 0.01),
+                          TextField(
+                            controller: locationController,
+                            focusNode: _locationFocusNode,
+                            decoration: InputDecoration(
+                              hintText: "Masukkan link lokasi project",
+                              hintStyle:
+                                  TextStyle(color: Colors.black.withOpacity(0.5)),
+                              filled: true,
+                              fillColor: Colors.grey[100],
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: screenHeight * 0.02),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.only(left: 8.0),
+                                child: Text(
+                                  "Gambar Cover",
+                                  style: TextStyle(
+                                    fontSize: screenWidth * 0.04,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.01),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed: _pickImage,
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons
+                                            .cloud_upload, // Ganti dengan ikon yang diinginkan
+                                        color: Colors.white,
+                                        size: screenWidth * 0.06,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "Pilih Gambar",
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: screenWidth * 0.04),
+                                      ),
+                                    ],
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Color(0xFF7EA0B7),
+                                    padding: EdgeInsets.symmetric(vertical: 15),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: screenHeight * 0.02),
+                              Stack(
+                                alignment: Alignment.topRight,
+                                children: [
+                                  if (_selectedImage != null)
+                                    Image.file(_selectedImage!,
+                                        width: 100, height: 100, fit: BoxFit.cover)
+                                  else if (_existingImageUrl != null)
+                                    Image.network(_existingImageUrl!,
+                                        width: 100, height: 100, fit: BoxFit.cover)
+                                  else
+                                    Text("Belum ada gambar",
+                                        style: TextStyle(color: Colors.grey)),
+                                  if (_selectedImage != null ||
+                                      _existingImageUrl != null)
+                                    GestureDetector(
+                                      onTap: () => setState(() {
+                                        _selectedImage = null;
+                                        _existingImageUrl = null;
+                                      }),
+                                      child: CircleAvatar(
+                                        radius: 12,
+                                        backgroundColor: Colors.red,
+                                        child: Icon(Icons.close,
+                                            size: 16, color: Colors.white),
+                                      ),
+                                    ),
+                                ],
+                              )
+                            ],
+                          ),
+
+                          SizedBox(
+                            height: 10,
+                          ),
+                          // Tombol Update
                           SizedBox(
                             width: double.infinity,
                             child: ElevatedButton(
-                              onPressed: _pickImage,
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons
-                                        .cloud_upload, // Ganti dengan ikon yang diinginkan
+                              onPressed: _updateProject,
+                              child: Text(
+                                "Perbarui Project",
+                                style: TextStyle(
                                     color: Colors.white,
-                                    size: screenWidth * 0.06,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    "Pilih Gambar",
-                                    style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: screenWidth * 0.04),
-                                  ),
-                                ],
+                                    fontSize: screenWidth * 0.05),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Color(0xFF7EA0B7),
                                 padding: EdgeInsets.symmetric(vertical: 15),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
+                                  borderRadius: BorderRadius.circular(25),
                                 ),
                               ),
                             ),
                           ),
-                          SizedBox(height: screenHeight * 0.02),
-                          Stack(
-                            alignment: Alignment.topRight,
-                            children: [
-                              if (_selectedImage != null)
-                                Image.file(_selectedImage!,
-                                    width: 100, height: 100, fit: BoxFit.cover)
-                              else if (_existingImageUrl != null)
-                                Image.network(_existingImageUrl!,
-                                    width: 100, height: 100, fit: BoxFit.cover)
-                              else
-                                Text("Belum ada gambar",
-                                    style: TextStyle(color: Colors.grey)),
-                              if (_selectedImage != null ||
-                                  _existingImageUrl != null)
-                                GestureDetector(
-                                  onTap: () => setState(() {
-                                    _selectedImage = null;
-                                    _existingImageUrl = null;
-                                  }),
-                                  child: CircleAvatar(
-                                    radius: 12,
-                                    backgroundColor: Colors.red,
-                                    child: Icon(Icons.close,
-                                        size: 16, color: Colors.white),
-                                  ),
-                                ),
-                            ],
-                          )
                         ],
                       ),
-
-                      SizedBox(
-                        height: 10,
-                      ),
-                      // Tombol Update
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _updateProject,
-                          child: Text(
-                            "Perbarui Project",
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: screenWidth * 0.05),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF7EA0B7),
-                            padding: EdgeInsets.symmetric(vertical: 15),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
+          )
+        )
       )
     );
   }

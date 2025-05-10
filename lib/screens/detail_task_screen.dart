@@ -1186,6 +1186,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     int? selectedWorkspaceId = workspaceId;
     int? selectedBoardId = boardId;
 
+    setState(() {
+      _isLoading = true;
+    });
     try {
       final response = await ApiService.workspaceFind();
       if (response.isNotEmpty) {
@@ -1218,6 +1221,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
 
     await loadBoards(selectedWorkspaceId!);
+
+    setState(() {
+      _isLoading = false;
+    });
 
     return await showDialog<Map<String, int>>(
       context: context,
@@ -1477,7 +1484,15 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: Text("Move"),
+              child: _isLoading ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text('Move'),
             ),
           ],
         ),
@@ -2691,7 +2706,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 value: 'move',
                 child: Row(
                   children: [
-                    Icon(Icons.calendar_today),
+                    Icon(Icons.swap_horiz),
                     SizedBox(width: 8),
                     Text('Move Item'),
                   ],
