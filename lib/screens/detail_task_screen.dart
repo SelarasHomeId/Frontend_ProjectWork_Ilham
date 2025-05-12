@@ -822,360 +822,359 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   @override
   Widget build(BuildContext context) {
     return ConnectionChecker(
-      child: PopScope(
-        canPop: !titleFocusNode.hasFocus && !descFocusNode.hasFocus,
-        onPopInvokedWithResult: (didPop, result) async {
-          if (titleFocusNode.hasFocus) titleFocusNode.unfocus();
-          if (descFocusNode.hasFocus) descFocusNode.unfocus();
-          if (checklistFocusNode.hasFocus) checklistFocusNode.unfocus();
-          if (commentFocusNode.hasFocus) commentFocusNode.unfocus();
+        child: PopScope(
+      canPop: !titleFocusNode.hasFocus && !descFocusNode.hasFocus,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (titleFocusNode.hasFocus) titleFocusNode.unfocus();
+        if (descFocusNode.hasFocus) descFocusNode.unfocus();
+        if (checklistFocusNode.hasFocus) checklistFocusNode.unfocus();
+        if (commentFocusNode.hasFocus) commentFocusNode.unfocus();
 
-          if (didPop) return;
+        if (didPop) return;
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          titleFocusNode.unfocus();
+          descFocusNode.unfocus();
+          checklistFocusNode.unfocus();
+          commentFocusNode.unfocus();
         },
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: () {
-            titleFocusNode.unfocus();
-            descFocusNode.unfocus();
-            checklistFocusNode.unfocus();
-            commentFocusNode.unfocus();
+        child: ValueListenableBuilder(
+          valueListenable: onLoadingNotifier,
+          builder: (context, value, child) {
+            return Stack(
+              children: [
+                child ?? Container(),
+                if (value) ...{
+                  loadingScreenWidget(context),
+                },
+              ],
+            );
           },
-          child: ValueListenableBuilder(
-            valueListenable: onLoadingNotifier,
-            builder: (context, value, child) {
-              return Stack(
-                children: [
-                  child ?? Container(),
-                  if (value) ...{
-                    loadingScreenWidget(context),
-                  },
-                ],
-              );
-            },
-            child: Scaffold(
-              appBar: AppBar(
-                backgroundColor: Colors.red[900],
-                title: TextField(
-                  controller: textTitleController,
-                  focusNode: titleFocusNode,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                  ),
-                  onEditingComplete: () async {
-                    final value = textTitleController.text;
-
-                    if (value.isNotEmpty) {
-                      final data = {"title": value};
-
-                      final response = await ApiService.handleTask(
-                        method: 'PUT',
-                        data: data,
-                        taskId: widget.taskId,
-                      );
-
-                      if (response != null) {
-                        // Jika API berhasil, kita update text controller dengan nilai yang dikirim
-                        textTitleController.text =
-                            value; // Pastikan text controller memiliki nilai terbaru
-                      }
-                      titleFocusNode.unfocus();
-                    }
-                  },
+          child: Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.red[900],
+              title: TextField(
+                controller: textTitleController,
+                focusNode: titleFocusNode,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
-                leading: IconButton(
-                  icon: Icon(Icons.arrow_back),
-                  onPressed: () async {
-                    print("⬅️ Back button ditekan");
-                    final currentText = textDescController.text;
-                    final originalText = currentDesc ?? '';
-                    print("🔍 currentText: '$currentText'");
-                    print("📦 originalText: '$originalText'");
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                ),
+                onEditingComplete: () async {
+                  final value = textTitleController.text;
 
-                    if (currentText != originalText) {
-                      print("⚠️ Deskripsi berubah, tampilkan dialog");
+                  if (value.isNotEmpty) {
+                    final data = {"title": value};
 
-                      final shouldExit = await showDialog<bool>(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          title: Text("Perubahan Belum Disimpan"),
-                          content: Text(
-                              "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?"),
-                          actions: [
-                            TextButton(
-                              child: Text("Tidak"),
-                              onPressed: () {
-                                print("🚫 Batal keluar");
-                                Navigator.of(context).pop(false);
-                              },
+                    final response = await ApiService.handleTask(
+                      method: 'PUT',
+                      data: data,
+                      taskId: widget.taskId,
+                    );
+
+                    if (response != null) {
+                      // Jika API berhasil, kita update text controller dengan nilai yang dikirim
+                      textTitleController.text =
+                          value; // Pastikan text controller memiliki nilai terbaru
+                    }
+                    titleFocusNode.unfocus();
+                  }
+                },
+              ),
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back),
+                onPressed: () async {
+                  print("⬅️ Back button ditekan");
+                  final currentText = textDescController.text;
+                  final originalText = currentDesc ?? '';
+                  print("🔍 currentText: '$currentText'");
+                  print("📦 originalText: '$originalText'");
+
+                  if (currentText != originalText) {
+                    print("⚠️ Deskripsi berubah, tampilkan dialog");
+
+                    final shouldExit = await showDialog<bool>(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text("Perubahan Belum Disimpan"),
+                        content: Text(
+                            "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?"),
+                        actions: [
+                          TextButton(
+                            child: Text("Tidak"),
+                            onPressed: () {
+                              print("🚫 Batal keluar");
+                              Navigator.of(context).pop(false);
+                            },
+                          ),
+                          TextButton(
+                            child: Text("Iya"),
+                            onPressed: () {
+                              print("✅ Keluar tanpa simpan");
+                              Navigator.of(context).pop(true);
+                            },
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (shouldExit == true && context.mounted) {
+                      Navigator.pop(context);
+                    }
+                  } else {
+                    print("🟢 Tidak ada perubahan, keluar langsung");
+                    Navigator.pop(context);
+                  }
+                },
+                color: Colors.white,
+              ),
+              actions: [
+                Padding(
+                  padding: EdgeInsets.only(top: 10.0),
+                  child: PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: Colors.white,
+                    ),
+                    offset: Offset(0, 40),
+                    onSelected: (String result) async {
+                      switch (result) {
+                        case 'complete_toggle':
+                          await toggleCompleteStatus();
+                          break;
+
+                        case 'watch':
+                          final valueWatch = !currentWatch.value;
+                          final data = {"watch": valueWatch};
+
+                          final response = await ApiService.handleTask(
+                            method: 'PUT',
+                            data: data,
+                            taskId: widget.taskId,
+                          );
+
+                          if (response != null) {
+                            currentWatch.value = valueWatch;
+                          }
+                          break;
+                        case 'add_cover':
+                          _pickCover();
+                          break;
+                        case 'del_cover':
+                          deleteCover(widget.taskId);
+                          break;
+                        case 'delete':
+                          deleteTask(widget.taskId);
+                          break;
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => [
+                      PopupMenuItem<String>(
+                        value: 'complete_toggle',
+                        child: Row(
+                          children: [
+                            Icon(
+                              currentIsCompleted.value
+                                  ? Icons.unpublished_outlined
+                                  : Icons.check,
+                              color: currentIsCompleted.value
+                                  ? Colors.red
+                                  : Colors.green,
                             ),
-                            TextButton(
-                              child: Text("Iya"),
-                              onPressed: () {
-                                print("✅ Keluar tanpa simpan");
-                                Navigator.of(context).pop(true);
-                              },
+                            SizedBox(width: 8),
+                            Text(
+                              currentIsCompleted.value
+                                  ? "Mark as Incomplete"
+                                  : "Mark as Complete",
                             ),
                           ],
                         ),
-                      );
-
-                      if (shouldExit == true && context.mounted) {
-                        Navigator.pop(context);
-                      }
-                    } else {
-                      print("🟢 Tidak ada perubahan, keluar langsung");
-                      Navigator.pop(context);
-                    }
-                  },
-                  color: Colors.white,
-                ),
-                actions: [
-                  Padding(
-                    padding: EdgeInsets.only(top: 10.0),
-                    child: PopupMenuButton<String>(
-                      icon: Icon(
-                        Icons.more_vert,
-                        color: Colors.white,
                       ),
-                      offset: Offset(0, 40),
-                      onSelected: (String result) async {
-                        switch (result) {
-                          case 'complete_toggle':
-                            await toggleCompleteStatus();
-                            break;
-
-                          case 'watch':
-                            final valueWatch = !currentWatch.value;
-                            final data = {"watch": valueWatch};
-
-                            final response = await ApiService.handleTask(
-                              method: 'PUT',
-                              data: data,
-                              taskId: widget.taskId,
-                            );
-
-                            if (response != null) {
-                              currentWatch.value = valueWatch;
-                            }
-                            break;
-                          case 'add_cover':
-                            _pickCover();
-                            break;
-                          case 'del_cover':
-                            deleteCover(widget.taskId);
-                            break;
-                          case 'delete':
-                            deleteTask(widget.taskId);
-                            break;
-                        }
-                      },
-                      itemBuilder: (BuildContext context) => [
-                        PopupMenuItem<String>(
-                          value: 'complete_toggle',
-                          child: Row(
-                            children: [
-                              Icon(
-                                currentIsCompleted.value
-                                    ? Icons.unpublished_outlined
-                                    : Icons.check,
-                                color: currentIsCompleted.value
-                                    ? Colors.red
-                                    : Colors.green,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                currentIsCompleted.value
-                                    ? "Mark as Incomplete"
-                                    : "Mark as Complete",
-                              ),
-                            ],
-                          ),
+                      PopupMenuItem<String>(
+                        value: 'watch',
+                        child: Row(
+                          children: [
+                            Icon(
+                              currentWatch.value == false
+                                  ? Icons.visibility
+                                  : Icons.visibility,
+                              color: currentWatch.value == false
+                                  ? Colors.blueGrey
+                                  : Colors.blue[900],
+                            ),
+                            SizedBox(width: 8),
+                            Text(currentWatch.value == false
+                                ? "Watch"
+                                : "Stop Watching"),
+                          ],
                         ),
-                        PopupMenuItem<String>(
-                          value: 'watch',
-                          child: Row(
-                            children: [
-                              Icon(
-                                currentWatch.value == false
-                                    ? Icons.visibility
-                                    : Icons.visibility,
-                                color: currentWatch.value == false
-                                    ? Colors.blueGrey
-                                    : Colors.blue[900],
-                              ),
-                              SizedBox(width: 8),
-                              Text(currentWatch.value == false
-                                  ? "Watch"
-                                  : "Stop Watching"),
-                            ],
-                          ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: currentCover.value == null
+                            ? 'add_cover'
+                            : 'del_cover',
+                        child: Row(
+                          children: [
+                            Icon(currentCover.value == null
+                                ? Icons.image
+                                : Icons.broken_image),
+                            SizedBox(width: 8),
+                            Text(currentCover.value == null
+                                ? "Add Cover"
+                                : "Delete Cover"),
+                          ],
                         ),
-                        PopupMenuItem<String>(
-                          value: currentCover.value == null
-                              ? 'add_cover'
-                              : 'del_cover',
-                          child: Row(
-                            children: [
-                              Icon(currentCover.value == null
-                                  ? Icons.image
-                                  : Icons.broken_image),
-                              SizedBox(width: 8),
-                              Text(currentCover.value == null
-                                  ? "Add Cover"
-                                  : "Delete Cover"),
-                            ],
-                          ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete,
+                              color: Colors.red[900],
+                            ),
+                            SizedBox(width: 8),
+                            Text('Delete Task'),
+                          ],
                         ),
-                        PopupMenuItem<String>(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.delete,
-                                color: Colors.red[900],
-                              ),
-                              SizedBox(width: 8),
-                              Text('Delete Task'),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              body: RefreshIndicator(
-                onRefresh: _handleRefresh, // Tambahkan ini
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: SingleChildScrollView(
-                    physics:
-                        const AlwaysScrollableScrollPhysics(), // Penting untuk refresh indicator
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Cover
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 3),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                  color: Colors.black,
-                                  width: 0.5), // Border tipis
-                              borderRadius:
-                                  BorderRadius.circular(8), // Radius container
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                  7.5), // Radius sedikit lebih kecil dari container
-                              child: currentCover.value == null
-                                  ? Image.asset(
-                                      'assets/no_cover.png',
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      height: 120,
-                                    )
-                                  : Image.network(
-                                      currentCover.value.toString(),
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      height: 120,
-                                    ),
-                            ),
+                ),
+              ],
+            ),
+            body: RefreshIndicator(
+              onRefresh: _handleRefresh, // Tambahkan ini
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SingleChildScrollView(
+                  physics:
+                      const AlwaysScrollableScrollPhysics(), // Penting untuk refresh indicator
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Cover
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: Colors.black,
+                                width: 0.5), // Border tipis
+                            borderRadius:
+                                BorderRadius.circular(8), // Radius container
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                                7.5), // Radius sedikit lebih kecil dari container
+                            child: currentCover.value == null
+                                ? Image.asset(
+                                    'assets/no_cover.png',
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 120,
+                                  )
+                                : Image.network(
+                                    currentCover.value.toString(),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 120,
+                                  ),
                           ),
                         ),
-                        SizedBox(height: 10),
+                      ),
+                      SizedBox(height: 10),
 
-                        //Show Workspace and Board Data
-                        _buildShowSummaryTask(),
-                        SizedBox(height: 10),
+                      //Show Workspace and Board Data
+                      _buildShowSummaryTask(),
+                      SizedBox(height: 10),
 
-                        // Quick Actions
-                        _buildQuickActions(onExpandableValue),
-                        SizedBox(height: 10),
+                      // Quick Actions
+                      _buildQuickActions(onExpandableValue),
+                      SizedBox(height: 10),
 
-                        // Assigned Member/user
-                        _buildMemberSection(),
-                        SizedBox(height: 10),
+                      // Assigned Member/user
+                      _buildMemberSection(),
+                      SizedBox(height: 10),
 
-                        // Description
-                        _buildCardDescription(
-                          textDescController: textDescController,
-                          focusNode: descFocusNode,
-                          onSubmitButton: () async {
-                            final getUpdatedData = await ApiService.handleTask(
+                      // Description
+                      _buildCardDescription(
+                        textDescController: textDescController,
+                        focusNode: descFocusNode,
+                        onSubmitButton: () async {
+                          final getUpdatedData = await ApiService.handleTask(
+                            method: 'PUT',
+                            taskId: widget.taskId,
+                            boardId: widget.boardId,
+                            data: {'description': textDescController.text},
+                          );
+
+                          if (getUpdatedData != null && context.mounted) {
+                            General.showSnackBar(
+                                context, 'Update Deskripsi: Berhasil');
+                            currentDesc = textDescController.text;
+                          } else {
+                            General.showSnackBar(
+                                context, 'Gagal Update Deskripsi ');
+                            currentDesc = textDescController.text;
+                          }
+                          await onLoadDesc();
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Labels
+                      _buildLabelsButton(
+                        onAddingLabel: (labelId) async {
+                          onLoadingNotifier.value = true;
+                          if (!currentLabelIds.contains(labelId)) {
+                            currentLabelIds.add(labelId);
+                          }
+                          final getUpdatedData = await ApiService.handleTask(
                               method: 'PUT',
                               taskId: widget.taskId,
                               boardId: widget.boardId,
-                              data: {'description': textDescController.text},
-                            );
+                              data: {'label': currentLabelIds},
+                              contentType: 'application/json');
 
-                            if (getUpdatedData != null && context.mounted) {
-                              General.showSnackBar(
-                                  context, 'Update Deskripsi: Berhasil');
-                              currentDesc = textDescController.text;
-                            } else {
-                              General.showSnackBar(
-                                  context, 'Gagal Update Deskripsi ');
-                              currentDesc = textDescController.text;
-                            }
-                            await onLoadDesc();
-                          },
-                        ),
-                        SizedBox(height: 20),
+                          if (getUpdatedData != null && context.mounted) {
+                            General.showSnackBar(
+                                context, 'Update Label: Berhasil');
+                            await onLoadValue();
+                          }
+                        },
+                      ),
+                      SizedBox(height: 20),
 
-                        // Labels
-                        _buildLabelsButton(
-                          onAddingLabel: (labelId) async {
-                            onLoadingNotifier.value = true;
-                            if (!currentLabelIds.contains(labelId)) {
-                              currentLabelIds.add(labelId);
-                            }
-                            final getUpdatedData = await ApiService.handleTask(
-                                method: 'PUT',
-                                taskId: widget.taskId,
-                                boardId: widget.boardId,
-                                data: {'label': currentLabelIds},
-                                contentType: 'application/json');
+                      // Due Dates
+                      _buildDatePickers(),
+                      SizedBox(height: 20),
 
-                            if (getUpdatedData != null && context.mounted) {
-                              General.showSnackBar(
-                                  context, 'Update Label: Berhasil');
-                              await onLoadValue();
-                            }
-                          },
-                        ),
-                        SizedBox(height: 20),
+                      // Attachment
+                      listFileWidget(),
+                      SizedBox(height: 20),
 
-                        // Due Dates
-                        _buildDatePickers(),
-                        SizedBox(height: 20),
+                      // Checklist
+                      _buildAddChecklistSection(widget.taskId),
+                      SizedBox(height: 20),
 
-                        // Attachment
-                        listFileWidget(),
-                        SizedBox(height: 20),
-
-                        // Checklist
-                        _buildAddChecklistSection(widget.taskId),
-                        SizedBox(height: 20),
-
-                        // Comments
-                        _buildAddCommentSection(widget.taskId),
-                        SizedBox(height: 10),
-                      ],
-                    ),
+                      // Comments
+                      _buildAddCommentSection(widget.taskId),
+                      SizedBox(height: 10),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
         ),
-      )
-    );
+      ),
+    ));
   }
 
 //=======================End Widget Build===========================================
