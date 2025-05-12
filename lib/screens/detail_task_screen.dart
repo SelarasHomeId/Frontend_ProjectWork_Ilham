@@ -2398,9 +2398,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 ),
                 subtitle: Column(
                   children: [
-                    // Tampilkan item checklist
+                    SizedBox(height: 5),
                     _buildItemList(checklist[
                         'id']), // Tampilkan item berdasarkan ID checklist
+                    SizedBox(height: 5),
                   ],
                 ),
               ),
@@ -2501,6 +2502,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
   Widget _buildItemList(int checklistId) {
     final items = checklistItems.value[checklistId] ?? [];
+    final mq = MediaQuery.of(context).size;
 
     return ListView.builder(
       shrinkWrap: true,
@@ -2509,250 +2511,275 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         final item = items[index];
         bool isChecked = item['is_completed'] ?? false;
 
-        return ListTile(
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: MediaQuery.of(context).size.width * 0.025,
-          ),
-          leading: Checkbox(
-            key: ValueKey(isChecked),
-            value: isChecked,
-            onChanged: (bool? value) async {
-              await _toggleItemCompletion(item['id'], !isChecked);
-            },
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+        // --- due date widget ---
+        Widget? dueWidget;
+        if (item['due_date'] != null) {
+          final dueDate = DateTime.parse(item['due_date']);
+          final isPast = dueDate.isBefore(DateTime.now());
+          dueWidget = Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: mq.width * 0.008,
+              vertical: mq.height * 0.008,
             ),
-          ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  _showEditChecklistItemDialog(item['id'], item['title']);
-                },
-                child: Container(
-                  constraints: BoxConstraints(
-                    maxWidth: MediaQuery.of(context).size.width * 0.9,
-                    maxHeight: MediaQuery.of(context).size.height * 0.06,
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Text(
-                      item['title'] ?? 'No item',
-                      style: TextStyle(
-                        color: isChecked ? Colors.grey : Colors.black,
-                        decoration:
-                            isChecked ? TextDecoration.lineThrough : null,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.fade,
-                      softWrap: true,
-                    ),
+            decoration: BoxDecoration(
+              color: isChecked
+                  ? Colors.green.withOpacity(0.2)
+                  : (isPast
+                      ? Colors.red.withOpacity(0.2)
+                      : Colors.black.withOpacity(0.1)),
+              borderRadius: BorderRadius.circular(5),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.alarm,
+                  size: mq.width * 0.028,
+                  color: isChecked
+                      ? Colors.green
+                      : (isPast ? Colors.red : Colors.black),
+                ),
+                SizedBox(width: mq.width * 0.015),
+                Text(
+                  DateFormat(dueDate.year.toString() !=
+                              DateTime.now().year.toString()
+                          ? 'MMM dd, yyyy'
+                          : 'MMM dd')
+                      .format(dueDate),
+                  style: TextStyle(
+                    fontSize: mq.width * 0.028,
+                    color: isChecked
+                        ? Colors.green
+                        : (isPast ? Colors.red : Colors.black),
                   ),
                 ),
+              ],
+            ),
+          );
+        }
+
+        // --- avatar widget (lebih kecil) ---
+        Widget? avatarWidget;
+        if (item['assign_to_user'] != null) {
+          avatarWidget = SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (var member in item['assign_to_user']["data"] as List)
+                  Padding(
+                    padding: EdgeInsets.only(right: mq.width * 0.008),
+                    child: CircleAvatar(
+                      radius: mq.width * 0.025,
+                      backgroundColor: General.getColorFromInitial(
+                          General.getInitials(member['name'])),
+                      child: FittedBox(
+                        child: Text(
+                          General.getInitials(member['name']),
+                          style: TextStyle(
+                            fontSize: mq.width * 0.018,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }
+
+        // --- bottom row jika ada avatar atau due date ---
+        Widget? bottomRow;
+        if (avatarWidget != null || dueWidget != null) {
+          bottomRow = Padding(
+            // <<-- Padding kiri untuk align dengan title/di bawah checkbox
+            padding: EdgeInsets.only(
+              top: mq.height * 0.003,
+              left: mq.width * 0.02,
+            ),
+            child: Row(
+              children: [
+                if (avatarWidget != null) Expanded(child: avatarWidget),
+                if (avatarWidget != null && dueWidget != null)
+                  SizedBox(width: mq.width * 0.02),
+                if (dueWidget != null) dueWidget,
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: mq.height * 0.005),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey, width: 1.0),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: mq.width * 0.025,
+                vertical: mq.height * 0.008,
               ),
-              if (item['due_date'] != null || item['assign_to_user'] != null)
-                SizedBox(height: MediaQuery.of(context).size.height * 0.006),
-              Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (item['due_date'] != null)
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: MediaQuery.of(context).size.width * 0.012,
-                        vertical: MediaQuery.of(context).size.height * 0.004,
+                  // Top row: checkbox, title, menu
+                  Row(
+                    children: [
+                      Checkbox(
+                        key: ValueKey(isChecked),
+                        value: isChecked,
+                        onChanged: (bool? value) async {
+                          await _toggleItemCompletion(item['id'], !isChecked);
+                        },
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4)),
                       ),
-                      decoration: BoxDecoration(
-                        color: isChecked
-                            ? Colors.green.withOpacity(0.2)
-                            : (DateTime.parse(item['due_date'])
-                                    .isBefore(DateTime.now())
-                                ? Colors.red.withOpacity(0.2)
-                                : Colors.black.withOpacity(0.1)),
-                        borderRadius: BorderRadius.circular(50),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.alarm,
-                            size: MediaQuery.of(context).size.width * 0.05,
-                            color: isChecked
-                                ? Colors.green
-                                : (DateTime.parse(item['due_date'])
-                                        .isBefore(DateTime.now())
-                                    ? Colors.red
-                                    : Colors.black),
-                          ),
-                          SizedBox(
-                              width: MediaQuery.of(context).size.width * 0.02),
-                          Text(
-                            DateFormat(item['due_date'].substring(0, 4) !=
-                                        DateTime.now().year.toString()
-                                    ? 'MMM dd, yyyy'
-                                    : 'MMM dd')
-                                .format(DateTime.parse(item['due_date'])),
-                            style: TextStyle(
-                              color: isChecked
-                                  ? Colors.green
-                                  : (DateTime.parse(item['due_date'])
-                                          .isBefore(DateTime.now())
-                                      ? Colors.red
-                                      : Colors.black),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  if (item['due_date'] != null &&
-                      item['assign_to_user'] != null)
-                    SizedBox(
-                        height: MediaQuery.of(context).size.height * 0.008),
-                  if (item['assign_to_user'] != null)
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          for (var member
-                              in item['assign_to_user']["data"] as List)
-                            Padding(
-                              padding: EdgeInsets.only(
-                                  right: MediaQuery.of(context).size.width *
-                                      0.013),
-                              child: CircleAvatar(
-                                radius:
-                                    MediaQuery.of(context).size.width * 0.042,
-                                backgroundColor: General.getColorFromInitial(
-                                    General.getInitials(member['name'])),
-                                child: FittedBox(
-                                  child: Text(
-                                    General.getInitials(member['name']),
-                                    style: TextStyle(
-                                      fontSize:
-                                          MediaQuery.of(context).size.width *
-                                              0.03,
-                                      color: Colors.black,
-                                    ),
-                                  ),
-                                ),
+                      SizedBox(width: mq.width * 0.01),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _showEditChecklistItemDialog(
+                                item['id'], item['title']);
+                          },
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                              item['title'] ?? 'No item',
+                              style: TextStyle(
+                                color: isChecked ? Colors.grey : Colors.black,
+                                decoration: isChecked
+                                    ? TextDecoration.lineThrough
+                                    : null,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.fade,
+                              softWrap: true,
                             ),
+                          ),
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_vert, color: Colors.black),
+                        offset: Offset(0, mq.height * 0.05),
+                        onSelected: (String result) async {
+                          switch (result) {
+                            case 'move':
+                              Map<String, int>? dataDialog =
+                                  await _showMoveItemDialog(checklistId);
+
+                              if (dataDialog != null) {
+                                final data = {
+                                  "task_checklist_id":
+                                      dataDialog["task_checklist_id"]
+                                };
+
+                                final response =
+                                    await ApiService.handleChecklistItem(
+                                        method: 'PUT',
+                                        data: data,
+                                        checklistItemId: item['id']);
+
+                                if (response != null) {
+                                  await loadChecklists();
+                                  General.showSnackBar(
+                                      context, "Item berhasil dipindahkan");
+                                } else {
+                                  General.showSnackBar(
+                                      context, "Gagal memindahkan item");
+                                }
+                              }
+                            case 'due_date':
+                              await _pickDueDateChecklistItem(
+                                  context, item['id']);
+                              break;
+                            case 'member':
+                              ValueNotifier<List<Map<String, dynamic>>>
+                                  assignedMembers =
+                                  ValueNotifier<List<Map<String, dynamic>>>(
+                                List<Map<String, dynamic>>.from(
+                                    item['assign_to_user']?["data"] ?? []),
+                              );
+                              await _showAssignedMembersChecklistItemDialog(
+                                  context, assignedMembers, item['id']);
+                              break;
+                            case 'convert':
+                              bool confirmed =
+                                  await _showConvertItemChecklistToTaskConfirmationDialog();
+                              if (confirmed) {
+                                await _convertItemChecklistToTask(item['id']);
+                              }
+                              break;
+                            case 'delete':
+                              bool confirmed =
+                                  await _showDeleteItemChecklistConfirmationDialog();
+                              if (confirmed) {
+                                await _deleteItemChecklist(item['id']);
+                              }
+                              break;
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => [
+                          PopupMenuItem<String>(
+                            value: 'move',
+                            child: Row(
+                              children: [
+                                Icon(Icons.swap_horiz),
+                                SizedBox(width: 8),
+                                Text('Move Item'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'due_date',
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_today),
+                                SizedBox(width: 8),
+                                Text('Add Due Date'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'member',
+                            child: Row(
+                              children: [
+                                Icon(Icons.person_add),
+                                SizedBox(width: 8),
+                                Text('Add Member'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'convert',
+                            child: Row(
+                              children: [
+                                Icon(Icons.add_task),
+                                SizedBox(width: 8),
+                                Text('Convert to Task'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete),
+                                SizedBox(width: 8),
+                                Text('Delete Item'),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
-                    ),
+                    ],
+                  ),
+
+                  // Tampilkan bottom row tanpa '!' dan hanya jika non-null
+                  if (bottomRow != null) bottomRow,
                 ],
               ),
-            ],
-          ),
-          trailing: PopupMenuButton<String>(
-            icon: Icon(
-              Icons.more_vert,
-              color: Colors.black,
             ),
-            offset: Offset(0, MediaQuery.of(context).size.height * 0.05),
-            onSelected: (String result) async {
-              switch (result) {
-                case 'move':
-                  Map<String, int>? dataDialog =
-                      await _showMoveItemDialog(checklistId);
-
-                  if (dataDialog != null) {
-                    final data = {
-                      "task_checklist_id": dataDialog["task_checklist_id"]
-                    };
-
-                    final response = await ApiService.handleChecklistItem(
-                        method: 'PUT', data: data, checklistItemId: item['id']);
-
-                    if (response != null) {
-                      await loadChecklists();
-                      General.showSnackBar(
-                          context, "Item berhasil dipindahkan");
-                    } else {
-                      General.showSnackBar(context, "Gagal memindahkan item");
-                    }
-                  }
-                case 'due_date':
-                  await _pickDueDateChecklistItem(context, item['id']);
-                  break;
-                case 'member':
-                  ValueNotifier<List<Map<String, dynamic>>> assignedMembers =
-                      ValueNotifier<List<Map<String, dynamic>>>(
-                    List<Map<String, dynamic>>.from(
-                        item['assign_to_user']?["data"] ?? []),
-                  );
-                  await _showAssignedMembersChecklistItemDialog(
-                      context, assignedMembers, item['id']);
-                  break;
-                case 'convert':
-                  bool confirmed =
-                      await _showConvertItemChecklistToTaskConfirmationDialog();
-                  if (confirmed) {
-                    await _convertItemChecklistToTask(item['id']);
-                  }
-                  break;
-                case 'delete':
-                  bool confirmed =
-                      await _showDeleteItemChecklistConfirmationDialog();
-                  if (confirmed) {
-                    await _deleteItemChecklist(item['id']);
-                  }
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem<String>(
-                value: 'move',
-                child: Row(
-                  children: [
-                    Icon(Icons.swap_horiz),
-                    SizedBox(width: 8),
-                    Text('Move Item'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'due_date',
-                child: Row(
-                  children: [
-                    Icon(Icons.calendar_today),
-                    SizedBox(width: 8),
-                    Text('Add Due Date'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'member',
-                child: Row(
-                  children: [
-                    Icon(Icons.person_add),
-                    SizedBox(width: 8),
-                    Text('Add Member'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'convert',
-                child: Row(
-                  children: [
-                    Icon(Icons.add_task),
-                    SizedBox(width: 8),
-                    Text('Convert to Task'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(Icons.delete),
-                    SizedBox(width: 8),
-                    Text('Delete Item'),
-                  ],
-                ),
-              ),
-            ],
           ),
         );
       },
@@ -2760,37 +2787,28 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Future<void> _showAddChecklistDialog(int taskId) async {
-    showDialog(
+    await General.showDialogAdd(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text('Add Checklist'),
-          content: TextField(
-            controller: textChecklistController,
-            decoration: InputDecoration(hintText: 'Enter Checklist title'),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                textChecklistController.clear();
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final itemTitle = textChecklistController.text.trim();
-                if (itemTitle.isNotEmpty) {
-                  await _addChecklist(taskId);
-                  textChecklistController.clear();
-                  Navigator.pop(context);
-                }
-              },
-              child: Text('Add'),
-            ),
-          ],
-        );
+      title: 'Add Checklist',
+      hintText: 'Enter Checklist title',
+      controller: textChecklistController,
+      onConfirm: (input) async {
+        // Mempertahankan logika validasi asli
+        if (input.isEmpty) {
+          return false;
+        }
+
+        // Mempertahankan logika penambahan checklist asli
+        try {
+          await _addChecklist(taskId);
+          return true;
+        } catch (e) {
+          // Error handling sesuai reusable dialog
+          throw e;
+        }
       },
+      confirmButtonText: 'Add',
+      cancelButtonText: 'Cancel',
     );
   }
 
