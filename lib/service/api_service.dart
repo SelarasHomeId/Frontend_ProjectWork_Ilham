@@ -6,6 +6,7 @@ import 'package:selarashomeid/screens/login_screen.dart';
 import 'package:selarashomeid/utils/constant.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:selarashomeid/main.dart';
 
 class ApiService {
   // ==================================================================================================== //
@@ -81,6 +82,37 @@ class ApiService {
           response = await hitAPI();
         } else {
           throw Exception('Your Session Is Expired, Please Re-Login...');
+        }
+      } else if (response.statusCode == 422 && endpoint != '/auth/login') {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+
+        try {
+          final response = await apiRequest(
+            method: 'POST',
+            endpoint: '/auth/logout',
+            body: {'logout_from': 'mobile'},
+            token: token,
+            contentType: 'application/json',
+          );
+
+          if (response != null && response['code'] == 200) {
+            debugPrint("✅ Logout berhasil, menghapus sesi...");
+            General.clearSharedPreferences();
+          } else {
+            debugPrint("❌ Logout API gagal atau code != 200: ${response?['code']}");
+            General.clearSharedPreferences();
+          }
+        } catch (e) {
+          debugPrint("🚨 Error saat logout: $e");
+        }
+
+        finally {
+          General.clearSharedPreferences();
+          navigatorKey.currentState?.pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => LoginScreen()),
+            (route) => false,
+          );
         }
       }
 

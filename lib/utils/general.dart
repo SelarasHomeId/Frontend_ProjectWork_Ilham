@@ -481,20 +481,24 @@ class General {
                   children: [
                     Text(
                       message,
+                      textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.black54,
                       ),
                     ),
-                    SizedBox(height: 5),
-                    Text(
-                      additionalMessage, // Menggunakan argumen baru
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.red,
-                        fontStyle: FontStyle.italic,
+                    if (additionalMessage != "") ...[
+                      SizedBox(height: 5),
+                      Text(
+                        additionalMessage, // Menggunakan argumen baru
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.red,
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
-                    ),
+                    ]
                   ],
                 ),
               ),

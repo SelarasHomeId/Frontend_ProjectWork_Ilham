@@ -52,34 +52,13 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
 
       if (response != null && response['success'] == true) {
         General.showSnackBar(context, 'Password berhasil diubah!');
-        Navigator.pop(context);
+        ApiService.authLogout(context);
       } else {
         print("Response tidak valid atau gagal: $response");
         General.showSnackBar(context, 'Gagal mengupdate password');
       }
     } catch (e) {
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          Future.delayed(Duration(seconds: 3), () {
-            Navigator.of(context).pop();
-          });
-
-          return AlertDialog(
-            title: Text('Error'),
-            content: Text('$e'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context)
-                      .pop(); // Close the dialog immediately if user presses the button
-                },
-                child: Text('OK'),
-              ),
-            ],
-          );
-        },
-      );
+      General.showDialogError(context: context,title: "Error",message: '$e',confirmButtonText: "Ok");
     }
   }
 
@@ -187,7 +166,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
                             ),
                           ),
                           validator: (value) {
-                            if (value != _oldPasswordController.text) {
+                            if (value == _oldPasswordController.text) {
                               return 'Password Baru Tidak Boleh Sama dengan Password Lama';
                             }
                             String? message =
