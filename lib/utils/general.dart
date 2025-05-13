@@ -274,7 +274,8 @@ class General {
 
   //Intials User
   static String getInitials(String name) {
-    List<String> words = name.split(" ");
+    List<String> words = name.trim().split(RegExp(r"\s+"));
+    if (words.isEmpty || words[0].isEmpty) return "";
     if (words.length > 1) {
       return (words[0][0] + words[words.length - 1][0]).toUpperCase();
     } else {
@@ -525,6 +526,128 @@ class General {
                     onPressed: () => Navigator.of(context).pop(true),
                     style: TextButton.styleFrom(
                       backgroundColor: Colors.red[800],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      confirmButtonText,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+    return confirm;
+  }
+
+  static Future<bool?> showDialogConfirmCustom({
+    required BuildContext context,
+    required IconData coreIcon,
+    required MaterialColor coreTheme,
+    required String title,
+    required String message,
+    required String additionalMessage,
+    required String confirmButtonText,
+    required String cancelButtonText,
+  }) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: coreTheme,
+                  shape: BoxShape.rectangle,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(16),
+                    topRight: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    coreIcon,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black54,
+                      ),
+                    ),
+                    if (additionalMessage != "") ...[
+                      SizedBox(height: 5),
+                      Text(
+                        additionalMessage, // Menggunakan argumen baru
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: coreTheme,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      cancelButtonText,
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    style: TextButton.styleFrom(
+                      backgroundColor: coreTheme.shade800,
                       padding:
                           EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       shape: RoundedRectangleBorder(
@@ -1221,111 +1344,6 @@ class General {
                 SizedBox(height: 20),
               ],
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  static Future<Map<String, int>?> showDialogMove({
-    required BuildContext context,
-    required List<Map<String, dynamic>> workspaces,
-    required int selectedWorkspaceId,
-    required String dialogTitle,
-    required String labelText,
-    required String cancelButtonText,
-    required String confirmButtonText,
-  }) async {
-    return await showDialog<Map<String, int>>(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(255, 13, 20, 158),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
-                ),
-                child: Center(
-                  child:
-                      Icon(Icons.move_to_inbox, size: 80, color: Colors.white),
-                ),
-              ),
-              SizedBox(height: 20),
-              Text(
-                dialogTitle,
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: StatefulBuilder(
-                  builder: (context, setState) {
-                    return DropdownButtonFormField<int>(
-                      value: selectedWorkspaceId,
-                      items: workspaces.map((workspace) {
-                        return DropdownMenuItem<int>(
-                          value: workspace['id'],
-                          child: Text(workspace['name']),
-                        );
-                      }).toList(),
-                      onChanged: (int? newValue) {
-                        setState(() {
-                          selectedWorkspaceId = newValue!;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: labelText,
-                        border: OutlineInputBorder(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, null),
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.grey[600],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(cancelButtonText,
-                        style: TextStyle(color: Colors.white)),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(
-                      context,
-                      {
-                        'task_checklist_id': selectedWorkspaceId,
-                      },
-                    ),
-                    style: TextButton.styleFrom(
-                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: Text(confirmButtonText,
-                        style: TextStyle(color: Colors.white)),
-                  ),
-                ],
-              ),
-              SizedBox(height: 20),
-            ],
           ),
         );
       },

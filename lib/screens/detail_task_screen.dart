@@ -1178,8 +1178,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
 //=======================End Widget Build===========================================
-  Future<Map<String, int>?> _showMoveDialog(
-      int workspaceId, int boardId) async {
+  Future<Map<String, int>?> _showMoveDialog(int workspaceId, int boardId) async {
     List<Map<String, dynamic>> workspaces = [];
     List<Map<String, dynamic>> boards = [];
     int? selectedWorkspaceId = workspaceId;
@@ -1228,76 +1227,135 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     return await showDialog<Map<String, int>>(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text("Move to"),
-          content: StatefulBuilder(
-            builder: (context, setState) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Dropdown Workspace
-                  DropdownButtonFormField<int>(
-                    value: selectedWorkspaceId,
-                    items: workspaces.map((workspace) {
-                      return DropdownMenuItem<int>(
-                        value: workspace['id'],
-                        child: Text(workspace['name']),
-                      );
-                    }).toList(),
-                    onChanged: (int? newValue) async {
-                      setState(() {
-                        selectedWorkspaceId = newValue;
-                        selectedBoardId = null;
-                      });
-                      await loadBoards(selectedWorkspaceId!);
-                      setState(() {});
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Select Workspace",
-                      border: OutlineInputBorder(),
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Color.fromARGB(255, 13, 20, 158),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                    ),
+                    child: Center(
+                      child:
+                          Icon(Icons.move_to_inbox, size: 80, color: Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Move To',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 10),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: DropdownButtonFormField<int>(
+                      value: selectedWorkspaceId,
+                      items: workspaces.map((workspace) {
+                        return DropdownMenuItem<int>(
+                          value: workspace['id'],
+                          child: Text(workspace['name'] ?? ''),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) async {
+                        if (newValue == null) return;
+
+                        setModalState(() {
+                          selectedWorkspaceId = newValue;
+                          selectedBoardId = null;
+                          boards = [];
+                        });
+
+                        try {
+                          final response = await ApiService.handleBoard(
+                            method: "GET",
+                            workspaceId: newValue,
+                          );
+                          if (response.isNotEmpty) {
+                            setModalState(() {
+                              boards = List<Map<String, dynamic>>.from(response);
+                              selectedBoardId = boards.first['id'];
+                            });
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            General.showSnackBar(
+                                context, 'Gagal memuat board: $e');
+                          }
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Select Workspace",
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                   ),
                   SizedBox(height: 16),
-                  // Dropdown Board
-                  DropdownButtonFormField<int>(
-                    value: selectedBoardId,
-                    items: boards.map((board) {
-                      return DropdownMenuItem<int>(
-                        value: board['id'],
-                        child: Text(board['name']),
-                      );
-                    }).toList(),
-                    onChanged: (int? newValue) {
-                      setState(() {
-                        selectedBoardId = newValue;
-                      });
-                    },
-                    decoration: InputDecoration(
-                      labelText: "Select Board",
-                      border: OutlineInputBorder(),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: DropdownButtonFormField<int>(
+                      value: selectedBoardId,
+                      items: boards.map((board) {
+                        return DropdownMenuItem<int>(
+                          value: board['id'],
+                          child: Text(board['name'] ?? ''),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) {
+                        setModalState(() {
+                          selectedBoardId = newValue;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Select Board",
+                        border: OutlineInputBorder(),
+                      ),
                     ),
-                    isExpanded: true,
                   ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, null),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.grey[600],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text('Cancel',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, {
+                          'workspace_id': selectedWorkspaceId!,
+                          'board_id': selectedBoardId!
+                        }),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text('Move', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
                 ],
               );
             },
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, null), // Batal
-              child: Text("Batal"),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(
-                context,
-                {
-                  'workspace_id': selectedWorkspaceId!,
-                  'board_id': selectedBoardId!
-                },
-              ), // Konfirmasi
-              child: Text("Move", style: TextStyle(color: Colors.blue)),
-            ),
-          ],
         );
       },
     );
@@ -2506,6 +2564,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     return ListView.builder(
       shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
@@ -2724,7 +2783,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             value: 'move',
                             child: Row(
                               children: [
-                                Icon(Icons.swap_horiz),
+                                Icon(Icons.move_to_inbox),
                                 SizedBox(width: 8),
                                 Text('Move Item'),
                               ],
@@ -3053,43 +3112,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Future<bool> _showConvertItemChecklistToTaskConfirmationDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text("Konfirmasi Konversi Item Checklist ke Task"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Kamu yakin ingin konversi item checklist?"),
-                  Text(
-                    "Konversi item checklist akan menghapus item dan membuat task baru di board yang sama.",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.red,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pop(context, false), // Tidak jadi delete
-                  child: Text("Batal"),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pop(context, true), // Konfirmasi delete
-                  child: Text("Convert",
-                      style: TextStyle(color: Colors.green[700])),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
+    return await General.showDialogConfirmCustom(
+      context: context, 
+      coreIcon: Icons.add_task, 
+      coreTheme: Colors.purple, 
+      title: "Konfirmasi Konversi", 
+      message: "Kamu yakin ingin konversi item checklist ke tugas?", 
+      additionalMessage: "Konversi item checklist akan menghapus item dan membuat task baru di board yang sama.", 
+      confirmButtonText: "Convert", 
+      cancelButtonText: "Batal"
+    ) ?? false;
   }
 
   Future<void> _convertItemChecklistToTask(int itemId) async {
@@ -3626,7 +3658,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: Text('Batal', style: TextStyle(color: Colors.white)),
+                    child: Text('Cancel', style: TextStyle(color: Colors.white)),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(
