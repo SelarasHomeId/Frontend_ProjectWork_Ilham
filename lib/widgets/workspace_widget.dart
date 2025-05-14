@@ -325,10 +325,9 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
         _boards = boards;
       });
       onLoadListBoard();
-      General.showSnackBar(context, 'Task Berhasil Dibuat');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menambahkan board: $e')),
+        SnackBar(content: Text('Gagal menambahkan task: $e')),
       );
     }
   }

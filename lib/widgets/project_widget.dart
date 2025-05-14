@@ -1,9 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:selarashomeid/service/api_service.dart';
 import 'package:selarashomeid/widgets/add_project_widget.dart';
 import 'package:selarashomeid/widgets/update_project_widget.dart';
 import 'package:selarashomeid/utils/general.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class ProjectWidget extends StatefulWidget {
@@ -17,6 +23,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
   List<dynamic> projects = [];
   List<dynamic> filteredProjects = [];
   bool _isLoading = true;
+  bool _isLoadingExport = false;
   bool _isSearchVisible = false; // Flag to toggle search visibility
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
@@ -171,6 +178,96 @@ class _ProjectWidgetState extends State<ProjectWidget>
     );
   }
 
+  Future<void> _exportData({Map<String, String>? param}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    setState(() {
+      _isLoadingExport = true;
+    });
+    try {
+      final response = await ApiService.apiRequestExportData(
+        method: "GET", 
+        endpoint: "/project/export",
+        token: token,
+        params: param
+      );
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        final contentDisposition = response.headers['content-disposition'];
+        String? fileName;
+        if (contentDisposition != null) {
+          final regex = RegExp(r'filename="?([^"]+)"?');
+          final match = regex.firstMatch(contentDisposition);
+          if (match != null) {
+            fileName = match.group(1);
+          }
+        }
+        fileName ??= 'Export_Data_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}.xlsx';
+
+        await _saveDownloadedExcelFile(context, bytes, fileName);
+      } else {
+        General.showSnackBar(context, 'Gagal mengekspor data. Status: ${response.statusCode}');
+        print('Response error: ${response.body}');
+      }
+    } catch (e) {
+      General.showSnackBar(context, 'Terjadi kesalahan saat ekspor: $e');
+      print('Error: $e');
+    }
+    setState(() {
+      _isLoadingExport = false;
+    });
+  }
+
+  Future<void> _saveDownloadedExcelFile(
+      BuildContext context, List<int> bytes, String fileName) async {
+    Directory? directory;
+
+    if (Platform.isAndroid) {
+      if (await Permission.manageExternalStorage.request().isGranted) {
+        directory = Directory("/storage/emulated/0/Download");
+      } else {
+        General.showSnackBar(context, 'Izin penyimpanan tidak diberikan.');
+        openAppSettings();
+        return;
+      }
+    } else if (Platform.isIOS) {
+      directory = await getApplicationDocumentsDirectory();
+    }
+
+    if (directory != null) {
+      String basePath = '${directory.path}/$fileName';
+      String filePath = basePath;
+      int counter = 1;
+
+      while (File(filePath).existsSync()) {
+        String nameWithoutExtension = fileName.split('.').first;
+        String extension = fileName.split('.').last;
+        filePath = '${directory.path}/$nameWithoutExtension($counter).$extension';
+        counter++;
+      }
+
+      try {
+        File(filePath)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(bytes);
+
+        General.showSnackBar(
+          context,
+          'File Excel berhasil diunduh dan disimpan di folder Download',
+          durationSeconds: 5,
+        );
+
+        print('File berhasil disimpan di: $filePath');
+      } catch (e) {
+        General.showSnackBar(context, 'Gagal menyimpan file: $e');
+        print('Gagal menyimpan file: $e');
+      }
+    } else {
+      General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');
+    }
+  }
+
   @override
   void dispose() {
     _animationController.dispose();
@@ -206,7 +303,30 @@ class _ProjectWidgetState extends State<ProjectWidget>
         elevation: 0,
         actions: [
           Padding(
-            padding: EdgeInsets.only(right: 16),
+            padding: EdgeInsets.only(right: 10),
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: Color.fromARGB(255, 83, 82, 79), // Set the background color of the circle
+              child: IconButton(
+                icon: _isLoadingExport ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ) : Icon(Icons.download),
+                color: Colors.white, // Set the icon color
+                onPressed:
+                    _exportData, // Toggle visibility of search TextField
+                padding:
+                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
+                iconSize: 28, // Adjust the size of the icon
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.only(right: 10),
             child: CircleAvatar(
               radius: 20,
               backgroundColor: Color.fromARGB(
@@ -223,7 +343,7 @@ class _ProjectWidgetState extends State<ProjectWidget>
             ),
           ),
           Padding(
-            padding: EdgeInsets.only(right: 16),
+            padding: EdgeInsets.only(right: 10),
             child: CircleAvatar(
               radius: 20, // Set the size of the CircleAvatar
               backgroundColor: Color.fromARGB(

@@ -458,44 +458,62 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         return StatefulBuilder(
           builder: (context, dialogSetState) {
             return AlertDialog(
+              backgroundColor: Colors.grey[50],
+              elevation: 10,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(20),
               ),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Add Member",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+              titlePadding: EdgeInsets.zero,
+              contentPadding: EdgeInsets.zero,
+              title: Container(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.blue[900],
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Add Member",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18)),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
-              content: SizedBox(
+              content: Container(
+                padding: EdgeInsets.all(16),
+                height: 500,
                 width: double.maxFinite,
-                height: 500, // <-- batasi tinggi dialog
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: "Search User...",
-                          prefixIcon: Icon(Icons.search),
-                          border: OutlineInputBorder(),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: "Search User...",
+                        prefixIcon: Icon(Icons.search),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        onChanged: (value) => _searchUserByName(dialogSetState),
                       ),
+                      onChanged: (value) => _searchUserByName(dialogSetState),
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 16),
                     _isLoading
                         ? Center(child: CircularProgressIndicator())
                         : filteredUsers.isEmpty
                             ? Padding(
                                 padding: const EdgeInsets.all(16.0),
-                                child: Text("No users found."),
+                                child: Text("No users found.",
+                                    style: TextStyle(color: Colors.grey[700])),
                               )
                             : Expanded(
                                 child: ListView.builder(
@@ -505,33 +523,40 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                     final isSelected =
                                         _selectedUserIds.contains(user['id']);
 
-                                    return ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor:
-                                            General.getColorFromInitial(
-                                                General.getInitials(
-                                                    user['name'])),
-                                        child: Text(
-                                          General.getInitials(user['name']),
-                                          style: TextStyle(color: Colors.white),
+                                    return Card(
+                                      elevation: 2,
+                                      margin: EdgeInsets.symmetric(vertical: 4),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10)),
+                                      child: ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor:
+                                              General.getColorFromInitial(
+                                                  General.getInitials(
+                                                      user['name'])),
+                                          child: Text(
+                                            General.getInitials(user['name']),
+                                            style: TextStyle(color: Colors.white),
+                                          ),
                                         ),
+                                        title: Text(user['name']),
+                                        subtitle: Text(
+                                            '${user['role']['name']} - ${user['divisi']['name']}'),
+                                        trailing: isSelected
+                                            ? Icon(Icons.check_circle,
+                                                color: Colors.green)
+                                            : null,
+                                        onTap: () {
+                                          dialogSetState(() {
+                                            if (isSelected) {
+                                              _selectedUserIds
+                                                  .remove(user['id']);
+                                            } else {
+                                              _selectedUserIds.add(user['id']);
+                                            }
+                                          });
+                                        },
                                       ),
-                                      title: Text(user['name']),
-                                      subtitle: Text(
-                                          '${user['role']['name']} - ${user['divisi']['name']}'),
-                                      trailing: isSelected
-                                          ? Icon(Icons.check_circle,
-                                              color: Colors.green)
-                                          : null,
-                                      onTap: () {
-                                        dialogSetState(() {
-                                          if (isSelected) {
-                                            _selectedUserIds.remove(user['id']);
-                                          } else {
-                                            _selectedUserIds.add(user['id']);
-                                          }
-                                        });
-                                      },
                                     );
                                   },
                                 ),
@@ -539,18 +564,30 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   ],
                 ),
               ),
+              actionsPadding: EdgeInsets.only(
+                  left: 20, right: 20, bottom: 12, top: 4),
               actions: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextButton(
-                      child:
-                          Text("Cancel", style: TextStyle(color: Colors.red)),
+                    OutlinedButton.icon(
+                      icon: Icon(Icons.cancel, color: Colors.red),
+                      label: Text("Cancel", style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    TextButton(
-                      child:
-                          Text("Done", style: TextStyle(color: Colors.green)),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.check_circle, color: Colors.white),
+                      label: Text("Done"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
                       onPressed: () async {
                         try {
                           final res = await ApiService.handleTask(
@@ -562,13 +599,13 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           );
 
                           if (res != null) {
-                            await onLoadValue();
+                            Navigator.pop(context);
                             setState(() {});
                             General.showSnackBar(
                                 context, "User berhasil di-assign");
+                            await onLoadValue();
                           }
 
-                          Navigator.pop(context);
                         } catch (e) {
                           General.showSnackBar(
                               context, "Gagal assign user: $e");
@@ -898,30 +935,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   if (currentText != originalText) {
                     print("⚠️ Deskripsi berubah, tampilkan dialog");
 
-                    final shouldExit = await showDialog<bool>(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text("Perubahan Belum Disimpan"),
-                        content: Text(
-                            "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?"),
-                        actions: [
-                          TextButton(
-                            child: Text("Tidak"),
-                            onPressed: () {
-                              print("🚫 Batal keluar");
-                              Navigator.of(context).pop(false);
-                            },
-                          ),
-                          TextButton(
-                            child: Text("Iya"),
-                            onPressed: () {
-                              print("✅ Keluar tanpa simpan");
-                              Navigator.of(context).pop(true);
-                            },
-                          ),
-                        ],
-                      ),
-                    );
+                    final shouldExit = await General.showDialogConfirmCustom(
+                      context: context, 
+                      coreIcon: Icons.help, 
+                      coreTheme: Colors.orange, 
+                      title: "Perubahan Belum Disimpan", 
+                      message: "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?", 
+                      additionalMessage: "", 
+                      confirmButtonText: "Ya, Keluar", 
+                      cancelButtonText: "Tidakk"
+                    ) ?? false;
 
                     if (shouldExit == true && context.mounted) {
                       Navigator.pop(context);
@@ -3069,34 +3092,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Future<bool> _showDeleteItemChecklistConfirmationDialog() async {
-    return await showDialog<bool>(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text("Konfirmasi Hapus"),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text("Kamu yakin ingin menghapus item checklist?"),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pop(context, false), // Tidak jadi delete
-                  child: Text("Batal"),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      Navigator.pop(context, true), // Konfirmasi delete
-                  child: Text("Hapus", style: TextStyle(color: Colors.red)),
-                ),
-              ],
-            );
-          },
-        ) ??
-        false;
+    return await General.showDialogConfirmDelete(
+      context: context, 
+      title: "Konfirmasi Hapus", 
+      message: "Kamu yakin ingin menghapus item checklist?", 
+      additionalMessage: "", 
+      confirmButtonText: "Hapus", 
+      cancelButtonText: "Batal"
+    ) ?? false;
   }
 
   Future<void> _deleteItemChecklist(int itemId) async {
@@ -3437,44 +3440,62 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         return StatefulBuilder(
           builder: (context, dialogSetState) {
             return AlertDialog(
+              backgroundColor: Colors.grey[50],
+              elevation: 10,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(20),
               ),
-              title: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text("Add Member",
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  IconButton(
-                    icon: Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
+              titlePadding: EdgeInsets.zero,
+              contentPadding: EdgeInsets.zero,
+              title: Container(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                decoration: BoxDecoration(
+                  color: Colors.blue[900],
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("Add Member",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18)),
+                    IconButton(
+                      icon: Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
               ),
-              content: SizedBox(
-                width: double.maxFinite,
+              content: Container(
+                padding: EdgeInsets.all(16),
                 height: 500,
+                width: double.maxFinite,
                 child: Column(
                   children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: "Search User...",
-                          prefixIcon: Icon(Icons.search),
-                          border: OutlineInputBorder(),
+                    TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: "Search User...",
+                        prefixIcon: Icon(Icons.search),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        onChanged: (value) => _searchUserByName(dialogSetState),
                       ),
+                      onChanged: (value) => _searchUserByName(dialogSetState),
                     ),
-                    SizedBox(height: 10),
+                    SizedBox(height: 16),
                     _isLoading
                         ? Center(child: CircularProgressIndicator())
                         : filteredUsers.isEmpty
                             ? Padding(
                                 padding: const EdgeInsets.all(16.0),
-                                child: Text("No users found."),
+                                child: Text("No users found.",
+                                    style: TextStyle(color: Colors.grey[700])),
                               )
                             : Expanded(
                                 child: ListView.builder(
@@ -3484,33 +3505,40 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                     final isSelected =
                                         _selectedUserIds.contains(user['id']);
 
-                                    return ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor:
-                                            General.getColorFromInitial(
-                                                General.getInitials(
-                                                    user['name'])),
-                                        child: Text(
-                                          General.getInitials(user['name']),
-                                          style: TextStyle(color: Colors.white),
+                                    return Card(
+                                      elevation: 2,
+                                      margin: EdgeInsets.symmetric(vertical: 4),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(10)),
+                                      child: ListTile(
+                                        leading: CircleAvatar(
+                                          backgroundColor:
+                                              General.getColorFromInitial(
+                                                  General.getInitials(
+                                                      user['name'])),
+                                          child: Text(
+                                            General.getInitials(user['name']),
+                                            style: TextStyle(color: Colors.white),
+                                          ),
                                         ),
+                                        title: Text(user['name']),
+                                        subtitle: Text(
+                                            '${user['role']['name']} - ${user['divisi']['name']}'),
+                                        trailing: isSelected
+                                            ? Icon(Icons.check_circle,
+                                                color: Colors.green)
+                                            : null,
+                                        onTap: () {
+                                          dialogSetState(() {
+                                            if (isSelected) {
+                                              _selectedUserIds
+                                                  .remove(user['id']);
+                                            } else {
+                                              _selectedUserIds.add(user['id']);
+                                            }
+                                          });
+                                        },
                                       ),
-                                      title: Text(user['name']),
-                                      subtitle: Text(
-                                          '${user['role']['name']} - ${user['divisi']['name']}'),
-                                      trailing: isSelected
-                                          ? Icon(Icons.check_circle,
-                                              color: Colors.green)
-                                          : null,
-                                      onTap: () {
-                                        dialogSetState(() {
-                                          if (isSelected) {
-                                            _selectedUserIds.remove(user['id']);
-                                          } else {
-                                            _selectedUserIds.add(user['id']);
-                                          }
-                                        });
-                                      },
                                     );
                                   },
                                 ),
@@ -3518,18 +3546,30 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   ],
                 ),
               ),
+              actionsPadding: EdgeInsets.only(
+                  left: 20, right: 20, bottom: 12, top: 4),
               actions: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    TextButton(
-                      child:
-                          Text("Cancel", style: TextStyle(color: Colors.red)),
+                    OutlinedButton.icon(
+                      icon: Icon(Icons.cancel, color: Colors.red),
+                      label: Text("Cancel", style: TextStyle(color: Colors.red)),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: Colors.red),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
                       onPressed: () => Navigator.pop(context),
                     ),
-                    TextButton(
-                      child:
-                          Text("Done", style: TextStyle(color: Colors.green)),
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.check_circle, color: Colors.white),
+                      label: Text("Done"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.green,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
                       onPressed: () async {
                         try {
                           final res = await ApiService.handleChecklistItem(

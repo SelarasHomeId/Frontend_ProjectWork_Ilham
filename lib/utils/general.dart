@@ -435,6 +435,8 @@ class General {
     required String additionalMessage,
     required String confirmButtonText,
     required String cancelButtonText,
+    IconData? coreIcon,
+    MaterialColor? coreTheme,
   }) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -450,7 +452,7 @@ class General {
                 width: double.infinity,
                 padding: EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.red,
+                  color: coreTheme ?? Colors.red,
                   shape: BoxShape.rectangle,
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(16),
@@ -459,7 +461,7 @@ class General {
                 ),
                 child: Center(
                   child: Icon(
-                    Icons.delete,
+                    coreIcon ?? Icons.delete,
                     size: 80,
                     color: Colors.white,
                   ),
@@ -495,7 +497,7 @@ class General {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.red,
+                          color: coreTheme ?? Colors.red,
                           fontStyle: FontStyle.italic,
                         ),
                       ),
@@ -525,7 +527,7 @@ class General {
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(true),
                     style: TextButton.styleFrom(
-                      backgroundColor: Colors.red[800],
+                      backgroundColor: coreTheme != null ? coreTheme.shade800 : Colors.red[800],
                       padding:
                           EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       shape: RoundedRectangleBorder(

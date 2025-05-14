@@ -47,6 +47,7 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
         method: 'PATCH',
         userId: int.parse(userMap['id'].toString()),
         data: data,
+        resetPass: false
       );
       print("Response dari API password: $response");
 
@@ -73,177 +74,208 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
           confirmPasswordFocusNode.unfocus();
         },
         child: AlertDialog(
-          contentPadding: EdgeInsets.fromLTRB(16, 28, 16, 16),
-          titlePadding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          contentPadding: EdgeInsets.zero,
           backgroundColor: Colors.white,
-          content: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Perubahan Utama: Container untuk Close Button
-              Positioned(
-                right: -10,
-                top: -20,
-                child: IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: Icon(Icons.close, size: 22),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Judul
-                  Padding(
-                    padding:
-                        EdgeInsets.symmetric(vertical: 15.0, horizontal: 15.0),
-                    child: Text(
-                      'Change Password',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                      ),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+              minWidth: MediaQuery.of(context).size.width * 0.7,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // HEADER DENGAN GRADIENT
+                Container(
+                  padding: EdgeInsets.all(16),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.red.shade400, Colors.red.shade600],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
                   ),
-                  Form(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.lock_outline, color: Colors.white),
+                          SizedBox(width: 8),
+                          Text(
+                            'Change Password',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close, color: Colors.white),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                ),
+
+                Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Form(
                     key: _formKey,
                     child: Column(
                       children: [
-                        TextFormField(
+                        // OLD PASSWORD
+                        _buildPasswordField(
                           controller: _oldPasswordController,
-                          obscureText: _isOldPasswordObscured,
                           focusNode: oldPasswordFocusNode,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 12, horizontal: 12),
-                            border: OutlineInputBorder(),
-                            labelText: 'Password Lama',
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isOldPasswordObscured
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isOldPasswordObscured =
-                                      !_isOldPasswordObscured;
-                                });
-                              },
-                            ),
-                          ),
-                          validator: (value) {
-                            String? message =
-                                General.validatePassword("Password Lama", value);
-                            return message;
+                          label: "Password Lama",
+                          icon: Icons.lock,
+                          obscureText: _isOldPasswordObscured,
+                          toggleObscure: () {
+                            setState(() {
+                              _isOldPasswordObscured = !_isOldPasswordObscured;
+                            });
                           },
+                          validator: (value) => General.validatePassword("Password Lama", value),
                         ),
                         SizedBox(height: 16),
-                        TextFormField(
+
+                        // NEW PASSWORD
+                        _buildPasswordField(
                           controller: _newPasswordController,
                           focusNode: newPasswordFocusNode,
+                          label: "Password Baru",
+                          icon: Icons.vpn_key,
                           obscureText: _isNewPasswordObscured,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 10, horizontal: 12),
-                            labelText: 'Password Baru',
-                            border: OutlineInputBorder(),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isNewPasswordObscured
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isNewPasswordObscured =
-                                      !_isNewPasswordObscured;
-                                });
-                              },
-                            ),
-                          ),
+                          toggleObscure: () {
+                            setState(() {
+                              _isNewPasswordObscured = !_isNewPasswordObscured;
+                            });
+                          },
                           validator: (value) {
                             if (value == _oldPasswordController.text) {
                               return 'Password Baru Tidak Boleh Sama dengan Password Lama';
                             }
-                            String? message =
-                                General.validatePassword("Password Baru", value);
-                            return message;
+                            return General.validatePassword("Password Baru", value);
                           },
                         ),
                         SizedBox(height: 16),
-                        TextFormField(
+
+                        // CONFIRM PASSWORD
+                        _buildPasswordField(
                           controller: _confirmPasswordController,
                           focusNode: confirmPasswordFocusNode,
+                          label: "Konfirmasi Password",
+                          icon: Icons.verified_user,
                           obscureText: _isConfirmPasswordObscured,
-                          decoration: InputDecoration(
-                            filled: true,
-                            fillColor: Colors.grey[100],
-                            contentPadding: EdgeInsets.symmetric(
-                                vertical: 10, horizontal: 12),
-                            border: OutlineInputBorder(),
-                            labelText: 'Konfirmasi Password',
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isConfirmPasswordObscured
-                                    ? Icons.visibility
-                                    : Icons.visibility_off,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isConfirmPasswordObscured =
-                                      !_isConfirmPasswordObscured;
-                                });
-                              },
-                            ),
-                          ),
+                          toggleObscure: () {
+                            setState(() {
+                              _isConfirmPasswordObscured = !_isConfirmPasswordObscured;
+                            });
+                          },
                           validator: (value) {
                             if (value != _newPasswordController.text) {
                               return 'Konfirmasi Password Tidak Sesuai';
                             }
-                            String? message = General.validatePassword(
-                                "Konfirmasi Password", value);
-                            return message;
+                            return General.validatePassword("Konfirmasi Password", value);
                           },
                         ),
-                        SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () {
-                            if (_formKey.currentState?.validate() ?? false) {
-                              String oldPassword = _oldPasswordController.text;
-                              String newPassword = _newPasswordController.text;
-                              changePassword(oldPassword, newPassword);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red[500],
-                            padding: EdgeInsets.symmetric(
-                                vertical: 10, horizontal: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+                        SizedBox(height: 24),
+
+                        // SUBMIT BUTTON
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              FocusScope.of(context).unfocus();
+                              if (_formKey.currentState?.validate() ?? false) {
+                                changePassword(
+                                  _oldPasswordController.text,
+                                  _newPasswordController.text,
+                                );
+                              }
+                            },
+                            style: ElevatedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              backgroundColor: Colors.red[600],
+                              elevation: 6,
                             ),
-                          ),
-                          child: Text(
-                            "Submit",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                            icon: Icon(Icons.save, color: Colors.white),
+                            label: Text(
+                              "Simpan Perubahan",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
-      )
+      ),
+    );
+  }
+
+  // Helper method untuk text field dengan dekorasi menarik
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String label,
+    required IconData icon,
+    required bool obscureText,
+    required void Function() toggleObscure,
+    required String? Function(String?) validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          )
+        ],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: TextFormField(
+        controller: controller,
+        focusNode: focusNode,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: Colors.grey[100],
+          prefixIcon: Icon(icon),
+          suffixIcon: IconButton(
+            icon: Icon(
+              obscureText ? Icons.visibility : Icons.visibility_off,
+            ),
+            onPressed: toggleObscure,
+          ),
+          contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+          labelText: label,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide.none,
+          ),
+        ),
+        validator: validator,
+      ),
     );
   }
 }

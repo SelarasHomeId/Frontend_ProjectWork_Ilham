@@ -882,6 +882,7 @@ class ApiService {
     int? userId,
     Map<String, dynamic>? data,
     Map<String, String>? params, // Body data untuk Create atau Update
+    bool? resetPass,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
@@ -896,8 +897,11 @@ class ApiService {
     } else if (method == 'PUT' && userId != null) {
       endpoint = '/user/$userId'; // Endpoint untuk update user
     } else if (method == 'PATCH' && userId != null) {
-      endpoint =
-          '/user/change-password/$userId'; // Endpoint untuk change password user
+      if (resetPass != null && resetPass == true){
+        endpoint = '/user/reset-password/$userId';
+      }else{
+        endpoint = '/user/change-password/$userId';
+      }
     } else if (method == 'DELETE' && userId != null) {
       endpoint = '/user/$userId'; // Endpoint untuk delete user
     } else {
@@ -1154,4 +1158,83 @@ class ApiService {
   //END MASTER DATA
 
   // ==================================================================================================== //
+
+  static Future<http.Response> apiRequestExportData({
+    required String method,
+    required String endpoint,
+    Map<String, String>? params,
+    String? token,
+  }) async {
+    // init
+    http.Response response;
+    final url = '$baseUrl$endpoint';
+    Map<String, String> header = {};
+
+    if (token != null) {
+      header['Authorization'] = 'Bearer $token';
+    }
+
+    try {
+      // function hit api
+      Future<http.Response> hitAPI() async {
+        switch (method.toUpperCase()) {
+          case 'GET':
+            return http.get(Uri.parse('$url${params != null ? General.buildQueryParams(params) : ""}'), headers: header);
+          default:
+            throw Exception('Unsupported HTTP method: $method');
+        }
+      }
+
+      // hit api
+      response = await hitAPI();
+      // cek if refresh token needed
+      if (response.statusCode == 401 && endpoint != '/auth/login') {
+        final newToken = await _refreshToken(token);
+
+        if (newToken != null) {
+          header['Authorization'] = 'Bearer $newToken';
+          response = await hitAPI();
+        } else {
+          throw Exception('Your Session Is Expired, Please Re-Login...');
+        }
+      } else if (response.statusCode == 422 && endpoint != '/auth/login') {
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+
+        try {
+          final response = await apiRequest(
+            method: 'POST',
+            endpoint: '/auth/logout',
+            body: {'logout_from': 'mobile'},
+            token: token,
+            contentType: 'application/json',
+          );
+
+          if (response != null && response['code'] == 200) {
+            debugPrint("✅ Logout berhasil, menghapus sesi...");
+            General.clearSharedPreferences();
+          } else {
+            debugPrint("❌ Logout API gagal atau code != 200: ${response?['code']}");
+            General.clearSharedPreferences();
+          }
+        } catch (e) {
+          debugPrint("🚨 Error saat logout: $e");
+        }
+
+        finally {
+          General.clearSharedPreferences();
+          navigatorKey.currentState?.pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => LoginScreen()),
+            (route) => false,
+          );
+        }
+      }
+
+      return response;
+    } catch (e, trace) {
+      print("trace :>>> $trace");
+      // return null;
+      rethrow;
+    }
+  }
 }

@@ -32,8 +32,12 @@ class _DashboardWidgetState extends State<DashboardWidget> {
   List<Map<String, dynamic>> _calculateTaskData = [];
   int _selectedWorkspaceIndex = 0;
 
+  bool _isLoadingAll = false;
+  bool _isLoadingWorkspace = false;
+  Map<int, bool> _isLoadingBoard = {};
   bool _isLoadingContacts = false;
   bool _isLoadingAffiliate = false;
+  bool _isLoadingCalculate = false;
   int _rowsPerPage = 10;
   int? _sortColumnIndex;
   bool _sortAscending = true;
@@ -206,6 +210,65 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     });
   }
 
+  Future<void> _exportTaskSummary({Map<String, String>? param, String? flagDownload}) async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+    if (flagDownload != null && flagDownload == "all"){
+      setState(() {
+        _isLoadingAll = true;
+      });
+    }else if (flagDownload != null && flagDownload == "workspace"){
+      setState(() {
+        _isLoadingWorkspace = true;
+      });
+    }else if (flagDownload != null && flagDownload == "board"){
+      setState(() {
+        if (param != null && param['board_id'] != null) {
+          int? boardId = int.tryParse(param['board_id']!);
+          _isLoadingBoard[boardId!] = true;
+        }
+      });
+    }
+    try {
+      final response = await ApiService.apiRequestExportData(
+        method: "GET", 
+        endpoint: "/task/export",
+        token: token,
+        params: param
+      );
+
+      if (response.statusCode == 200) {
+        final bytes = response.bodyBytes;
+        final contentDisposition = response.headers['content-disposition'];
+        String? fileName;
+        if (contentDisposition != null) {
+          final regex = RegExp(r'filename="?([^"]+)"?');
+          final match = regex.firstMatch(contentDisposition);
+          if (match != null) {
+            fileName = match.group(1);
+          }
+        }
+        fileName ??= 'Export_Data_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}.xlsx';
+
+        await _saveDownloadedExcelFile(context, bytes, fileName);
+      } else {
+        General.showSnackBar(context, 'Gagal mengekspor data. Status: ${response.statusCode}');
+        print('Response error: ${response.body}');
+      }
+    } catch (e) {
+      General.showSnackBar(context, 'Terjadi kesalahan saat ekspor: $e');
+      print('Error: $e');
+    }
+    setState(() {
+      _isLoadingAll = false;
+      _isLoadingWorkspace = false;
+      if (param != null && param['board_id'] != null) {
+        int? boardId = int.tryParse(param['board_id']!);
+        _isLoadingBoard[boardId!] = false;
+      }
+    });
+  }
+
   Future<void> _exportMessagingData() async {
     var excel = Excel.Excel.createExcel();
     Excel.Sheet sheetObject = excel['Messaging Data'];
@@ -318,17 +381,68 @@ class _DashboardWidgetState extends State<DashboardWidget> {
     }
   }
 
+  Future<void> _saveDownloadedExcelFile(
+      BuildContext context, List<int> bytes, String fileName) async {
+    Directory? directory;
+
+    if (Platform.isAndroid) {
+      if (await Permission.manageExternalStorage.request().isGranted) {
+        directory = Directory("/storage/emulated/0/Download");
+      } else {
+        General.showSnackBar(context, 'Izin penyimpanan tidak diberikan.');
+        openAppSettings();
+        return;
+      }
+    } else if (Platform.isIOS) {
+      directory = await getApplicationDocumentsDirectory();
+    }
+
+    if (directory != null) {
+      String basePath = '${directory.path}/$fileName';
+      String filePath = basePath;
+      int counter = 1;
+
+      while (File(filePath).existsSync()) {
+        String nameWithoutExtension = fileName.split('.').first;
+        String extension = fileName.split('.').last;
+        filePath = '${directory.path}/$nameWithoutExtension($counter).$extension';
+        counter++;
+      }
+
+      try {
+        File(filePath)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(bytes);
+
+        General.showSnackBar(
+          context,
+          'File Excel berhasil diunduh dan disimpan di folder Download',
+          durationSeconds: 5,
+        );
+
+        print('File berhasil disimpan di: $filePath');
+      } catch (e) {
+        General.showSnackBar(context, 'Gagal menyimpan file: $e');
+        print('Gagal menyimpan file: $e');
+      }
+    } else {
+      General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');
+    }
+  }
+
   Future<void> _fetchCalculateTask() async {
-    setState(() => _isLoadingAffiliate = true);
+    setState(() => _isLoadingCalculate = true);
     try {
       final response = await ApiService.calculateTask();
       setState(() {
         _calculateTaskData = (response as List).map((workspace) {
           return {
+            "workspace_id": workspace["id"],
             "workspace_name": workspace["workspace"], // Sesuaikan key dari API
             "boards": (workspace["board"] != null && workspace["board"] is List)
                 ? (workspace["board"] as List).map((board) {
                     return {
+                      "id": board["id"],
                       "count_task": board["count_task"], // Ambil jumlah task
                       "name": board["name"], // Ambil nama board
                       "has_new": board["has_new"],
@@ -343,7 +457,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
       // print("Error fetching calculate task: $e, $stackTrace");
       General.showSnackBar(context, 'Gagal memuat affiliate: ${e.toString()}');
     } finally {
-      setState(() => _isLoadingAffiliate = false);
+      setState(() => _isLoadingCalculate = false);
     }
   }
 
@@ -425,14 +539,33 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Task Summary',
-                          style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              'Task Summary',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Spacer(),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                _exportTaskSummary(flagDownload: "all");
+                              },
+                              icon: _isLoadingAll ? SizedBox(
+                                      width: 18,
+                                      height: 18,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
+                                      ),
+                                    ) : Icon(Icons.file_download),
+                              label: Text('Unduh Data'),
+                            ),
+                          ],
                         ),
-                        SizedBox(height: 10),
+                        SizedBox(height: 16),
 
                         // Workspace selection buttons
                         SizedBox(
@@ -458,13 +591,42 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                                       _selectedWorkspaceIndex = index;
                                     });
                                   },
-                                  child: Text(
-                                    _calculateTaskData[index]['workspace_name'],
-                                    style: TextStyle(
-                                      color: _selectedWorkspaceIndex == index
-                                          ? Colors.white
-                                          : Colors.black,
-                                    ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        _calculateTaskData[index]['workspace_name'],
+                                        style: TextStyle(
+                                          color: _selectedWorkspaceIndex == index
+                                              ? Colors.white
+                                              : Colors.black,
+                                        ),
+                                      ),
+                                      if (_selectedWorkspaceIndex == index) ...[
+                                        SizedBox(width: 8),
+                                        InkWell(
+                                          onTap: () async {
+                                            _exportTaskSummary(param: {
+                                              "workspace_id": _calculateTaskData[index]['workspace_id'].toString()
+                                            }, flagDownload: "workspace");
+                                          },
+                                          child: _isLoadingWorkspace ? SizedBox(
+                                                  width: 18,
+                                                  height: 18,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2.5,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                  ),
+                                                ) : Icon(
+                                                        Icons.download,
+                                                        size: 20,
+                                                        color: _selectedWorkspaceIndex == index
+                                                            ? Colors.white
+                                                            : Colors.black,
+                                                      ),
+                                        )
+                                      ]
+                                    ],
                                   ),
                                 ),
                               );
@@ -474,7 +636,7 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                         SizedBox(height: 16),
 
                         // Display boards
-                        if (_isLoadingAffiliate)
+                        if (_isLoadingCalculate)
                           Center(child: CircularProgressIndicator()),
                         if (_calculateTaskData.isNotEmpty)
                           _calculateTaskData[_selectedWorkspaceIndex]
@@ -498,19 +660,25 @@ class _DashboardWidgetState extends State<DashboardWidget> {
                                           [index];
                                       return Container(
                                         width: 280,
-                                        margin: EdgeInsets.all(10),
-                                        child: createCard(
-                                          label1:
-                                              'Count: ${board["count_task"].toString()}',
+                                        margin: EdgeInsets.all(5),
+                                        child: AnimatedCard(
+                                          boardId: board['id'] ?? 0, 
+                                          label1: 'Count: ${board["count_task"].toString()}', 
                                           label2: board['has_new'] == true
                                               ? 'Has New!'
-                                              : '',
-                                          description: board['name'],
+                                              : '', 
+                                          description: board['name'], 
                                           date: DateFormat(
                                                   'EEE, dd MMM y | hh:MM:ss')
                                               .format(DateTime.parse(
                                                       board['updated_at'])
                                                   .toLocal()),
+                                          exportBoard: (boardId) async {
+                                            _exportTaskSummary(param: {
+                                              "board_id": boardId.toString()
+                                            }, flagDownload: "board");
+                                          },
+                                          isLoading: _isLoadingBoard,
                                         ),
                                       );
                                     },
@@ -1202,4 +1370,201 @@ class AffiliateDataSource extends DataTableSource {
 
   @override
   int get selectedRowCount => 0;
+}
+
+class AnimatedCard extends StatefulWidget {
+  final int boardId;
+  final String label1;
+  final String label2;
+  final String description;
+  final String date;
+  final Future<void> Function(int boardId) exportBoard;
+  final Map<int, bool> isLoading;
+
+  const AnimatedCard({
+    super.key,
+    required this.boardId,
+    required this.label1,
+    required this.label2,
+    required this.description,
+    required this.date,
+    required this.exportBoard,
+    required this.isLoading
+  });
+
+  @override
+  State<AnimatedCard> createState() => _AnimatedCardState();
+}
+
+class _AnimatedCardState extends State<AnimatedCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  bool _showButton = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _animation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0, end: -0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -0.05, end: 0.05), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: 0.05, end: 0), weight: 1),
+    ]).animate(_controller);
+  }
+
+  void _onCardTap() {
+    _controller.forward(from: 0);
+    setState(() {
+      _showButton = !_showButton;
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _onCardTap,
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) {
+          return Transform.rotate(
+            angle: _animation.value,
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.3),
+                    spreadRadius: 2,
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  )
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Label Row
+                  Row(
+                    children: [
+                      Container(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.blue[50],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          widget.label1,
+                          style: TextStyle(
+                              color: Colors.blue[800],
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      if (widget.label2 != "")
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.orange[50],
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            widget.label2,
+                            style: TextStyle(
+                                color: Colors.orange[800],
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  // Title
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Text(
+                          widget.description,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  // Date & Optional Button
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          widget.date,
+                          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (_showButton) ...[
+                        const SizedBox(width: 8),
+                        ConstrainedBox(
+                          constraints: BoxConstraints(
+                            maxWidth: 100, // Batasi lebar maksimum tombol
+                          ),
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green[600],
+                              padding: const EdgeInsets.symmetric(horizontal: 8),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              minimumSize: const Size(0, 32),
+                            ),
+                            onPressed: () {
+                              widget.exportBoard(widget.boardId);
+                            },
+                            icon: widget.isLoading[widget.boardId] ?? false ? SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.5,
+                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    ),
+                                  ) : Icon(Icons.download, size: 14,color: Colors.white,),
+                            label: const Text(
+                                "Unduh",
+                                style: TextStyle(fontSize: 12, color: Colors.white),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ),
+                        ),
+                      ]
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
