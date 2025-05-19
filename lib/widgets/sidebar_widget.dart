@@ -201,6 +201,7 @@ class _SidebarState extends State<Sidebar> {
                   final user = snapshot.data!;
                   final roleName = user['roleName'];
                   final divisiName = user['divisiName'];
+
                   return Container(
                     decoration: BoxDecoration(
                       image: DecorationImage(
@@ -226,14 +227,16 @@ class _SidebarState extends State<Sidebar> {
                               child: CircleAvatar(
                                 radius: screenWidth * 0.09,
                                 backgroundColor: General.getColorFromInitial(
-                                    user['initials']),
+                                    General.getInitials(user['initials'])),
                                 child: Text(
                                   user['initials']!,
                                   style: TextStyle(
                                     fontSize: screenWidth * 0.08,
                                     fontWeight: FontWeight.bold,
-                                    color:
-                                        const Color.fromARGB(255, 21, 55, 83),
+                                    color: General.getContrastingTextColor(
+                                        General.getColorFromInitial(
+                                            General.getInitials(
+                                                user['initials']))),
                                   ),
                                 ),
                               ),

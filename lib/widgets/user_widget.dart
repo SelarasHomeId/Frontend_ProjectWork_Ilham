@@ -26,9 +26,10 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
   bool _sortAscending = true;
   int _rowsPerPage = 10;
 
+  FocusNode searchUserFocusNode = FocusNode();
+
   // Animation controller for the search TextField
   late AnimationController _animationController;
-  late Animation<Offset> _slideAnimation;
 
   Future<void> fetchUsers() async {
     setState(() => _isLoading = true);
@@ -57,13 +58,12 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
 
   void _deleteUser(int userId) async {
     final confirm = await General.showDialogConfirmDelete(
-      context: context, 
-      title: "Hapus User", 
-      message: "Apakah Anda yakin ingin menghapus user ini?", 
-      additionalMessage: "", 
-      confirmButtonText: "Hapus", 
-      cancelButtonText: "Batal"
-    );
+        context: context,
+        title: "Hapus User",
+        message: "Apakah Anda yakin ingin menghapus user ini?",
+        additionalMessage: "",
+        confirmButtonText: "Hapus",
+        cancelButtonText: "Batal");
 
     if (confirm != null && confirm) {
       try {
@@ -92,23 +92,19 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
 
   void _resetPassUser(int userId) async {
     final confirm = await General.showDialogConfirmDelete(
-      context: context, 
-      title: "Reset Password User", 
-      message: "Apakah Anda yakin ingin me-reset password user ini?", 
-      additionalMessage: "", 
-      confirmButtonText: "Reset", 
-      cancelButtonText: "Batal",
-      coreIcon: Icons.lock_reset,
-      coreTheme: Colors.deepOrange
-    );
+        context: context,
+        title: "Reset Password User",
+        message: "Apakah Anda yakin ingin me-reset password user ini?",
+        additionalMessage: "",
+        confirmButtonText: "Reset",
+        cancelButtonText: "Batal",
+        coreIcon: Icons.lock_reset,
+        coreTheme: Colors.deepOrange);
 
     if (confirm != null && confirm) {
       try {
         final response = await ApiService.handleUser(
-          method: 'PATCH',
-          userId: userId,
-          resetPass: true
-        );
+            method: 'PATCH', userId: userId, resetPass: true);
 
         if (response != null &&
             response['code'] == 200 &&
@@ -166,17 +162,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     fetchUsers(); // Fetch users when widget is initialized
-
-    // Initialize the animation controller for the search TextField
-    _animationController = AnimationController(
-      duration: Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: Offset(0, -1), // Start from above
-      end: Offset(0, 0), // End at normal position
-    ).animate(
-        CurvedAnimation(parent: _animationController, curve: Curves.easeInOut));
   }
 
   // Toggle visibility of the search TextField
@@ -221,11 +206,7 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
     });
     try {
       final response = await ApiService.apiRequestExportData(
-        method: "GET", 
-        endpoint: "/user/export",
-        token: token,
-        params: param
-      );
+          method: "GET", endpoint: "/user/export", token: token, params: param);
 
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
@@ -238,11 +219,13 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
             fileName = match.group(1);
           }
         }
-        fileName ??= 'Export_Data_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}.xlsx';
+        fileName ??=
+            'Export_Data_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}.xlsx';
 
         await _saveDownloadedExcelFile(context, bytes, fileName);
       } else {
-        General.showSnackBar(context, 'Gagal mengekspor data. Status: ${response.statusCode}');
+        General.showSnackBar(
+            context, 'Gagal mengekspor data. Status: ${response.statusCode}');
         print('Response error: ${response.body}');
       }
     } catch (e) {
@@ -278,7 +261,8 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
       while (File(filePath).existsSync()) {
         String nameWithoutExtension = fileName.split('.').first;
         String extension = fileName.split('.').last;
-        filePath = '${directory.path}/$nameWithoutExtension($counter).$extension';
+        filePath =
+            '${directory.path}/$nameWithoutExtension($counter).$extension';
         counter++;
       }
 
@@ -322,177 +306,183 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          children: [
-            Icon(Icons.person, size: 30), // Icon pengguna
-            SizedBox(width: 8), // Jarak antara ikon dan teks
-            Text(
-              "User Management",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-          ],
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: Color.fromARGB(255, 83, 82, 79), // Set the background color of the circle
-              child: IconButton(
-                icon: _isLoadingExport ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ) : Icon(Icons.download),
-                color: Colors.white, // Set the icon color
-                onPressed:
-                    _exportData, // Toggle visibility of search TextField
-                padding:
-                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
-                iconSize: 28, // Adjust the size of the icon
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: Color.fromARGB(
-                  255, 13, 55, 224), // Set the background color of the circle
-              child: IconButton(
-                icon: Icon(Icons.search),
-                color: Colors.white, // Set the icon color
-                onPressed:
-                    _toggleSearchVisibility, // Toggle visibility of search TextField
-                padding:
-                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
-                iconSize: 28, // Adjust the size of the icon
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              radius: 20, // Set the size of the CircleAvatar
-              backgroundColor: Color.fromARGB(
-                  255, 1, 161, 49), // Set the background color of the circle
-              child: IconButton(
-                icon: Icon(Icons.add),
-                color: Colors.white, // Set the icon color
-                onPressed: () async {
-                  await Navigator.of(context).push(
-                    _createRoute(AddUserWidget()),
-                  );
-                  await _needRefresh(true);
-                },
-                padding:
-                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
-                iconSize: 28, // Adjust the size of the icon
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData, // Trigger to fetch new data
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
+    final screenWidth = MediaQuery.of(context).size.width;
+    final iconSize = screenWidth * 0.065;
+    final fontSize = screenWidth * 0.065;
+
+    return PopScope(
+      canPop: !searchUserFocusNode.hasFocus,
+      onPopInvokedWithResult: (didPop, result) {
+        if (searchUserFocusNode.hasFocus) {
+          searchUserFocusNode.unfocus();
+        }
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (searchUserFocusNode.hasFocus) {
+            searchUserFocusNode.unfocus();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Row(
               children: [
-                AnimatedSwitcher(
-                  duration: Duration(milliseconds: 300),
-                  child: _isSearchVisible
-                      ? SlideTransition(
-                          position: _slideAnimation,
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: TextField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                labelText: 'Search by Name or Email',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 16,
-                                ),
-                                suffixIcon: Padding(
-                                  padding: EdgeInsets.only(right: 8),
-                                  child: IconButton(
-                                    icon: Icon(Icons.close, size: 20),
-                                    onPressed: _toggleSearchVisibility,
-                                    padding: EdgeInsets.zero,
-                                    constraints: BoxConstraints(),
-                                  ),
-                                ),
-                                suffixIconConstraints: BoxConstraints(
-                                  maxHeight: 32,
-                                ),
-                              ),
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          ),
-                        )
-                      : Container(),
+                Icon(Icons.person, size: iconSize),
+                SizedBox(width: screenWidth * 0.02),
+                Expanded(
+                  child: Text(
+                    "User Management",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: fontSize,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                _isLoading
-                    ? Center(child: CircularProgressIndicator())
-                    : filteredUsers.isEmpty
-                        ? Center(child: Text('No users to display'))
-                        : Padding(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 2, vertical: 5),
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width,
-                                child: Container(
-                                  constraints: BoxConstraints(
-                                      maxWidth:
-                                          900), // Maksimal 900px agar tidak terlalu luas
-                                  child: PaginatedDataTable(
-                                    columnSpacing: 16,
-                                    horizontalMargin: 5,
-                                    rowsPerPage: _rowsPerPage,
-                                    sortColumnIndex: _sortColumnIndex,
-                                    sortAscending: _sortAscending,
-                                    columns: [
-                                      DataColumn(
-                                          label: SizedBox(
-                                              width: 40, child: Text('No'))),
-                                      DataColumn(label: Text('Name')),
-                                      DataColumn(label: Text('Email')),
-                                      DataColumn(label: Text('Role')),
-                                      DataColumn(label: Text('Divisi')),
-                                      DataColumn(label: Text('Login')),
-                                      DataColumn(label: Text('Status')),
-                                      DataColumn(
-                                          label: SizedBox(
-                                              width: 150,
-                                              child: Text('Actions'))),
-                                    ],
-                                    source: MyDataSource(
-                                      filteredUsers,
-                                      0,
-                                      _rowsPerPage,
-                                      context,
-                                      _deleteUser,
-                                      _resetPassUser,
-                                      _needRefresh,
+              ],
+            ),
+            actions: [
+              // Export button
+              Padding(
+                padding: EdgeInsets.only(right: screenWidth * 0.02),
+                child: CircleAvatar(
+                  radius: iconSize * 0.8,
+                  backgroundColor: Color.fromARGB(255, 83, 82, 79),
+                  child: IconButton(
+                    iconSize: iconSize,
+                    padding: EdgeInsets.zero,
+                    color: Colors.white,
+                    icon: _isLoadingExport
+                        ? SizedBox(
+                            width: iconSize,
+                            height: iconSize,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                        : Icon(Icons.download),
+                    onPressed: _exportData,
+                  ),
+                ),
+              ),
+              // Add user button
+              Padding(
+                padding: EdgeInsets.only(right: screenWidth * 0.02),
+                child: CircleAvatar(
+                  radius: iconSize * 0.8,
+                  backgroundColor: Color.fromARGB(255, 1, 161, 49),
+                  child: IconButton(
+                    iconSize: iconSize,
+                    padding: EdgeInsets.zero,
+                    color: Colors.white,
+                    icon: Icon(Icons.add),
+                    onPressed: () async {
+                      await Navigator.of(context).push(
+                        _createRoute(AddUserWidget()),
+                      );
+                      await _needRefresh(true);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+          body: RefreshIndicator(
+            onRefresh: _refreshData,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // Search field dengan focus node
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: TextField(
+                        focusNode: searchUserFocusNode,
+                        controller: _searchController,
+                        onChanged: (value) => setState(() {}),
+                        decoration: InputDecoration(
+                          labelText: 'Search by Name or Email',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
+                          prefixIcon: Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.close, size: iconSize * 0.6),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                        ),
+                        style: TextStyle(fontSize: fontSize * 0.8),
+                      ),
+                    ),
+
+                    // Konten tabel atau indikator loading
+                    _isLoading
+                        ? Center(child: CircularProgressIndicator())
+                        : filteredUsers.isEmpty
+                            ? Center(child: Text('No users to display'))
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 2, vertical: 5),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: SizedBox(
+                                    width: MediaQuery.of(context).size.width,
+                                    child: Container(
+                                      constraints:
+                                          BoxConstraints(maxWidth: 900),
+                                      child: PaginatedDataTable(
+                                        columnSpacing: 16,
+                                        horizontalMargin: 5,
+                                        rowsPerPage: _rowsPerPage,
+                                        sortColumnIndex: _sortColumnIndex,
+                                        sortAscending: _sortAscending,
+                                        columns: [
+                                          DataColumn(
+                                              label: SizedBox(
+                                                  width: 40,
+                                                  child: Text('No'))),
+                                          DataColumn(label: Text('Name')),
+                                          DataColumn(label: Text('Email')),
+                                          DataColumn(label: Text('Role')),
+                                          DataColumn(label: Text('Divisi')),
+                                          DataColumn(label: Text('Login')),
+                                          DataColumn(label: Text('Status')),
+                                          DataColumn(
+                                              label: SizedBox(
+                                                  width: 150,
+                                                  child: Text('Actions'))),
+                                        ],
+                                        source: MyDataSource(
+                                          filteredUsers,
+                                          0,
+                                          _rowsPerPage,
+                                          context,
+                                          _deleteUser,
+                                          _resetPassUser,
+                                          _needRefresh,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),

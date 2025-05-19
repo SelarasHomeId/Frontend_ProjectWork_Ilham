@@ -474,11 +474,22 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text("Add Member",
-                        style: TextStyle(
+                    // Row tambahan untuk icon + text
+                    Row(
+                      children: [
+                        Icon(Icons.person_add,
+                            color: Colors.white), // icon di kiri
+                        SizedBox(width: 8), // jarak kecil
+                        Text(
+                          "Add Member",
+                          style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 18)),
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
                     IconButton(
                       icon: Icon(Icons.close, color: Colors.white),
                       onPressed: () => Navigator.pop(context),
@@ -523,20 +534,28 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                     final isSelected =
                                         _selectedUserIds.contains(user['id']);
 
+                                    // ambil inisial dan warna background
+                                    final initials =
+                                        General.getInitials(user['name']);
+                                    final bgColor =
+                                        General.getColorFromInitial(initials);
+                                    // pilih warna teks yang kontras
+                                    final textColor =
+                                        General.getContrastingTextColor(
+                                            bgColor);
+
                                     return Card(
                                       elevation: 2,
                                       margin: EdgeInsets.symmetric(vertical: 4),
                                       shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10)),
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
                                       child: ListTile(
                                         leading: CircleAvatar(
-                                          backgroundColor:
-                                              General.getColorFromInitial(
-                                                  General.getInitials(
-                                                      user['name'])),
+                                          backgroundColor: bgColor,
                                           child: Text(
-                                            General.getInitials(user['name']),
-                                            style: TextStyle(color: Colors.white),
+                                            initials,
+                                            style: TextStyle(color: textColor),
                                           ),
                                         ),
                                         title: Text(user['name']),
@@ -564,16 +583,18 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   ],
                 ),
               ),
-              actionsPadding: EdgeInsets.only(
-                  left: 20, right: 20, bottom: 12, top: 4),
+              actionsPadding:
+                  EdgeInsets.only(left: 20, right: 20, bottom: 12, top: 4),
               actions: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     OutlinedButton.icon(
-                      icon: Icon(Icons.cancel, color: Colors.red),
-                      label: Text("Cancel", style: TextStyle(color: Colors.red)),
+                      icon: Icon(Icons.cancel, color: Colors.white),
+                      label: Text("Cancel"),
                       style: OutlinedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
                         side: BorderSide(color: Colors.red),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -585,6 +606,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       label: Text("Done"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.green,
+                        foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
                       ),
@@ -605,7 +627,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                 context, "User berhasil di-assign");
                             await onLoadValue();
                           }
-
                         } catch (e) {
                           General.showSnackBar(
                               context, "Gagal assign user: $e");
@@ -681,13 +702,17 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       )
                     : Column(
                         children: members.map((member) {
+                          final initials = General.getInitials(member['name']);
+                          final bgColor = General.getColorFromInitial(initials);
+                          // pilih warna teks yang kontras
+                          final textColor =
+                              General.getContrastingTextColor(bgColor);
                           return ListTile(
                             leading: CircleAvatar(
-                              backgroundColor: General.getColorFromInitial(
-                                  General.getInitials(member['name'])),
+                              backgroundColor: bgColor,
                               child: Text(
-                                General.getInitials(member['name']),
-                                style: TextStyle(color: Colors.white),
+                                initials,
+                                style: TextStyle(color: textColor),
                               ),
                             ),
                             title: Text(member['name']),
@@ -936,15 +961,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     print("⚠️ Deskripsi berubah, tampilkan dialog");
 
                     final shouldExit = await General.showDialogConfirmCustom(
-                      context: context, 
-                      coreIcon: Icons.help, 
-                      coreTheme: Colors.orange, 
-                      title: "Perubahan Belum Disimpan", 
-                      message: "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?", 
-                      additionalMessage: "", 
-                      confirmButtonText: "Ya, Keluar", 
-                      cancelButtonText: "Tidakk"
-                    ) ?? false;
+                            context: context,
+                            coreIcon: Icons.help,
+                            coreTheme: Colors.orange,
+                            title: "Perubahan Belum Disimpan",
+                            message:
+                                "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?",
+                            additionalMessage: "",
+                            confirmButtonText: "Ya, Keluar",
+                            cancelButtonText: "Tidakk") ??
+                        false;
 
                     if (shouldExit == true && context.mounted) {
                       Navigator.pop(context);
@@ -1201,7 +1227,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
 //=======================End Widget Build===========================================
-  Future<Map<String, int>?> _showMoveDialog(int workspaceId, int boardId) async {
+  Future<Map<String, int>?> _showMoveDialog(
+      int workspaceId, int boardId) async {
     List<Map<String, dynamic>> workspaces = [];
     List<Map<String, dynamic>> boards = [];
     int? selectedWorkspaceId = workspaceId;
@@ -1269,8 +1296,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       ),
                     ),
                     child: Center(
-                      child:
-                          Icon(Icons.move_to_inbox, size: 80, color: Colors.white),
+                      child: Icon(Icons.move_to_inbox,
+                          size: 80, color: Colors.white),
                     ),
                   ),
                   SizedBox(height: 20),
@@ -1305,7 +1332,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                           );
                           if (response.isNotEmpty) {
                             setModalState(() {
-                              boards = List<Map<String, dynamic>>.from(response);
+                              boards =
+                                  List<Map<String, dynamic>>.from(response);
                               selectedBoardId = boards.first['id'];
                             });
                           }
@@ -1370,7 +1398,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: Text('Move', style: TextStyle(color: Colors.white)),
+                        child:
+                            Text('Move', style: TextStyle(color: Colors.white)),
                       ),
                     ],
                   ),
@@ -1849,6 +1878,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           ValueListenableBuilder<bool>(
             valueListenable: showSaveDescButton,
             builder: (context, show, child) {
+              final double buttonHeight = 40.0;
+              final double buttonRadius = 12.0;
+              final double buttonFontSize = 16.0;
               return show
                   ? ElevatedButton(
                       focusNode: descFocusNode,
@@ -1858,7 +1890,21 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         currentDesc = textDescController.text;
                         showSaveDescButton.value = false;
                       },
-                      child: Text("Simpan"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(buttonRadius),
+                        ),
+                        fixedSize: Size.fromHeight(buttonHeight),
+                      ),
+                      child: Text(
+                        "Simpan",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: buttonFontSize,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     )
                   : SizedBox();
             },
@@ -1871,6 +1917,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 //===================================Label=====================================
   Widget _buildLabelsButton(
       {required Future<void> Function(int) onAddingLabel}) {
+    final double buttonHeight = 40.0;
+    final double buttonRadius = 17.0;
+    final double buttonFontSize = 14.0;
+    final double horizontalPadding = 12.0;
+
     return Container(
       width: MediaQuery.of(context).size.width,
       padding: EdgeInsets.all(16),
@@ -1879,35 +1930,48 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         borderRadius: BorderRadius.circular(12), // Radius sudut kotak
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1), // Warna shadow
-            spreadRadius: 2, // Jarak shadow
-            blurRadius: 5, // Ukuran blur shadow
-            offset: Offset(0, 3), // Posisi shadow
-          ),
+              color: Colors.black.withOpacity(0.1), // Warna shadow
+              spreadRadius: 2, // Jarak shadow
+              blurRadius: 5, // Ukuran blur shadow
+              offset: Offset(0, 3)),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text("Labels",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          SizedBox(
-            height: 10,
-          ),
-          ElevatedButton.icon(
-            icon: Icon(Icons.add),
-            label: Text('Add Label'),
-            onPressed: () async {
-              final id = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => LabelScreen(),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.add,
+                  color: Colors.white, size: buttonFontSize + 4),
+              label: Text(
+                'Add Label',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: buttonFontSize,
                 ),
-              );
-              if (id != null) {
-                await onAddingLabel(id);
-              }
-            },
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(buttonRadius),
+                ),
+                // biarkan width fleksibel, tetapi ketinggian terjaga:
+                minimumSize: Size(0, buttonHeight),
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              ),
+              onPressed: () async {
+                final id = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => LabelScreen()),
+                );
+                if (id != null) await onAddingLabel(id);
+              },
+            ),
           ),
           SizedBox(height: 8), // Jarak antara tombol dan label
           ValueListenableBuilder(
@@ -1993,6 +2057,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     return ValueListenableBuilder<DateTime?>(
       valueListenable: onEndDateNotifier,
       builder: (context, selectedDate, child) {
+        final double buttonHeight = 40.0;
+        final double buttonRadius = 17.0;
+        final double buttonFontSize = 14.0;
+        final double horizontalPadding = 12.0;
         final dateText = selectedDate != null
             ? DateFormat('EEEE, dd MMMM yyyy - HH:mm WIB').format(selectedDate)
             : 'Belum ada Deadline';
@@ -2035,9 +2103,24 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               // Tombol Pilih Tanggal & Hapus
               Row(
                 children: [
+                  // Tombol “Pilih Tanggal”
                   ElevatedButton.icon(
-                    icon: Icon(Icons.calendar_today),
-                    label: Text("Pilih Tanggal"),
+                    icon: Icon(Icons.calendar_today,
+                        color: Colors.white, size: buttonFontSize + 2),
+                    label: Text(
+                      "Pilih Tanggal",
+                      style: TextStyle(
+                          color: Colors.white, fontSize: buttonFontSize),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(0, buttonHeight),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(buttonRadius),
+                      ),
+                    ),
                     onPressed: () => _pickDueDate(context),
                   ),
                   SizedBox(width: 10),
@@ -2312,8 +2395,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               FutureBuilder<Map<String, String>>(
                 future: userProfileFuture,
                 builder: (context, snapshot) {
-                  String initial =
+                  final initials =
                       General.getInitials(snapshot.data?['name'] ?? 'U');
+                  final bgColor = General.getColorFromInitial(initials);
+                  final textColor = General.getContrastingTextColor(bgColor);
+                  // String initial =
+                  //     General.getInitials();
                   return Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -2324,14 +2411,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                     ),
                     child: CircleAvatar(
                       radius: screenWidth * 0.065,
-                      backgroundColor: General.getColorFromInitial(initial),
+                      backgroundColor: bgColor,
                       child: Text(
-                        initial,
+                        initials,
                         style: TextStyle(
                           fontSize: screenWidth *
                               0.06, // Ukuran font sesuai dengan lebar layar
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1A365D), // Warna teks
+                          color: textColor, // Warna teks
                         ),
                       ),
                     ),
@@ -2598,6 +2685,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         if (item['due_date'] != null) {
           final dueDate = DateTime.parse(item['due_date']);
           final isPast = dueDate.isBefore(DateTime.now());
+
           dueWidget = Container(
             padding: EdgeInsets.symmetric(
               horizontal: mq.width * 0.008,
@@ -2642,6 +2730,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
         // --- avatar widget (lebih kecil) ---
         Widget? avatarWidget;
+
         if (item['assign_to_user'] != null) {
           avatarWidget = SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -2649,18 +2738,19 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               children: [
                 for (var member in item['assign_to_user']["data"] as List)
                   Padding(
-                    padding: EdgeInsets.only(right: mq.width * 0.008),
+                    padding: EdgeInsets.only(right: mq.width * 0.009),
                     child: CircleAvatar(
-                      radius: mq.width * 0.025,
+                      radius: mq.width * 0.03,
                       backgroundColor: General.getColorFromInitial(
                           General.getInitials(member['name'])),
                       child: FittedBox(
                         child: Text(
                           General.getInitials(member['name']),
                           style: TextStyle(
-                            fontSize: mq.width * 0.018,
-                            color: Colors.black,
-                          ),
+                              fontSize: mq.width * 0.03,
+                              color: General.getContrastingTextColor(
+                                  General.getColorFromInitial(
+                                      General.getInitials(member['name'])))),
                         ),
                       ),
                     ),
@@ -3093,13 +3183,13 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
   Future<bool> _showDeleteItemChecklistConfirmationDialog() async {
     return await General.showDialogConfirmDelete(
-      context: context, 
-      title: "Konfirmasi Hapus", 
-      message: "Kamu yakin ingin menghapus item checklist?", 
-      additionalMessage: "", 
-      confirmButtonText: "Hapus", 
-      cancelButtonText: "Batal"
-    ) ?? false;
+            context: context,
+            title: "Konfirmasi Hapus",
+            message: "Kamu yakin ingin menghapus item checklist?",
+            additionalMessage: "",
+            confirmButtonText: "Hapus",
+            cancelButtonText: "Batal") ??
+        false;
   }
 
   Future<void> _deleteItemChecklist(int itemId) async {
@@ -3116,15 +3206,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
   Future<bool> _showConvertItemChecklistToTaskConfirmationDialog() async {
     return await General.showDialogConfirmCustom(
-      context: context, 
-      coreIcon: Icons.add_task, 
-      coreTheme: Colors.purple, 
-      title: "Konfirmasi Konversi", 
-      message: "Kamu yakin ingin konversi item checklist ke tugas?", 
-      additionalMessage: "Konversi item checklist akan menghapus item dan membuat task baru di board yang sama.", 
-      confirmButtonText: "Convert", 
-      cancelButtonText: "Batal"
-    ) ?? false;
+            context: context,
+            coreIcon: Icons.add_task,
+            coreTheme: Colors.purple,
+            title: "Konfirmasi Konversi",
+            message: "Kamu yakin ingin konversi item checklist ke tugas?",
+            additionalMessage:
+                "Konversi item checklist akan menghapus item dan membuat task baru di board yang sama.",
+            confirmButtonText: "Convert",
+            cancelButtonText: "Batal") ??
+        false;
   }
 
   Future<void> _convertItemChecklistToTask(int itemId) async {
@@ -3256,6 +3347,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         separatorBuilder: (_, __) => Divider(height: 1),
                         itemBuilder: (context, index) {
                           final member = members[index];
+                          final initials = General.getInitials(member['name']);
+                          final bgColor = General.getColorFromInitial(initials);
+                          // pilih warna teks yang kontras
+                          final textColor =
+                              General.getContrastingTextColor(bgColor);
                           return Container(
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(8),
@@ -3264,11 +3360,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             margin: EdgeInsets.symmetric(vertical: 4),
                             child: ListTile(
                               leading: CircleAvatar(
-                                backgroundColor: General.getColorFromInitial(
-                                    General.getInitials(member['name'])),
+                                backgroundColor: bgColor,
                                 child: Text(
-                                  General.getInitials(member['name']),
-                                  style: TextStyle(color: Colors.white),
+                                  initials,
+                                  style: TextStyle(color: textColor),
                                 ),
                               ),
                               title: Text(member['name'],
@@ -3504,21 +3599,27 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                     final user = filteredUsers[index];
                                     final isSelected =
                                         _selectedUserIds.contains(user['id']);
+                                    final initials =
+                                        General.getInitials(user['name']);
+                                    final bgColor =
+                                        General.getColorFromInitial(initials);
+                                    // pilih warna teks yang kontras
+                                    final textColor =
+                                        General.getContrastingTextColor(
+                                            bgColor);
 
                                     return Card(
                                       elevation: 2,
                                       margin: EdgeInsets.symmetric(vertical: 4),
                                       shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10)),
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
                                       child: ListTile(
                                         leading: CircleAvatar(
-                                          backgroundColor:
-                                              General.getColorFromInitial(
-                                                  General.getInitials(
-                                                      user['name'])),
+                                          backgroundColor: bgColor,
                                           child: Text(
-                                            General.getInitials(user['name']),
-                                            style: TextStyle(color: Colors.white),
+                                            initials,
+                                            style: TextStyle(color: textColor),
                                           ),
                                         ),
                                         title: Text(user['name']),
@@ -3546,16 +3647,18 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   ],
                 ),
               ),
-              actionsPadding: EdgeInsets.only(
-                  left: 20, right: 20, bottom: 12, top: 4),
+              actionsPadding:
+                  EdgeInsets.only(left: 20, right: 20, bottom: 12, top: 4),
               actions: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     OutlinedButton.icon(
-                      icon: Icon(Icons.cancel, color: Colors.red),
-                      label: Text("Cancel", style: TextStyle(color: Colors.red)),
+                      icon: Icon(Icons.cancel, color: Colors.white),
+                      label: Text("Cancel"),
                       style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        backgroundColor: Colors.red,
                         side: BorderSide(color: Colors.red),
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -3566,6 +3669,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       icon: Icon(Icons.check_circle, color: Colors.white),
                       label: Text("Done"),
                       style: ElevatedButton.styleFrom(
+                        foregroundColor: Colors.white,
                         backgroundColor: Colors.green,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8)),
@@ -3698,7 +3802,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: Text('Cancel', style: TextStyle(color: Colors.white)),
+                    child:
+                        Text('Cancel', style: TextStyle(color: Colors.white)),
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(

@@ -625,7 +625,11 @@ class _WidgetBoardState extends State<WidgetBoard> {
                                 child: Text(
                                   General.getInitials(member['name']),
                                   style: TextStyle(
-                                      fontSize: 12, color: Colors.black),
+                                      fontSize: 12,
+                                      color: General.getContrastingTextColor(
+                                          General.getColorFromInitial(
+                                              General.getInitials(
+                                                  member['name'])))),
                                 ),
                               ),
                             ],

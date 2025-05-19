@@ -272,6 +272,10 @@ class General {
     return Color(int.parse(colors[index].substring(1), radix: 16) + 0xFF000000);
   }
 
+  static Color getContrastingTextColor(Color background) {
+    return background.computeLuminance() < 0.5 ? Colors.white : Colors.black;
+  }
+
   //Intials User
   static String getInitials(String name) {
     List<String> words = name.trim().split(RegExp(r"\s+"));
@@ -527,7 +531,9 @@ class General {
                   TextButton(
                     onPressed: () => Navigator.of(context).pop(true),
                     style: TextButton.styleFrom(
-                      backgroundColor: coreTheme != null ? coreTheme.shade800 : Colors.red[800],
+                      backgroundColor: coreTheme != null
+                          ? coreTheme.shade800
+                          : Colors.red[800],
                       padding:
                           EdgeInsets.symmetric(horizontal: 30, vertical: 10),
                       shape: RoundedRectangleBorder(

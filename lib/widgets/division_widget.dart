@@ -21,15 +21,15 @@ class _DivisionWidgetState extends State<DivisionWidget>
   List<dynamic> filteredDivisions = [];
   bool _isLoading = true;
   bool _isLoadingExport = false;
-  bool _isSearchVisible = false;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
   int _rowsPerPage = 10;
   int _pageIndex = 0;
 
+  FocusNode searchDivisionFocusNode = FocusNode();
+
   // Animation controller for the search TextField
   late AnimationController _animationController;
-  late Animation<Offset> _slideAnimation;
 
   Future<void> fetchDivisions() async {
     setState(() => _isLoading = true);
@@ -83,21 +83,6 @@ class _DivisionWidgetState extends State<DivisionWidget>
       duration: Duration(milliseconds: 300),
       vsync: this,
     );
-    _slideAnimation = Tween<Offset>(begin: Offset(0, -1), end: Offset(0, 0))
-        .animate(CurvedAnimation(
-            parent: _animationController, curve: Curves.easeInOut));
-  }
-
-  // Toggle visibility of the search TextField
-  void _toggleSearchVisibility() {
-    setState(() {
-      _isSearchVisible = !_isSearchVisible;
-      if (_isSearchVisible) {
-        _animationController.forward(); // Start animation
-      } else {
-        _animationController.reverse(); // Reverse animation
-      }
-    });
   }
 
   // Function for sorting data
@@ -254,11 +239,10 @@ class _DivisionWidgetState extends State<DivisionWidget>
     });
     try {
       final response = await ApiService.apiRequestExportData(
-        method: "GET", 
-        endpoint: "/divisi/export",
-        token: token,
-        params: param
-      );
+          method: "GET",
+          endpoint: "/divisi/export",
+          token: token,
+          params: param);
 
       if (response.statusCode == 200) {
         final bytes = response.bodyBytes;
@@ -271,11 +255,13 @@ class _DivisionWidgetState extends State<DivisionWidget>
             fileName = match.group(1);
           }
         }
-        fileName ??= 'Export_Data_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}.xlsx';
+        fileName ??=
+            'Export_Data_${DateFormat('yyyy-MM-dd_HH-mm-ss').format(DateTime.now())}.xlsx';
 
         await _saveDownloadedExcelFile(context, bytes, fileName);
       } else {
-        General.showSnackBar(context, 'Gagal mengekspor data. Status: ${response.statusCode}');
+        General.showSnackBar(
+            context, 'Gagal mengekspor data. Status: ${response.statusCode}');
         print('Response error: ${response.body}');
       }
     } catch (e) {
@@ -311,7 +297,8 @@ class _DivisionWidgetState extends State<DivisionWidget>
       while (File(filePath).existsSync()) {
         String nameWithoutExtension = fileName.split('.').first;
         String extension = fileName.split('.').last;
-        filePath = '${directory.path}/$nameWithoutExtension($counter).$extension';
+        filePath =
+            '${directory.path}/$nameWithoutExtension($counter).$extension';
         counter++;
       }
 
@@ -349,166 +336,179 @@ class _DivisionWidgetState extends State<DivisionWidget>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Division Management",
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
-        ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: Color.fromARGB(255, 83, 82, 79), // Set the background color of the circle
-              child: IconButton(
-                icon: _isLoadingExport ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ) : Icon(Icons.download),
-                color: Colors.white, // Set the icon color
-                onPressed:
-                    _exportData, // Toggle visibility of search TextField
-                padding:
-                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
-                iconSize: 28, // Adjust the size of the icon
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              radius: 20,
-              backgroundColor: Color.fromARGB(
-                  255, 13, 55, 224), // Set the background color of the circle
-              child: IconButton(
-                icon: Icon(Icons.search),
-                color: Colors.white, // Set the icon color
-                onPressed:
-                    _toggleSearchVisibility, // Toggle visibility of search TextField
-                padding:
-                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
-                iconSize: 28, // Adjust the size of the icon
-              ),
-            ),
-          ),
-          Padding(
-            padding: EdgeInsets.only(right: 10),
-            child: CircleAvatar(
-              radius: 20, // Set the size of the CircleAvatar
-              backgroundColor: Color.fromARGB(
-                  255, 1, 161, 49), // Set the background color of the circle
-              child: IconButton(
-                icon: Icon(Icons.add),
-                color: Colors.white, // Set the icon color
-                onPressed: () {
-                  _addDivision();
-                },
-                padding:
-                    EdgeInsets.zero, // Remove padding inside the CircleAvatar
-                iconSize: 28, // Adjust the size of the icon
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: _refreshData, // Trigger to fetch new data
-        child: SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Column(
+    final screenWidth = MediaQuery.of(context).size.width;
+    final iconSize = screenWidth * 0.065;
+    final fontSize = screenWidth * 0.065;
+
+    return PopScope(
+      canPop: !searchDivisionFocusNode.hasFocus,
+      onPopInvokedWithResult: (didPop, result) {
+        if (searchDivisionFocusNode.hasFocus) {
+          searchDivisionFocusNode.unfocus();
+        }
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          if (searchDivisionFocusNode.hasFocus) {
+            searchDivisionFocusNode.unfocus();
+          }
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            title: Row(
               children: [
-                AnimatedSwitcher(
-                  duration: Duration(milliseconds: 300),
-                  child: _isSearchVisible
-                      ? SlideTransition(
-                          position: _slideAnimation,
-                          child: Padding(
-                            padding: EdgeInsets.all(16.0),
-                            child: TextField(
-                              controller: _searchController,
-                              decoration: InputDecoration(
-                                labelText: 'Search by Name',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(
-                                  vertical: 12,
-                                  horizontal: 16,
-                                ),
-                                suffixIcon: Padding(
-                                  padding: EdgeInsets.only(right: 8),
-                                  child: IconButton(
-                                    icon: Icon(Icons.close, size: 20),
-                                    onPressed: _toggleSearchVisibility,
-                                    padding: EdgeInsets.zero,
-                                    constraints: BoxConstraints(),
-                                  ),
-                                ),
-                                suffixIconConstraints: BoxConstraints(
-                                  maxHeight: 32,
-                                ),
-                              ),
-                              style: TextStyle(fontSize: 14),
-                            ),
-                          ),
-                        )
-                      : Container(),
+                Icon(Icons.business, size: iconSize),
+                SizedBox(width: screenWidth * 0.02),
+                Expanded(
+                  child: Text(
+                    "Division Management",
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: fontSize * 0.85,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                _isLoading
-                    ? Center(child: CircularProgressIndicator())
-                    : filteredDivisions.isEmpty
-                        ? Center(child: Text('No divisions to display'))
-                        : Padding(
-                            padding: const EdgeInsets.all(10.0),
-                            child: SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width,
-                                child: PaginatedDataTable(
-                                  columnSpacing: 20,
-                                  horizontalMargin: 12,
-                                  rowsPerPage: _rowsPerPage,
-                                  sortColumnIndex: _sortColumnIndex,
-                                  sortAscending: _sortAscending,
-                                  columns: [
-                                    DataColumn(label: Text('No')),
-                                    DataColumn(
-                                      label: Text('Division Name'),
-                                      onSort: (columnIndex, ascending) {
-                                        _sort<String>(
-                                            (division) => division['name'],
-                                            columnIndex,
-                                            ascending);
-                                      },
-                                    ),
-                                    DataColumn(label: Text('Date Created')),
-                                    DataColumn(
-                                      label: IntrinsicWidth(
-                                        child: Container(
-                                          width: 120,
-                                          child: Text('Actions'),
+              ],
+            ),
+            actions: [
+              // Export button
+              Padding(
+                padding: EdgeInsets.only(right: screenWidth * 0.02),
+                child: CircleAvatar(
+                  radius: iconSize * 0.8,
+                  backgroundColor: Color.fromARGB(255, 83, 82, 79),
+                  child: IconButton(
+                    iconSize: iconSize,
+                    padding: EdgeInsets.zero,
+                    color: Colors.white,
+                    icon: _isLoadingExport
+                        ? SizedBox(
+                            width: iconSize,
+                            height: iconSize,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.0,
+                              valueColor: AlwaysStoppedAnimation(Colors.white),
+                            ),
+                          )
+                        : Icon(Icons.download),
+                    onPressed: _exportData,
+                  ),
+                ),
+              ),
+              // Add division button
+              Padding(
+                padding: EdgeInsets.only(right: screenWidth * 0.02),
+                child: CircleAvatar(
+                  radius: iconSize * 0.8,
+                  backgroundColor: Color.fromARGB(255, 1, 161, 49),
+                  child: IconButton(
+                    iconSize: iconSize,
+                    padding: EdgeInsets.zero,
+                    color: Colors.white,
+                    icon: Icon(Icons.add),
+                    onPressed: _addDivision,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          body: RefreshIndicator(
+            onRefresh: _refreshData,
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    // Search field dengan focus node di atas tabel
+                    Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8.0),
+                      child: TextField(
+                        focusNode: searchDivisionFocusNode,
+                        controller: _searchController,
+                        onChanged: (value) => setState(() {}),
+                        decoration: InputDecoration(
+                          labelText: 'Search by Division',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8.0),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
+                          prefixIcon: Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: Icon(Icons.close, size: iconSize * 0.6),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    setState(() {});
+                                  },
+                                )
+                              : null,
+                        ),
+                        style: TextStyle(fontSize: fontSize * 0.8),
+                      ),
+                    ),
+
+                    // Konten tabel atau indikator loading
+                    _isLoading
+                        ? Center(child: CircularProgressIndicator())
+                        : filteredDivisions.isEmpty
+                            ? Center(child: Text('No divisions to display'))
+                            : Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 2, vertical: 5),
+                                child: SingleChildScrollView(
+                                  scrollDirection: Axis.horizontal,
+                                  child: SizedBox(
+                                    width: MediaQuery.of(context).size.width,
+                                    child: PaginatedDataTable(
+                                      columnSpacing: 20,
+                                      horizontalMargin: 12,
+                                      rowsPerPage: _rowsPerPage,
+                                      sortColumnIndex: _sortColumnIndex,
+                                      sortAscending: _sortAscending,
+                                      columns: [
+                                        DataColumn(label: Text('No')),
+                                        DataColumn(
+                                          label: Text('Division Name'),
+                                          onSort: (colIndex, asc) {
+                                            _sort<String>(
+                                              (division) => division['name'],
+                                              colIndex,
+                                              asc,
+                                            );
+                                          },
                                         ),
+                                        DataColumn(label: Text('Date Created')),
+                                        DataColumn(
+                                          label: IntrinsicWidth(
+                                            child: Container(
+                                              width: 120,
+                                              child: Text('Actions'),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                      source: MyDataSource(
+                                        filteredDivisions,
+                                        _pageIndex,
+                                        _rowsPerPage,
+                                        context,
+                                        _deleteDivision,
+                                        _editDivision,
                                       ),
                                     ),
-                                  ],
-                                  source: MyDataSource(
-                                      filteredDivisions,
-                                      _pageIndex,
-                                      _rowsPerPage,
-                                      context,
-                                      _deleteDivision,
-                                      _editDivision),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ),
-              ],
+                  ],
+                ),
+              ),
             ),
           ),
         ),
