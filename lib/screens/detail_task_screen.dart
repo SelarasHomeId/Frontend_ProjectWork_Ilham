@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,6 +18,7 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:photo_view/photo_view.dart';
+// import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
 
 class DetailTaskScreen extends StatefulWidget {
   final int boardId;
@@ -1840,7 +1842,28 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     required TextEditingController textDescController,
     required FocusNode focusNode,
     required Future<void> Function() onSubmitButton,
+    bool isEditing = false,
   }) {
+    void _insertMarkdown(String before, [String after = '']) {
+      final text = textDescController.text;
+      final selection = textDescController.selection;
+
+      if (selection.isValid) {
+        final newText = text.replaceRange(
+          selection.start,
+          selection.end,
+          '$before${selection.textInside(text)}$after',
+        );
+
+        final newCursorPos = selection.start + before.length;
+
+        textDescController.value = textDescController.value.copyWith(
+          text: newText,
+          selection: TextSelection.collapsed(offset: newCursorPos),
+        );
+      }
+    }
+
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1863,6 +1886,22 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           SizedBox(
             height: 10,
           ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFormatButton(
+                    Icons.format_bold, () => _insertMarkdown('**', '**')),
+                _buildFormatButton(
+                    Icons.format_italic, () => _insertMarkdown('_', '_')),
+                _buildFormatButton(Icons.format_strikethrough,
+                    () => _insertMarkdown('~~', '~~')),
+                _buildFormatButton(Icons.code, () => _insertMarkdown('`', '`')),
+                _buildFormatButton(
+                    Icons.link, () => _insertMarkdown('[', '](url)')),
+              ],
+            ),
+          ),
           TextField(
             controller: textDescController,
             focusNode: descFocusNode,
@@ -1873,6 +1912,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               contentPadding: EdgeInsets.all(10),
             ),
             maxLines: 3,
+          ),
+          Markdown(
+            data: textDescController.text,
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
           ),
           SizedBox(height: 10),
           ValueListenableBuilder<bool>(
@@ -1910,6 +1954,19 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             },
           )
         ],
+      ),
+    );
+  }
+
+  Widget _buildFormatButton(IconData icon, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(icon, size: 20),
+      onPressed: onPressed,
+      style: IconButton.styleFrom(
+        backgroundColor: Colors.grey[200],
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
       ),
     );
   }
