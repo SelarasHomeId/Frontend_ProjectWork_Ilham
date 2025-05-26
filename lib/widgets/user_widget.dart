@@ -21,7 +21,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
   List<dynamic> filteredUsers = [];
   bool _isLoading = true;
   bool _isLoadingExport = false;
-  bool _isSearchVisible = false;
   int _sortColumnIndex = 0;
   bool _sortAscending = true;
   int _rowsPerPage = 10;
@@ -162,19 +161,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     fetchUsers(); // Fetch users when widget is initialized
-  }
-
-  // Toggle visibility of the search TextField
-  void _toggleSearchVisibility() {
-    setState(() {
-      _isSearchVisible = !_isSearchVisible;
-      if (_isSearchVisible) {
-        _animationController.forward(); // Start animation
-      } else {
-        _animationController.reverse();
-        _searchController.text = ""; // Reverse animation
-      }
-    });
   }
 
   // Function to create route for navigating with custom animation

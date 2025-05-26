@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
@@ -18,7 +18,9 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:photo_view/photo_view.dart';
-// import 'package:flutter_widget_from_html/flutter_widget_from_html.dart';
+import 'package:flutter_quill/flutter_quill.dart' as quill;
+import 'package:vsc_quill_delta_to_html/vsc_quill_delta_to_html.dart';
+import 'package:flutter_quill_delta_from_html/flutter_quill_delta_from_html.dart' as deltaFromHtml;
 
 class DetailTaskScreen extends StatefulWidget {
   final int boardId;
@@ -39,7 +41,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Map<String, String> userProfile = {};
   late ValueNotifier<bool> onExpandableValue;
 
-  late TextEditingController textDescController;
+  late quill.QuillController _quillController;
   late TextEditingController textTitleController;
   late TextEditingController textCommentController;
   late TextEditingController textEditCommentController =
@@ -86,6 +88,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late ValueNotifier<int> currentBoardId;
   late ValueNotifier<String?> currentCover;
   late ValueNotifier<bool> showSaveDescButton;
+  late ValueNotifier<bool> isEditingDesc;
 
   late int workspaceId;
   late String workspaceName;
@@ -131,7 +134,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     _itemTextController = TextEditingController();
     _checklistEditTextController = TextEditingController();
 
-    textDescController = TextEditingController();
+    _quillController = quill.QuillController.basic();
     textTitleController = TextEditingController();
     textCommentController = TextEditingController();
     textEditCommentController = TextEditingController();
@@ -150,6 +153,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     currentBoardId = ValueNotifier<int>(0);
     currentWorkspaceId = ValueNotifier<int>(0);
     showSaveDescButton = ValueNotifier<bool>(false);
+    isEditingDesc = ValueNotifier<bool>(false);
 
     _selectedUserIds = {};
 
@@ -171,11 +175,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   }
 
   Future<void> onLoadDesc() async {
-    textDescController.addListener(() {
-      final now = textDescController.text.trim();
-      final original = (currentDesc ?? '').trim();
+    _quillController.addListener(() {
+      final delta = _quillController.document.toDelta();
+      final converter = QuillDeltaToHtmlConverter(delta.toJson());
+      final now = converter.convert();
+      final original = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
       showSaveDescButton.value = now != original;
     });
+    isEditingDesc.value = false;
   }
 
   Future<void> onLoadValue() async {
@@ -185,8 +192,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
 
     final desc = getUpdatedData["description"];
-    textDescController.text = desc ?? "";
-    currentDesc = desc ?? "";
+    final converter = deltaFromHtml.HtmlToDelta();
+    final delta = converter.convert(((desc == null || desc.trim().isEmpty) ? "<p><br/></p>" : desc));
+    _quillController.document = quill.Document.fromDelta(delta);
+    currentDesc = (desc == null || desc.trim().isEmpty) ? "<p><br/></p>" : desc;
+
     final isCompleted = getUpdatedData["is_completed"];
     final assignToUser = getUpdatedData['assign_to_user'];
     final title = getUpdatedData["title"];
@@ -247,10 +257,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textTitleController.text = General.capitalizeEachWord(title ?? "");
     currentTitle = title;
     currentWatch.value = watch;
-    currentDesc = desc;
-    textDescController.addListener(() {
-      final now = textDescController.text.trim();
-      final original = (currentDesc ?? '').trim();
+    _quillController.addListener(() {
+      final delta = _quillController.document.toDelta();
+      final converter = QuillDeltaToHtmlConverter(delta.toJson());
+      final now = converter.convert();
+      final original = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
       showSaveDescButton.value = now != original;
     });
     currentWorkspaceId.value = workspaceIdCurrent;
@@ -276,7 +287,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onExpandableValue.dispose();
     onLoadingNotifier.dispose();
 
-    textDescController.dispose();
+    _quillController.dispose();
     textTitleController.dispose();
     textCommentController.dispose();
     textEditCommentController.dispose();
@@ -288,8 +299,16 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     descFocusNode.dispose();
     checklistFocusNode.dispose();
     commentFocusNode.dispose();
+    isEditingDesc.dispose();
 
     super.dispose();
+  }
+
+  void _toggleFormat(quill.Attribute attr) {
+    final currentSelection = _quillController.selection;
+    if (!currentSelection.isCollapsed) {
+      _quillController.formatSelection(attr);
+    }
   }
 
 //Start Cover=========================================================
@@ -887,10 +906,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   Widget build(BuildContext context) {
     return ConnectionChecker(
         child: PopScope(
-      canPop: !titleFocusNode.hasFocus && !descFocusNode.hasFocus,
+      canPop: !titleFocusNode.hasFocus && !descFocusNode.hasFocus && !isEditingDesc.value,
       onPopInvokedWithResult: (didPop, result) async {
         if (titleFocusNode.hasFocus) titleFocusNode.unfocus();
         if (descFocusNode.hasFocus) descFocusNode.unfocus();
+        if (isEditingDesc.value) isEditingDesc.value = false;
         if (checklistFocusNode.hasFocus) checklistFocusNode.unfocus();
         if (commentFocusNode.hasFocus) commentFocusNode.unfocus();
 
@@ -903,6 +923,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           descFocusNode.unfocus();
           checklistFocusNode.unfocus();
           commentFocusNode.unfocus();
+          isEditingDesc.value = false;
         },
         child: ValueListenableBuilder(
           valueListenable: onLoadingNotifier,
@@ -954,14 +975,18 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                 icon: Icon(Icons.arrow_back),
                 onPressed: () async {
                   print("⬅️ Back button ditekan");
-                  final currentText = textDescController.text;
-                  final originalText = currentDesc ?? '';
+                  final delta = _quillController.document.toDelta();
+                  final converter = QuillDeltaToHtmlConverter(delta.toJson());
+                  final currentText = converter.convert();
+                  // final currentText = _quillController.document.toPlainText().trim();
+                  final originalText = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
                   print("🔍 currentText: '$currentText'");
                   print("📦 originalText: '$originalText'");
 
                   if (currentText != originalText) {
                     print("⚠️ Deskripsi berubah, tampilkan dialog");
-
+                    debugPrint('ini current $currentText');
+                    debugPrint('ini original $originalText');
                     final shouldExit = await General.showDialogConfirmCustom(
                             context: context,
                             coreIcon: Icons.help,
@@ -1155,27 +1180,91 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                       // Description
                       _buildCardDescription(
-                        textDescController: textDescController,
-                        focusNode: descFocusNode,
+                        quillController: _quillController,
+                        focusNodeDesc: descFocusNode,
+                        showSaveDescButton: showSaveDescButton,
+                        isDescEditing: isEditingDesc,
                         onSubmitButton: () async {
+                          late String htmlStr;
+                          final delta = _quillController.document.toDelta();
+                          final converter = QuillDeltaToHtmlConverter(delta.toJson());
+                          htmlStr = converter.convert();
+
+                          final plainText = _quillController.document.toPlainText().trim();
+                          if (plainText == ''){
+                            htmlStr = '';
+                            final Delta delta = Delta()..insert('\n'); // baris kosong
+                            _quillController = quill.QuillController(
+                              document: quill.Document.fromDelta(delta),
+                              selection: const TextSelection.collapsed(offset: 0),
+                            );
+                          }
                           final getUpdatedData = await ApiService.handleTask(
                             method: 'PUT',
                             taskId: widget.taskId,
                             boardId: widget.boardId,
-                            data: {'description': textDescController.text},
+                            data: {'description': htmlStr},
                           );
 
                           if (getUpdatedData != null && context.mounted) {
                             General.showSnackBar(
                                 context, 'Update Deskripsi: Berhasil');
-                            currentDesc = textDescController.text;
+                            currentDesc = htmlStr;
                           } else {
                             General.showSnackBar(
                                 context, 'Gagal Update Deskripsi ');
-                            currentDesc = textDescController.text;
+                            currentDesc = htmlStr;
                           }
                           await onLoadDesc();
                         },
+                        onFormatBold: () => _toggleFormat(quill.Attribute.bold),
+                        onFormatItalic: () => _toggleFormat(quill.Attribute.italic),
+                        onFormatUnderline: () => _toggleFormat(quill.Attribute.underline),
+                        onFormatStrike: () => _toggleFormat(quill.Attribute.strikeThrough),
+                        onFormatCode: () => _toggleFormat(quill.Attribute.codeBlock),
+                        onFormatLink: () async {
+                          final selection = _quillController.selection;
+
+                          if (selection.isCollapsed) {
+                            General.showSnackBar(context, "Pilih teks terlebih dahulu untuk menambahkan link");
+                            return;
+                          }
+
+                          final url = await showDialog<String>(
+                            context: context,
+                            builder: (context) {
+                              String inputUrl = '';
+                              return AlertDialog(
+                                title: Text('Tambahkan Link'),
+                                content: TextField(
+                                  decoration: InputDecoration(
+                                    hintText: 'ex: https://example.com',
+                                  ),
+                                  onChanged: (value) {
+                                    inputUrl = value;
+                                  },
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, null),
+                                    child: Text('Batal'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, inputUrl),
+                                    child: Text('Simpan'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          if (url != null && url.isNotEmpty) {
+                            _quillController.formatSelection(quill.LinkAttribute(url));
+                          }
+                        },
+                        onFormatAlignLeft: () => _toggleFormat(quill.Attribute.leftAlignment),
+                        onFormatAlignRight: () => _toggleFormat(quill.Attribute.rightAlignment),
+                        onFormatAlignJustify: () => _toggleFormat(quill.Attribute.justifyAlignment),
                       ),
                       SizedBox(height: 20),
 
@@ -1839,31 +1928,21 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 // end quick actions and summary========================================
 
   Widget _buildCardDescription({
-    required TextEditingController textDescController,
-    required FocusNode focusNode,
+    required quill.QuillController quillController,
+    required FocusNode focusNodeDesc,
     required Future<void> Function() onSubmitButton,
-    bool isEditing = false,
+    required ValueNotifier<bool> showSaveDescButton,
+    required ValueNotifier<bool> isDescEditing,
+    required void Function() onFormatBold,
+    required void Function() onFormatItalic,
+    required void Function() onFormatUnderline,
+    required void Function() onFormatStrike,
+    required void Function() onFormatCode,
+    required void Function() onFormatLink,
+    required void Function() onFormatAlignLeft,
+    required void Function() onFormatAlignRight,
+    required void Function() onFormatAlignJustify,
   }) {
-    void _insertMarkdown(String before, [String after = '']) {
-      final text = textDescController.text;
-      final selection = textDescController.selection;
-
-      if (selection.isValid) {
-        final newText = text.replaceRange(
-          selection.start,
-          selection.end,
-          '$before${selection.textInside(text)}$after',
-        );
-
-        final newCursorPos = selection.start + before.length;
-
-        textDescController.value = textDescController.value.copyWith(
-          text: newText,
-          selection: TextSelection.collapsed(offset: newCursorPos),
-        );
-      }
-    }
-
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1881,42 +1960,61 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Description",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          SizedBox(
-            height: 10,
-          ),
+          Text("Description", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                _buildFormatButton(
-                    Icons.format_bold, () => _insertMarkdown('**', '**')),
-                _buildFormatButton(
-                    Icons.format_italic, () => _insertMarkdown('_', '_')),
-                _buildFormatButton(Icons.format_strikethrough,
-                    () => _insertMarkdown('~~', '~~')),
-                _buildFormatButton(Icons.code, () => _insertMarkdown('`', '`')),
-                _buildFormatButton(
-                    Icons.link, () => _insertMarkdown('[', '](url)')),
+                IconButton(icon: Icon(Icons.format_bold), onPressed: onFormatBold),
+                IconButton(icon: Icon(Icons.format_italic), onPressed: onFormatItalic),
+                IconButton(icon: Icon(Icons.format_underline), onPressed: onFormatUnderline),
+                IconButton(icon: Icon(Icons.format_strikethrough), onPressed: onFormatStrike),
+                IconButton(icon: Icon(Icons.code), onPressed: onFormatCode),
+                IconButton(icon: Icon(Icons.link), onPressed: onFormatLink),
+                IconButton(icon: Icon(Icons.format_align_left), onPressed: onFormatAlignLeft),
+                IconButton(icon: Icon(Icons.format_align_right), onPressed: onFormatAlignRight),
+                IconButton(icon: Icon(Icons.format_align_justify), onPressed: onFormatAlignJustify),
               ],
             ),
           ),
-          TextField(
-            controller: textDescController,
-            focusNode: descFocusNode,
-            decoration: InputDecoration(
-              hintText: 'Masukan Deskripsi',
-              hintStyle: TextStyle(color: Colors.grey[500]),
-              border: OutlineInputBorder(),
-              contentPadding: EdgeInsets.all(10),
-            ),
-            maxLines: 3,
-          ),
-          Markdown(
-            data: textDescController.text,
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
+          SizedBox(height: 10),
+          ValueListenableBuilder<bool>(
+            valueListenable: isDescEditing,
+            builder: (context, editing, _) {
+              return GestureDetector(
+                onTap: () {
+                  if (!editing) {
+                    isDescEditing.value = true;
+                    FocusScope.of(context).requestFocus(focusNodeDesc);
+                  }
+                },
+                child: AbsorbPointer(
+                  absorbing: !editing, // biar gak bisa ketik kalau belum editing
+                  child: Container(
+                    height: 150,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: FutureBuilder<bool>(
+                      future: Future.delayed(Duration(milliseconds: 300), () => true),
+                      builder: (context, snapshot) {
+                        quillController.readOnly = !editing;
+                        return quill.QuillEditor.basic(
+                          controller: quillController,
+                          focusNode: focusNodeDesc,
+                          config: quill.QuillEditorConfig(
+                            padding: EdgeInsets.all(8),
+                            showCursor: editing
+                          ),
+                        );
+                      },
+                    )
+                  ),
+                ),
+              );
+            },
           ),
           SizedBox(height: 10),
           ValueListenableBuilder<bool>(
@@ -1927,11 +2025,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               final double buttonFontSize = 16.0;
               return show
                   ? ElevatedButton(
-                      focusNode: descFocusNode,
+                      focusNode: FocusNode(),
                       onPressed: () async {
                         FocusScope.of(context).requestFocus(FocusNode());
                         await onSubmitButton();
-                        currentDesc = textDescController.text;
                         showSaveDescButton.value = false;
                       },
                       style: ElevatedButton.styleFrom(
@@ -1954,19 +2051,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             },
           )
         ],
-      ),
-    );
-  }
-
-  Widget _buildFormatButton(IconData icon, VoidCallback onPressed) {
-    return IconButton(
-      icon: Icon(icon, size: 20),
-      onPressed: onPressed,
-      style: IconButton.styleFrom(
-        backgroundColor: Colors.grey[200],
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
       ),
     );
   }
