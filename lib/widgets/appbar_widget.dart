@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:selarashomeid/screens/notification_screen.dart';
 import 'package:selarashomeid/screens/search_screen.dart';
 import 'package:selarashomeid/service/api_service.dart';
+import 'package:selarashomeid/service/web_socket.dart';
 import 'package:selarashomeid/utils/general.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:app_badger/app_badger.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class AppBarWidget extends StatefulWidget implements PreferredSizeWidget {
   @override
@@ -20,7 +24,11 @@ class AppBarWidget extends StatefulWidget implements PreferredSizeWidget {
 class _AppBarWidgetState extends State<AppBarWidget> {
   bool isLoading = false;
   int notificationCount = 0;
+  int notificationCountBefore = 0;
   String selectedFilter = "Today";
+  late WebSocket webSocket;
+  final AudioPlayer _player = AudioPlayer();
+  static final FlutterLocalNotificationsPlugin _notificationsPlugin = FlutterLocalNotificationsPlugin();
 
   Route _createRoute(Widget targetScreen) {
     return PageRouteBuilder(
@@ -55,9 +63,26 @@ class _AppBarWidgetState extends State<AppBarWidget> {
         final data = response['data'];
         if (data != null) {
           setState(() {
+            final int currentCount = notificationCount;
+            notificationCountBefore = currentCount;
             notificationCount = data['count_unread'] ?? 0;
             isLoading = false;
           });
+
+          bool isSupported = await AppBadger.isBadgeSupported();
+          debugPrint("App badge supported? $isSupported");
+          if (isSupported) {
+            if (notificationCount > 0 && notificationCount > notificationCountBefore) {
+              await AppBadger.updateBadgeCount(notificationCount);
+              await General.sendNotification(_notificationsPlugin, notificationCount, "Ada Notifikasi Baru Nih Buat Kamu", null);
+            } else {
+              await AppBadger.removeBadge();
+              await General.sendNotification(_notificationsPlugin, 0, null, null);
+            }
+          } else {
+            General.showSnackBar(context, "Device tidak mendukung badge");
+          }
+          
           return;
         }
       }
@@ -67,14 +92,54 @@ class _AppBarWidgetState extends State<AppBarWidget> {
       });
     } catch (e) {
       setState(() => isLoading = false);
-      General.showSnackBar(context, 'Gagal memuat notifikasi: $e');
+      General.showSnackBar(context, e.toString());
+    }
+  }
+
+  void _playSound() async {
+    try {
+      await _player.play(AssetSource('notif_sound.ogg'));
+      debugPrint("Suara berhasil diputar");
+    } catch (e) {
+      debugPrint("Error saat memutar suara: $e");
+    }
+  }
+
+  Future<void> initWebSocket() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getInt('id') ?? 0;
+    webSocket = WebSocket(
+      userId: id.toString(),
+      onDataReceive: (data) {
+        if (data != null) {
+          if (data['is_new'] == true && data['count'] > notificationCount) {
+            fetchNotifications();
+            _playSound();
+          }
+        }
+      },
+    );
+    await webSocket.connect();
+  }
+
+  Future<void> _initialize() async {
+    await fetchNotifications();
+    if (notificationCount > 0) {
+      _playSound();
     }
   }
 
   @override
   void initState() {
     super.initState();
-    fetchNotifications();
+    _initialize();
+    initWebSocket();
+  }
+
+  @override
+  void dispose() {
+    webSocket.disconnect();
+    super.dispose();
   }
 
   @override

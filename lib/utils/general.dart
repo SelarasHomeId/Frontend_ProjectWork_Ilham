@@ -1,7 +1,9 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class General {
   static Future<void> saveToSharedPreferences(Map<String, dynamic> data) async {
@@ -1378,6 +1380,68 @@ class General {
       return '$flag harus mengandung karakter khusus (!@#\$%^&* dll)';
     }
     return null;
+  }
+
+  static int generateRandomId() {
+    final random = Random();
+    int min = 10000000;
+    int max = 99999999;
+    int randomNumber = min + random.nextInt(max - min + 1);
+    return randomNumber;
+  }
+
+  static Future<void> initializeNotification(FlutterLocalNotificationsPlugin notificationsPlugin) async {
+    await notificationsPlugin.initialize(InitializationSettings(
+      // android
+      android: AndroidInitializationSettings(
+        '@mipmap/ic_launcher'
+      ),
+      // ios
+      iOS: DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: true,
+        requestSoundPermission: false,
+      ),
+    ));
+  }
+
+  static Future<void> sendNotification(FlutterLocalNotificationsPlugin notificationsPlugin, int badgeCount, String? title, String? subtitle, {bool stackNotif = true}) async {
+    await initializeNotification(notificationsPlugin);
+    final NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'badge_channel', 
+        'Badge Updates',
+        channelDescription: 'Digunakan untuk update badge count',
+        importance: Importance.min,
+        priority: Priority.min,
+        number: badgeCount,
+        channelShowBadge: true,
+        playSound: false,
+        enableVibration: false,
+        visibility: NotificationVisibility.private,
+      ),
+      iOS: DarwinNotificationDetails(
+        badgeNumber: badgeCount,
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+    
+    if (badgeCount > 0) {
+      if (stackNotif){
+        final List<ActiveNotification> notifActive = await notificationsPlugin.getActiveNotifications();
+        if (notifActive.isNotEmpty){
+          await notificationsPlugin.cancelAll();
+        }
+      }
+      final int notificationId = General.generateRandomId();
+      await notificationsPlugin.show(
+        notificationId, title, subtitle, platformChannelSpecifics,
+      );
+    } else {
+      await notificationsPlugin.cancelAll();
+    }
   }
 }
 

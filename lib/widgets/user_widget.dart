@@ -27,9 +27,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
 
   FocusNode searchUserFocusNode = FocusNode();
 
-  // Animation controller for the search TextField
-  late AnimationController _animationController;
-
   Future<void> fetchUsers() async {
     setState(() => _isLoading = true);
 
@@ -271,12 +268,6 @@ class _UserWidgetState extends State<UserWidget> with TickerProviderStateMixin {
     } else {
       General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');
     }
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
   }
 
   // Refresh data by pulling down

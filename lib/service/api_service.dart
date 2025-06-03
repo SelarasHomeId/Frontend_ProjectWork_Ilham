@@ -1237,4 +1237,21 @@ class ApiService {
       rethrow;
     }
   }
+
+  static Future<String?> refreshToken(String? token) async {
+    try {
+      final response = await authRefeshToken(token!);
+      if (response!['success'] == true) {
+        final newToken = response['data']['token'];
+        General.editSharedPreferences('token', newToken);
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+        return token;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
 }

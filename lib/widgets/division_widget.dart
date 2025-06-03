@@ -28,9 +28,6 @@ class _DivisionWidgetState extends State<DivisionWidget>
 
   FocusNode searchDivisionFocusNode = FocusNode();
 
-  // Animation controller for the search TextField
-  late AnimationController _animationController;
-
   Future<void> fetchDivisions() async {
     setState(() => _isLoading = true);
 
@@ -76,13 +73,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
   @override
   void initState() {
     super.initState();
-    fetchDivisions(); // Fetch divisions when widget is initialized
-
-    // Initialize the animation controller for the search TextField
-    _animationController = AnimationController(
-      duration: Duration(milliseconds: 300),
-      vsync: this,
-    );
+    fetchDivisions();
   }
 
   // Function for sorting data
@@ -321,12 +312,6 @@ class _DivisionWidgetState extends State<DivisionWidget>
     } else {
       General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');
     }
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
   }
 
   // Refresh data by pulling down
