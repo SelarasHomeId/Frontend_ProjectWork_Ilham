@@ -74,7 +74,7 @@ class ApiService {
       // hit api
       response = await hitAPI();
       // cek if refresh token needed
-      if (response.statusCode == 401 && (endpoint != "/auth/login" && endpoint != "/auth/send-email/forgot-password" && endpoint != "/auth/logout" && endpoint != "/auth/refresh-token")) {
+      if (response.statusCode == 401 && (endpoint != "/auth/login" || endpoint != "/auth/send-email/forgot-password")) {
         final newToken = await _refreshToken(token);
 
         if (newToken != null) {
@@ -83,7 +83,7 @@ class ApiService {
         } else {
           throw Exception('Your Session Is Expired, Please Re-Login...');
         }
-      } else if (response.statusCode == 422 && (endpoint != "/auth/login" && endpoint != "/auth/send-email/forgot-password" && endpoint != "/auth/logout" && endpoint != "/auth/refresh-token")) {
+      } else if (response.statusCode == 422 && (endpoint != "/auth/login" || endpoint != "/auth/send-email/forgot-password")) {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('token');
 
@@ -1188,7 +1188,7 @@ class ApiService {
       // hit api
       response = await hitAPI();
       // cek if refresh token needed
-      if (response.statusCode == 401 && endpoint != '/auth/login') {
+      if (response.statusCode == 401 && (endpoint != "/auth/login" || endpoint != "/auth/send-email/forgot-password")) {
         final newToken = await _refreshToken(token);
 
         if (newToken != null) {
@@ -1197,7 +1197,7 @@ class ApiService {
         } else {
           throw Exception('Your Session Is Expired, Please Re-Login...');
         }
-      } else if (response.statusCode == 422 && endpoint != '/auth/login') {
+      } else if (response.statusCode == 422 && (endpoint != "/auth/login" || endpoint != "/auth/send-email/forgot-password")) {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('token');
 
