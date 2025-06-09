@@ -62,10 +62,18 @@ class ApiService {
             return http.delete(Uri.parse(url), headers: header);
           case 'PATCH':
             return contentType == 'application/json'
-                ? http.patch(Uri.parse(url),
-                    headers: header, body: jsonEncode(body))
+                ? http.patch(
+                    Uri.parse(url),
+                    headers: header,
+                    body: jsonEncode(body),
+                  )
                 : await _handleMultipartRequest(
-                    method, url, header, listFile, body);
+                    method,
+                    url,
+                    header,
+                    listFile,
+                    body,
+                  );
           default:
             throw Exception('Unsupported HTTP method: $method');
         }
@@ -74,7 +82,11 @@ class ApiService {
       // hit api
       response = await hitAPI();
       // cek if refresh token needed
-      if (response.statusCode == 401 && (endpoint != "/auth/login" && endpoint != "/auth/send-email/forgot-password" && endpoint != "/auth/logout" && endpoint != "/auth/refresh-token")) {
+      if (response.statusCode == 401 &&
+          (endpoint != "/auth/login" &&
+              endpoint != "/auth/send-email/forgot-password" &&
+              endpoint != "/auth/logout" &&
+              endpoint != "/auth/refresh-token")) {
         final newToken = await _refreshToken(token);
 
         if (newToken != null) {
@@ -83,7 +95,11 @@ class ApiService {
         } else {
           throw Exception('Your Session Is Expired, Please Re-Login...');
         }
-      } else if (response.statusCode == 422 && (endpoint != "/auth/login" && endpoint != "/auth/send-email/forgot-password" && endpoint != "/auth/logout" && endpoint != "/auth/refresh-token")) {
+      } else if (response.statusCode == 422 &&
+          (endpoint != "/auth/login" &&
+              endpoint != "/auth/send-email/forgot-password" &&
+              endpoint != "/auth/logout" &&
+              endpoint != "/auth/refresh-token")) {
         final prefs = await SharedPreferences.getInstance();
         final token = prefs.getString('token');
 
@@ -100,14 +116,14 @@ class ApiService {
             debugPrint("✅ Logout berhasil, menghapus sesi...");
             General.clearSharedPreferences();
           } else {
-            debugPrint("❌ Logout API gagal atau code != 200: ${response?['code']}");
+            debugPrint(
+              "❌ Logout API gagal atau code != 200: ${response?['code']}",
+            );
             General.clearSharedPreferences();
           }
         } catch (e) {
           debugPrint("🚨 Error saat logout: $e");
-        }
-
-        finally {
+        } finally {
           General.clearSharedPreferences();
           navigatorKey.currentState?.pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => LoginScreen()),
@@ -128,11 +144,12 @@ class ApiService {
 
   // function hit api with multipart/form-data
   static Future<http.Response> _handleMultipartRequest(
-      String method,
-      String url,
-      Map<String, String> header,
-      List<http.MultipartFile> listFile,
-      Map<String, dynamic>? body) async {
+    String method,
+    String url,
+    Map<String, String> header,
+    List<http.MultipartFile> listFile,
+    Map<String, dynamic>? body,
+  ) async {
     var request = http.MultipartRequest(method, Uri.parse(url))
       ..headers.addAll(header);
     body?.forEach((key, value) {
@@ -165,25 +182,31 @@ class ApiService {
 
   // START AUTH================================================================
   static Future<Map<String, dynamic>?> authLogin(
-      String email, String password) async {
+    String email,
+    String password,
+  ) async {
     final response = await apiRequest(
-        method: 'POST',
-        endpoint: '/auth/login',
-        body: {'email': email, 'password': password, 'login_from': 'mobile'},
-        token: null,
-        contentType: 'application/json');
+      method: 'POST',
+      endpoint: '/auth/login',
+      body: {'email': email, 'password': password, 'login_from': 'mobile'},
+      token: null,
+      contentType: 'application/json',
+    );
 
     return response;
   }
 
   static Future<Map<String, dynamic>?> authRefeshToken(String token) async {
-    final response = await apiRequest(
-        method: 'POST',
-        endpoint: '/auth/refresh-token',
-        token: token,
-        contentType: 'application/json');
-
-    return response;
+    final url = '$baseUrl/auth/refresh-token';
+    Map<String, String> header = {'Content-Type': 'application/json'};
+    header['Authorization'] = 'Bearer $token';
+    final response = await http.post(
+      Uri.parse(url),
+      body: null,
+      headers: header,
+    );
+    final Map<String, dynamic> jsonBody = jsonDecode(response.body);
+    return jsonBody;
   }
 
   static Future<void> authLogout(BuildContext context) async {
@@ -209,7 +232,6 @@ class ApiService {
     } catch (e) {
       debugPrint("🚨 Error saat logout: $e");
     }
-
     // Pastikan context masih valid sebelum navigasi
     finally {
       General.clearSharedPreferences();
@@ -244,7 +266,7 @@ class ApiService {
     required String token,
     int? contactId,
     Map<String, String>?
-        params, // Query Parameters seperti {'page': '1', 'limit': '10'}
+    params, // Query Parameters seperti {'page': '1', 'limit': '10'}
   }) async {
     // Bangun endpoint dengan optional contactId dan query params
     String endpoint =
@@ -262,7 +284,8 @@ class ApiService {
         response['success'] != true ||
         response['code'] != 200) {
       throw Exception(
-          "Gagal mengambil data kontak. Pesan: ${response?['message']}");
+        "Gagal mengambil data kontak. Pesan: ${response?['message']}",
+      );
     }
 
     try {
@@ -279,20 +302,14 @@ class ApiService {
         final contactData = (responseData['data'] as List).isNotEmpty
             ? responseData['data'][0]
             : {};
-        return {
-          'data': contactData,
-          'count': contactData.isNotEmpty ? 1 : 0,
-        };
+        return {'data': contactData, 'count': contactData.isNotEmpty ? 1 : 0};
       } else {
         // Jika mengambil semua kontak
         final List<Map<String, dynamic>> contactsList =
             List<Map<String, dynamic>>.from(responseData['data']);
         final int count = responseData['count'] ?? 0;
 
-        return {
-          'data': contactsList,
-          'count': count,
-        };
+        return {'data': contactsList, 'count': count};
       }
     } catch (e, stacktace) {
       print("stacktace : $stacktace");
@@ -304,7 +321,7 @@ class ApiService {
     required String token,
     int? affiliateId,
     Map<String, String>?
-        params, // Query Parameters seperti {'page': '1', 'limit': '10'}
+    params, // Query Parameters seperti {'page': '1', 'limit': '10'}
   }) async {
     // Bangun endpoint dengan optional contactId dan query params
     String endpoint =
@@ -322,7 +339,8 @@ class ApiService {
         response['success'] != true ||
         response['code'] != 200) {
       throw Exception(
-          "Gagal mengambil data affiliate. Pesan: ${response?['message']}");
+        "Gagal mengambil data affiliate. Pesan: ${response?['message']}",
+      );
     }
 
     try {
@@ -339,20 +357,14 @@ class ApiService {
         final contactData = (responseData['data'] as List).isNotEmpty
             ? responseData['data'][0]
             : {};
-        return {
-          'data': contactData,
-          'count': contactData.isNotEmpty ? 1 : 0,
-        };
+        return {'data': contactData, 'count': contactData.isNotEmpty ? 1 : 0};
       } else {
         // Jika mengambil semua kontak
         final List<Map<String, dynamic>> affiliateList =
             List<Map<String, dynamic>>.from(responseData['data']);
         final int count = responseData['count'] ?? 0;
 
-        return {
-          'data': affiliateList,
-          'count': count,
-        };
+        return {'data': affiliateList, 'count': count};
       }
     } catch (e, stacktace) {
       print("stacktace : $stacktace");
@@ -399,7 +411,8 @@ class ApiService {
 
   // Send email forgot password
   static Future<Map<String, dynamic>?> sendForgotPasswordEmail(
-      String email) async {
+    String email,
+  ) async {
     try {
       final response = await apiRequest(
         method: 'POST',
@@ -410,10 +423,7 @@ class ApiService {
       );
 
       if (response != null && response['code'] == 401) {
-        return {
-          'success': false,
-          'message': 'Email tidak terdaftar',
-        };
+        return {'success': false, 'message': 'Email tidak terdaftar'};
       }
 
       // Jika response sukses (kode selain 401)
@@ -428,10 +438,12 @@ class ApiService {
     }
   }
 
-//START NOTIFICATION================================================================
+  //START NOTIFICATION================================================================
   // Fungsi untuk mendapatkan notifikasi
   static Future<Map<String, dynamic>?> getNotifications(
-      String token, String filter) async {
+    String token,
+    String filter,
+  ) async {
     String dateFilter = General.getDateFilter(filter);
 
     // Buat endpoint dengan filter created_at
@@ -452,7 +464,9 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>?> setNotificationsAsRead(
-      String token, int id) async {
+    String token,
+    int id,
+  ) async {
     final response = await apiRequest(
       method: 'PUT',
       endpoint: '/notifikasi/set-read/$id',
@@ -462,9 +476,9 @@ class ApiService {
     );
     return response;
   }
-//END NOTIFICATION================================================================
+  //END NOTIFICATION================================================================
 
-//START BOARD================================================================
+  //START BOARD================================================================
   static Future<dynamic> handleBoard({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     required int workspaceId, // Tidak boleh null dan wajib diisi
@@ -510,9 +524,9 @@ class ApiService {
       throw Exception('Operasi $method gagal pada endpoint $endpoint');
     }
   }
-//END BOARD================================================================
+  //END BOARD================================================================
 
-//START TASK================================================================
+  //START TASK================================================================
   static Future<dynamic> handleTask({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? boardId, // Tidak boleh null dan wajib diisi
@@ -607,8 +621,9 @@ class ApiService {
       body: data,
       token: token,
       listFile: listFile,
-      contentType:
-          method == 'POST' ? 'multipart/form-data' : 'application/json',
+      contentType: method == 'POST'
+          ? 'multipart/form-data'
+          : 'application/json',
     );
     try {
       final encodeValue = json.encode(response);
@@ -707,9 +722,7 @@ class ApiService {
       method: method,
       endpoint: endpoint,
       body: {
-        if (taskId != null) ...{
-          "task_id": taskId,
-        },
+        if (taskId != null) ...{"task_id": taskId},
         ...(data ?? {}),
       },
       token: token,
@@ -763,9 +776,7 @@ class ApiService {
       method: method,
       endpoint: endpoint,
       body: {
-        if (taskId != null) ...{
-          "task_id": taskId,
-        },
+        if (taskId != null) ...{"task_id": taskId},
         ...(data ?? {}),
       },
       token: token,
@@ -790,9 +801,7 @@ class ApiService {
     }
   }
 
-  static Future<dynamic> handleDetailTask(
-    int taskId,
-  ) async {
+  static Future<dynamic> handleDetailTask(int taskId) async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token'); // Ambil token dari local storage
 
@@ -848,9 +857,7 @@ class ApiService {
       method: method,
       endpoint: endpoint,
       body: {
-        if (checklistId != null) ...{
-          "task_checklist_id": checklistId,
-        },
+        if (checklistId != null) ...{"task_checklist_id": checklistId},
         ...(data ?? {}),
       },
       token: token,
@@ -897,9 +904,9 @@ class ApiService {
     } else if (method == 'PUT' && userId != null) {
       endpoint = '/user/$userId'; // Endpoint untuk update user
     } else if (method == 'PATCH' && userId != null) {
-      if (resetPass != null && resetPass == true){
+      if (resetPass != null && resetPass == true) {
         endpoint = '/user/reset-password/$userId';
-      }else{
+      } else {
         endpoint = '/user/change-password/$userId';
       }
     } else if (method == 'DELETE' && userId != null) {
@@ -928,10 +935,7 @@ class ApiService {
       if (userId != null) {
         // Handle GET untuk satu user berdasarkan ID
         final userData = response?['data']['data'] ?? {};
-        return {
-          'data': userData,
-          'count': 1,
-        };
+        return {'data': userData, 'count': 1};
       } else {
         // Handle GET untuk semua user (list)
         final currentData = response?['data']['data'] ?? [];
@@ -952,7 +956,8 @@ class ApiService {
         return response; // Kembalikan response jika sukses
       } else {
         print(
-            'Operasi gagal: ${response?['data']['message']}'); // Debugging pesan error
+          'Operasi gagal: ${response?['data']['message']}',
+        ); // Debugging pesan error
         throw '${response?['data']['message']}';
       }
     } else {
@@ -1029,10 +1034,7 @@ class ApiService {
       if (projectId != null) {
         // Handle GET untuk satu project berdasarkan ID
         final projectData = response?['data']['data'] ?? {};
-        return {
-          'data': projectData,
-          'count': 1,
-        };
+        return {'data': projectData, 'count': 1};
       } else {
         // Handle GET untuk semua project (list)
         final currentData = response?['data']['data'] ?? [];
@@ -1050,9 +1052,11 @@ class ApiService {
         return response; // Kembalikan response jika sukses
       } else {
         print(
-            'Operasi gagal: ${response?['message']}'); // Debugging pesan error
+          'Operasi gagal: ${response?['message']}',
+        ); // Debugging pesan error
         throw Exception(
-            'Operasi $method gagal pada endpoint $endpoint: ${response?['message']}');
+          'Operasi $method gagal pada endpoint $endpoint: ${response?['message']}',
+        );
       }
     } else {
       // Jika tidak ada response yang valid
@@ -1105,10 +1109,7 @@ class ApiService {
       if (divisiId != null) {
         // Handle GET untuk satu divisi berdasarkan ID
         final divisionData = response?['data']['data'] ?? {};
-        return {
-          'data': divisionData,
-          'count': 1,
-        };
+        return {'data': divisionData, 'count': 1};
       } else {
         // Handle GET untuk semua divisi (list)
         final currentData = response?['data']['data'] ?? [];
@@ -1149,10 +1150,7 @@ class ApiService {
     if (response != null && response['success'] == true) {
       return response['data'];
     } else {
-      return {
-        'message': 'Failed to fetch data role',
-        'data': null,
-      };
+      return {'message': 'Failed to fetch data role', 'data': null};
     }
   }
   //END MASTER DATA
@@ -1179,7 +1177,12 @@ class ApiService {
       Future<http.Response> hitAPI() async {
         switch (method.toUpperCase()) {
           case 'GET':
-            return http.get(Uri.parse('$url${params != null ? General.buildQueryParams(params) : ""}'), headers: header);
+            return http.get(
+              Uri.parse(
+                '$url${params != null ? General.buildQueryParams(params) : ""}',
+              ),
+              headers: header,
+            );
           default:
             throw Exception('Unsupported HTTP method: $method');
         }
@@ -1214,14 +1217,14 @@ class ApiService {
             debugPrint("✅ Logout berhasil, menghapus sesi...");
             General.clearSharedPreferences();
           } else {
-            debugPrint("❌ Logout API gagal atau code != 200: ${response?['code']}");
+            debugPrint(
+              "❌ Logout API gagal atau code != 200: ${response?['code']}",
+            );
             General.clearSharedPreferences();
           }
         } catch (e) {
           debugPrint("🚨 Error saat logout: $e");
-        }
-
-        finally {
+        } finally {
           General.clearSharedPreferences();
           navigatorKey.currentState?.pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => LoginScreen()),
@@ -1238,7 +1241,7 @@ class ApiService {
     }
   }
 
-  static Future<String?> refreshToken(String? token) async {
+  static Future<String?> refreshTokenForWebSocket(String? token) async {
     try {
       final response = await authRefeshToken(token!);
       if (response!['success'] == true) {

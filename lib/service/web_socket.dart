@@ -22,10 +22,7 @@ class WebSocket {
 
     _client = centrifuge.createClient(
       '$baseUrlSocket/websocket',
-      centrifuge.ClientConfig(
-        name: 'dart',
-        token: token
-      ),
+      centrifuge.ClientConfig(name: 'dart', token: token),
     );
 
     _client.connected.listen((event) {
@@ -38,7 +35,9 @@ class WebSocket {
 
       switch (event.code) {
         case 109:
-          debugPrint('🔄 Token expired. Attempting to refresh token and reconnect...');
+          debugPrint(
+            '🔄 Token expired. Attempting to refresh token and reconnect...',
+          );
           _handleTokenExpired(token);
           break;
         case 3500:
@@ -46,10 +45,14 @@ class WebSocket {
           _handleTokenInvalid();
           break;
         case 3000:
-          debugPrint('🚪 Manual disconnect (e.g., debugPrintout). No reconnect needed.');
+          debugPrint(
+            '🚪 Manual disconnect (e.g., debugPrintout). No reconnect needed.',
+          );
           break;
         default:
-          debugPrint('⚠️ Unexpected disconnect code. Attempting to reconnect...');
+          debugPrint(
+            '⚠️ Unexpected disconnect code. Attempting to reconnect...',
+          );
           _reconnect();
       }
     });
@@ -70,7 +73,10 @@ class WebSocket {
     _subscription?.subscribe();
   }
 
-  Future<Map<String, dynamic>?> sendRpc(String method, Map<String, dynamic> data) async {
+  Future<Map<String, dynamic>?> sendRpc(
+    String method,
+    Map<String, dynamic> data,
+  ) async {
     try {
       if (_client.state != centrifuge.State.connected) {
         debugPrint('❌ Cannot send RPC: Client is not connected.');
@@ -84,7 +90,7 @@ class WebSocket {
       debugPrint('📤 Sending RPC: method=$method, data=$encodedData');
 
       final response = await _client.rpc(method, utf8.encode(encodedData));
-      
+
       final decodedResponse = json.decode(utf8.decode(response.data));
       debugPrint('📥 RPC Response: $decodedResponse');
 
@@ -100,7 +106,7 @@ class WebSocket {
   }
 
   Future<void> _handleTokenExpired(String? token) async {
-    final newToken = await ApiService.refreshToken(token);
+    final newToken = await ApiService.refreshTokenForWebSocket(token);
     if (newToken != null) {
       await _client.disconnect();
       await connect();
