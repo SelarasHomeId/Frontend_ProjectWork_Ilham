@@ -540,7 +540,7 @@ class ApiService {
     String endpoint;
     if (method == 'GET') {
       endpoint =
-          '/task/$boardId?order=sort_number&order_by=desc${params != null ? '&${General.justBuildQuery(params)}' : ""}';
+          '/task/$boardId?order=sort_number&order_by=asc${params != null ? '&${General.justBuildQuery(params)}' : ""}';
       if (search != null && search.isNotEmpty) {
         endpoint =
             '/task?search=$search${params != null ? '&${General.justBuildQuery(params)}' : ""}';
