@@ -73,7 +73,6 @@ class _LoginScreenState extends State<LoginScreen> {
             'roleName': roleName,
             'divisiName': divisiName,
           });
-          _showSuccessDialog();
           _navigateToDashboard(roleId, token);
         } else {
           // Handle khusus untuk akun terkunci
@@ -213,110 +212,6 @@ class _LoginScreenState extends State<LoginScreen> {
           title: "Login Error",
           message: "Email atau Password Salah, Silahkan Input Kembali ",
           confirmButtonText: "Oke");
-    });
-  }
-
-  void _showSuccessDialog() {
-    setState(() {
-      _isDialogLoading = true;
-    });
-
-    Future.delayed(Duration(seconds: 1), () {
-      setState(() {
-        _isDialogLoading = false;
-      });
-
-      // Menampilkan dialog sukses
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return Dialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Container untuk background hijau dan ikon check
-                Container(
-                  width:
-                      double.infinity, // Agar container memenuhi lebar dialog
-                  padding: EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: Colors.green, // Background hijau untuk sukses
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                  ),
-                  child: Center(
-                    child: AnimatedScale(
-                      duration: Duration(seconds: 1),
-                      scale: 1.2, // Memberikan animasi pada ikon
-                      child: Icon(
-                        Icons.check_circle,
-                        color: Colors.white,
-                        size: 80, // Ukuran ikon yang besar
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                Text(
-                  'Login Sukses',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                SizedBox(height: 10),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    "You have successfully logged in!",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.black54,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 20),
-                // Tombol OK
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(); // Menutup dialog
-                    // Setelah dialog sukses, navigasi ke Home Screen
-                    Navigator.pushReplacement(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => HomeScreen(
-                          roleId: 1,
-                          token: '', // Gantilah dengan token yang sesuai
-                        ),
-                      ),
-                    );
-                  },
-                  style: TextButton.styleFrom(
-                    backgroundColor: Colors.green[900],
-                    padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: Text(
-                    'OK',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-                SizedBox(height: 20),
-              ],
-            ),
-          );
-        },
-      );
     });
   }
 

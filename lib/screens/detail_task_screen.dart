@@ -50,6 +50,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   late TextEditingController _itemTextController = TextEditingController();
   late TextEditingController _checklistEditTextController =
       TextEditingController();
+  late TextEditingController _fileEditTextController =
+      TextEditingController();
 
   late FocusNode focusNode;
   late FocusNode titleFocusNode;
@@ -133,6 +135,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onLoadingChecklistNotifier = ValueNotifier<bool>(false);
     _itemTextController = TextEditingController();
     _checklistEditTextController = TextEditingController();
+    _fileEditTextController = TextEditingController();
 
     _quillController = quill.QuillController.basic();
     textTitleController = TextEditingController();
@@ -294,6 +297,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     textChecklistController.dispose();
     _itemTextController.dispose();
     _checklistEditTextController.dispose();
+    _fileEditTextController.dispose();
 
     titleFocusNode.dispose();
     descFocusNode.dispose();
@@ -1178,6 +1182,33 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       _buildMemberSection(),
                       SizedBox(height: 10),
 
+                      // Labels
+                      _buildLabelsButton(
+                        onAddingLabel: (labelId) async {
+                          onLoadingNotifier.value = true;
+                          if (!currentLabelIds.contains(labelId)) {
+                            currentLabelIds.add(labelId);
+                          }
+                          final getUpdatedData = await ApiService.handleTask(
+                              method: 'PUT',
+                              taskId: widget.taskId,
+                              boardId: widget.boardId,
+                              data: {'label': currentLabelIds},
+                              contentType: 'application/json');
+
+                          if (getUpdatedData != null && context.mounted) {
+                            General.showSnackBar(
+                                context, 'Update Label: Berhasil');
+                            await onLoadValue();
+                          }
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Due Dates
+                      _buildDatePickers(),
+                      SizedBox(height: 20),
+
                       // Description
                       _buildCardDescription(
                         quillController: _quillController,
@@ -1216,6 +1247,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             currentDesc = htmlStr;
                           }
                           await onLoadDesc();
+                          await loadComments();
                         },
                         onFormatBold: () => _toggleFormat(quill.Attribute.bold),
                         onFormatItalic: () => _toggleFormat(quill.Attribute.italic),
@@ -1266,33 +1298,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         onFormatAlignRight: () => _toggleFormat(quill.Attribute.rightAlignment),
                         onFormatAlignJustify: () => _toggleFormat(quill.Attribute.justifyAlignment),
                       ),
-                      SizedBox(height: 20),
-
-                      // Labels
-                      _buildLabelsButton(
-                        onAddingLabel: (labelId) async {
-                          onLoadingNotifier.value = true;
-                          if (!currentLabelIds.contains(labelId)) {
-                            currentLabelIds.add(labelId);
-                          }
-                          final getUpdatedData = await ApiService.handleTask(
-                              method: 'PUT',
-                              taskId: widget.taskId,
-                              boardId: widget.boardId,
-                              data: {'label': currentLabelIds},
-                              contentType: 'application/json');
-
-                          if (getUpdatedData != null && context.mounted) {
-                            General.showSnackBar(
-                                context, 'Update Label: Berhasil');
-                            await onLoadValue();
-                          }
-                        },
-                      ),
-                      SizedBox(height: 20),
-
-                      // Due Dates
-                      _buildDatePickers(),
                       SizedBox(height: 20),
 
                       // Attachment
@@ -1404,7 +1409,14 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       items: workspaces.map((workspace) {
                         return DropdownMenuItem<int>(
                           value: workspace['id'],
-                          child: Text(workspace['name'] ?? ''),
+                          child: SizedBox(
+                            width: 200, // batas maksimal lebar dropdown item
+                            child: Text(
+                              workspace['name'] ?? '',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
                         );
                       }).toList(),
                       onChanged: (int? newValue) async {
@@ -1624,6 +1636,31 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       ),
                     ),
                   ],
+                  if (boardName == "") ...[
+                    SizedBox(height: 9),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Prepare your data...",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        SizedBox(width: 8), // spasi antara teks dan loader
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (boardName != "") ...[
                     SizedBox(height: 4),
                     Text(
@@ -1637,7 +1674,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   if (latestUpdatedAt != "" || latestUpdatedBy != "") ...[
                     SizedBox(height: 12),
                     Text(
-                      'Latest Update: ${DateFormat('yyyy-MM-dd hh:mm:ss').format(DateTime.parse(latestUpdatedAt).toLocal())}\nBy $latestUpdatedBy',
+                      'Latest Update: ${DateFormat('yyyy-MM-dd hh:mm:ss').format(DateTime.parse(latestUpdatedAt))}\nBy $latestUpdatedBy',
                       style: TextStyle(
                         fontStyle: FontStyle.italic,
                         fontSize: 14,
@@ -1990,9 +2027,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   }
                 },
                 child: AbsorbPointer(
-                  absorbing: !editing, // biar gak bisa ketik kalau belum editing
+                  absorbing: !editing,
                   child: Container(
-                    height: 150,
+                    constraints: BoxConstraints(
+                      minHeight: 150,
+                      maxHeight: double.infinity,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.grey),
                       borderRadius: BorderRadius.circular(8),
@@ -2004,7 +2044,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                         return quill.QuillEditor.basic(
                           controller: quillController,
                           focusNode: focusNodeDesc,
+                          scrollController: ScrollController(),
                           config: quill.QuillEditorConfig(
+                            scrollable: false,
+                            expands: false,
                             padding: EdgeInsets.all(8),
                             showCursor: editing
                           ),
@@ -2158,6 +2201,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                               if (getUpdatedData != null && context.mounted) {
                                 General.showSnackBar(
                                     context, 'Label berhasil dihapus');
+                                loadComments();
                               }
                               onLoadingNotifier.value = false;
                             }
@@ -2288,6 +2332,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                         if (getUpdatedData != null) {
                           onEndDateNotifier.value = null;
+                          loadComments();
                         }
 
                         onLoadingNotifier.value = false;
@@ -2350,6 +2395,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             onEndDateNotifier.value = selectedDate;
             General.showSnackBar(
                 context, "Waktu Deadline berhasil ditambahkan");
+            loadComments();
           } else {
             General.showSnackBar(context, "Gagal Menambahkan Tanggal e");
           }
@@ -2375,7 +2421,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
         return ListView.builder(
           shrinkWrap: true,
-          // physics: NeverScrollableScrollPhysics(),
+          physics: NeverScrollableScrollPhysics(),
           itemCount: commentList.length,
           itemBuilder: (context, index) {
             final comment = commentList[index];
@@ -2401,7 +2447,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   Text(comment['comment']),
                   Text(
                     DateFormat('dd MMM yyyy HH:mm').format(
-                      DateTime.parse(comment['updated_at']).toLocal(),
+                      DateTime.parse(comment['updated_at']).toUtc(),
                     ),
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
@@ -2528,7 +2574,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Comments",
+          Text("Activity",
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           SizedBox(height: 10),
           Row(
@@ -2596,7 +2642,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             valueListenable: onLoadingNotifier,
             builder: (context, value, child) {
               return Container(
-                constraints: BoxConstraints(maxHeight: 300),
+                constraints: BoxConstraints(
+                  minHeight: 300,
+                  maxHeight: double.infinity,
+                ),
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
@@ -2623,6 +2672,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
         return ListView.builder(
           shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
           itemCount: checklistList.length,
           itemBuilder: (context, index) {
             final checklist = checklistList[index];
@@ -2827,51 +2877,59 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           final dueDate = DateTime.parse(item['due_date']);
           final isPast = dueDate.isBefore(DateTime.now());
 
-          dueWidget = Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: mq.width * 0.008,
-              vertical: mq.height * 0.008,
-            ),
-            decoration: BoxDecoration(
-              color: isChecked
-                  ? Colors.green.withOpacity(0.2)
-                  : (isPast
-                      ? Colors.red.withOpacity(0.2)
-                      : Colors.black.withOpacity(0.1)),
-              borderRadius: BorderRadius.circular(5),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.alarm,
-                  size: mq.width * 0.028,
-                  color: isChecked
-                      ? Colors.green
-                      : (isPast ? Colors.red : Colors.black),
-                ),
-                SizedBox(width: mq.width * 0.015),
-                Text(
-                  DateFormat(dueDate.year.toString() !=
-                              DateTime.now().year.toString()
-                          ? 'MMM dd, yyyy'
-                          : 'MMM dd')
-                      .format(dueDate),
-                  style: TextStyle(
-                    fontSize: mq.width * 0.028,
+          dueWidget = GestureDetector(
+            onTap: () async {
+              bool confirmed =
+                  await _showDeleteDueDateItemChecklistConfirmationDialog();
+              if (confirmed) {
+                await _deleteDueDateItemChecklist(item['id']);
+              }
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: mq.width * 0.008,
+                vertical: mq.height * 0.008,
+              ),
+              decoration: BoxDecoration(
+                color: isChecked
+                    ? Colors.green.withOpacity(0.2)
+                    : (isPast
+                        ? Colors.red.withOpacity(0.2)
+                        : Colors.black.withOpacity(0.1)),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.alarm,
+                    size: mq.width * 0.028,
                     color: isChecked
                         ? Colors.green
                         : (isPast ? Colors.red : Colors.black),
                   ),
-                ),
-              ],
+                  SizedBox(width: mq.width * 0.015),
+                  Text(
+                    DateFormat(dueDate.year.toString() !=
+                                DateTime.now().year.toString()
+                            ? 'MMM dd, yyyy'
+                            : 'MMM dd')
+                        .format(dueDate),
+                    style: TextStyle(
+                      fontSize: mq.width * 0.028,
+                      color: isChecked
+                          ? Colors.green
+                          : (isPast ? Colors.red : Colors.black),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
 
         // --- avatar widget (lebih kecil) ---
         Widget? avatarWidget;
-
         if (item['assign_to_user'] != null) {
           avatarWidget = SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -2995,6 +3053,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                                 if (response != null) {
                                   await loadChecklists();
+                                  await loadComments();
                                   General.showSnackBar(
                                       context, "Item berhasil dipindahkan");
                                 } else {
@@ -3265,6 +3324,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     if (response != null) {
       await loadChecklists(); // Refresh checklist setelah menambah item
+      await loadComments();
     }
   }
 
@@ -3304,6 +3364,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     if (response != null) {
       await loadChecklists(); // Refresh checklist setelah menambah item
+      await loadComments();
     }
   }
 
@@ -3319,6 +3380,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     if (response != null) {
       // Setelah update, refresh checklist
       await loadChecklists(); // Refresh checklist setelah mengupdate status item
+      await loadComments();
     }
   }
 
@@ -3428,8 +3490,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           );
 
           if (response != null) {
-            // Setelah update, refresh checklist
-            await loadChecklists(); // Refresh checklist setelah mengupdate status item
+            await loadChecklists();
+            await loadComments();
           }
         } catch (e) {
           General.showSnackBar(context, "Gagal Menambahkan Tanggal e: $e");
@@ -3437,6 +3499,31 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
         onLoadingNotifier.value = false;
       }
+    }
+  }
+
+  Future<bool> _showDeleteDueDateItemChecklistConfirmationDialog() async {
+    return await General.showDialogConfirmDelete(
+            context: context,
+            title: "Konfirmasi Hapus",
+            message: "Kamu yakin ingin menghapus due date untuk item checklist ini?",
+            additionalMessage: "",
+            confirmButtonText: "Hapus",
+            cancelButtonText: "Batal") ??
+        false;
+  }
+
+  Future<void> _deleteDueDateItemChecklist(int itemId) async {
+
+    final response = await ApiService.handleChecklistItem(
+      method: 'PUT',
+      checklistItemId: itemId,
+      data: {'due_date': ""},
+    );
+
+    if (response != null) {
+      await loadChecklists();
+      await loadComments();
     }
   }
 
@@ -3608,6 +3695,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                                       if (res != null) {
                                         await loadChecklists();
+                                        await loadComments();
                                         Navigator.pop(context);
                                         General.showSnackBar(
                                             context, "Berhasil menghapus user");
@@ -3827,6 +3915,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
                           if (res != null) {
                             await loadChecklists();
+                            await loadComments();
                             Navigator.pop(context);
                             General.showSnackBar(
                                 context, "User berhasil di-assign");
@@ -4021,7 +4110,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             valueListenable: onLoadingChecklistNotifier,
             builder: (context, value, child) {
               return Container(
-                constraints: BoxConstraints(maxHeight: 300),
+                constraints: BoxConstraints(
+                  minHeight: 300,
+                  maxHeight: double.infinity,
+                ),
                 padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
                   color: Colors.grey[200],
@@ -4083,6 +4175,31 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
   }
 
+  void _renameFile(int fileId, String fileName) async {
+    try {
+      final data = {"name": fileName};
+      // Memanggil API untuk menghapus file
+      await ApiService.handleTaskFile(
+        method: 'PUT',
+        taskId: widget.taskId,
+        fileId: fileId, // ID file yang akan dihapus
+        data: data,
+      );
+
+      // Jika berhasil, lakukan sesuatu, misalnya memuat ulang data
+      setState(() {
+        loadFile();
+        loadComments();
+      });
+
+      // Tampilkan snackbar atau feedback kepada pengguna
+      General.showSnackBar(context, "Nama File berhasil diganti");
+    } catch (e) {
+      // Tangani error jika terjadi kesalahan
+      General.showSnackBar(context, "Gagal mengganti nama file, coba lagi.");
+    }
+  }
+
   void _showDeleteConfirmationDialog(int fileId) async {
     final confirm = await General.showDialogDelete(
         context: context,
@@ -4094,6 +4211,94 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     if (confirm == true) {
       _deleteFile(fileId);
     }
+  }
+
+  Future<void> _showEditFileDialog(
+      int fileId, String currentTitle) async {
+    _fileEditTextController.text = currentTitle;
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(255, 18, 168, 243),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(Icons.edit_note, size: 80, color: Colors.white),
+                ),
+              ),
+              SizedBox(height: 20),
+              Text(
+                'Rename File',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: _fileEditTextController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter file name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      _fileEditTextController.clear();
+                      Navigator.pop(context);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child:
+                        Text('Cancel', style: TextStyle(color: Colors.white)),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      final itemTitle =
+                          _fileEditTextController.text.trim();
+                      if (itemTitle.isNotEmpty) {
+                        _renameFile(fileId, itemTitle);
+                        _fileEditTextController.clear();
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text('Rename', style: TextStyle(color: Colors.white)),
+                  ),
+                ],
+              ),
+              SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   Widget listFileWidget() {
@@ -4264,6 +4469,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Stack(
+                                alignment: Alignment.topRight,
                                 children: [
                                   // Gambar File
                                   Container(
@@ -4281,28 +4487,69 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                                         fit: BoxFit.cover,
                                       ),
                                     ),
-                                  ), // </Container> untuk gambar file
+                                  ),
 
-                                  // Tombol Hapus
-                                  Positioned(
-                                    top: 8,
-                                    right: 8,
-                                    child: GestureDetector(
-                                      onTap: () =>
-                                          _showDeleteConfirmationDialog(fileId),
-                                      child: CircleAvatar(
-                                        backgroundColor: Colors.red,
-                                        radius: 15,
-                                        child: Icon(
-                                          Icons.delete,
-                                          size: 18,
-                                          color: Colors.white,
-                                        ),
-                                      ), // </CircleAvatar>
-                                    ), // </GestureDetector>
-                                  ), // </Positioned>
+                                  // Tombol more_vert di kanan atas
+                                  Padding(
+                                    padding: const EdgeInsets.all(6),
+                                    child: CircleAvatar(
+                                      backgroundColor: Colors.black,
+                                      radius: 15,
+                                      child: Builder(
+                                        builder: (context) {
+                                          return GestureDetector(
+                                            onTapDown: (TapDownDetails details) {
+                                              final RenderBox overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
+                                              final Size overlaySize = overlay.size;
+
+                                              final position = RelativeRect.fromLTRB(
+                                                details.globalPosition.dx - 150, // geser ke kiri
+                                                details.globalPosition.dy,       // posisi bawah
+                                                overlaySize.width - details.globalPosition.dx + 150,
+                                                overlaySize.height - details.globalPosition.dy,
+                                              );
+
+                                              showMenu<String>(
+                                                context: context,
+                                                position: position,
+                                                items: [
+                                                  PopupMenuItem<String>(
+                                                    value: 'rename',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(Icons.edit),
+                                                        SizedBox(width: 8),
+                                                        Text('Rename File'),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem<String>(
+                                                    value: 'delete',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(Icons.delete),
+                                                        SizedBox(width: 8),
+                                                        Text('Delete File'),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ).then((value) {
+                                                if (value == 'rename') {
+                                                  _showEditFileDialog(fileId, fileName);
+                                                } else if (value == 'delete') {
+                                                  _showDeleteConfirmationDialog(fileId);
+                                                }
+                                              });
+                                            },
+                                            child: Icon(Icons.more_vert, color: Colors.white, size: 18),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
                                 ],
-                              ), // </Stack>
+                              ),
 
                               // Nama file di bawah gambar
                               SizedBox(height: 4),

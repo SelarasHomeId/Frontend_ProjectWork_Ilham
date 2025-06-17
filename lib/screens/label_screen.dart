@@ -57,7 +57,7 @@ class _LabelScreenState extends State<LabelScreen> {
                 onPressed: () async {
                   await onLabelInputDialog(
                     context,
-                    onClick: (labelname, color) async {
+                    onClick: (labelname, color, deleteLabel) async {
                       final stringColor = General().colorToString(color);
 
                       await ApiService.handleLabel(
@@ -137,17 +137,24 @@ class _LabelScreenState extends State<LabelScreen> {
                                   context,
                                   currentColor: currentColor,
                                   textValue: currentTitle ?? "",
-                                  onClick: (labelName, color) async {
-                                    final stringColor =
-                                        General().colorToString(color);
-                                    await ApiService.handleLabel(
-                                      method: "PUT",
-                                      labelId: singleResponse["id"],
-                                      data: {
-                                        "title": labelName,
-                                        "color": stringColor,
-                                      },
-                                    );
+                                  onClick: (labelName, color, deleteLabel) async {
+                                    if (deleteLabel != null && deleteLabel == true) {
+                                      await ApiService.handleLabel(
+                                        method: "DELETE",
+                                        labelId: singleResponse["id"],
+                                      );
+                                    } else {
+                                      final stringColor =
+                                          General().colorToString(color);
+                                      await ApiService.handleLabel(
+                                        method: "PUT",
+                                        labelId: singleResponse["id"],
+                                        data: {
+                                          "title": labelName,
+                                          "color": stringColor,
+                                        },
+                                      );
+                                    }
                                   },
                                 );
 
@@ -174,7 +181,7 @@ Future<void> onLabelInputDialog(
   BuildContext context, {
   Color? currentColor,
   String? textValue,
-  required Future<void> Function(String labelName, Color color) onClick,
+  required Future<void> Function(String labelName, Color color, bool? deleteLabel) onClick,
 }) async {
   // return Navigator.push(
   //   context, builder: MaterialPageRoute(builder: (_) => LabelInputDialog());
@@ -193,7 +200,7 @@ Future<void> onLabelInputDialog(
 class LabelInputDialog extends StatefulWidget {
   final Color? currentColor;
   final String? textValue;
-  final Future<void> Function(String labelName, Color color) onClick;
+  final Future<void> Function(String labelName, Color color, bool? deleteLabel) onClick;
   const LabelInputDialog({
     super.key,
     this.currentColor,
@@ -283,13 +290,28 @@ class _LabelInputDialogState extends State<LabelInputDialog> {
                       child: ElevatedButton(
                         onPressed: () async {
                           onLoadingNotifier.value = true;
-                          await widget.onClick(controller.text, pickedColor);
+                          await widget.onClick(controller.text, pickedColor, null);
                           onLoadingNotifier.value = false;
                           Navigator.pop(context);
                         },
                         child: Text(currentTitle),
                       ),
-                    )
+                    ),
+                    if (currentTitle == "Update Label") ...[
+                      SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            onLoadingNotifier.value = true;
+                            await widget.onClick(controller.text, pickedColor, true);
+                            onLoadingNotifier.value = false;
+                            Navigator.pop(context);
+                          },
+                          child: Text("Delete Label"),
+                        ),
+                      )
+                    ],
                   ],
                 ),
               ),
