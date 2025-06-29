@@ -41,17 +41,14 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
   }
 
   void _loadProjectData(int projectId) async {
-    print("Fetching project data for ID: $projectId");
     try {
       final response = await ApiService.handleProject(
         method: 'GET',
         projectId: projectId,
       );
-      print("Response received: $response");
 
       if (response != null && response['data'] != null) {
         final project = response['data'];
-        print("Project Data: $project");
 
         setState(() {
           nameController.text = project['name'] ?? '';
@@ -60,8 +57,6 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
           _existingImageUrlReal = project['cover'] != null ? project['cover']['content'] : null;
           _isLoading = false;
         });
-      } else {
-        print("No project data found");
       }
     } catch (e) {
       // print("Error fetching project data: $e");
@@ -140,12 +135,10 @@ class _UpdateProjectWidgetState extends State<UpdateProjectWidget> {
           General.showSnackBar(context, 'Project berhasil diperbarui!');
           Navigator.pop(context);
         } else {
-          debugPrint("masuk else");
           General.showSnackBar(context, 'Gagal memperbarui project');
         }
       } catch (e, stackTrace) {
-        debugPrint("masuk catch $e: $stackTrace");
-
+        debugPrint("error update project $e: $stackTrace");
         General.showSnackBar(context, 'Gagal memperbarui project: $e');
       }
     }

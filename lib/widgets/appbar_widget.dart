@@ -70,7 +70,6 @@ class _AppBarWidgetState extends State<AppBarWidget> {
           });
 
           bool isSupported = await AppBadger.isBadgeSupported();
-          debugPrint("App badge supported? $isSupported");
           if (isSupported) {
             if (notificationCount > 0 && notificationCount > notificationCountBefore) {
               await AppBadger.updateBadgeCount(notificationCount);
@@ -99,9 +98,8 @@ class _AppBarWidgetState extends State<AppBarWidget> {
   void _playSound() async {
     try {
       await _player.play(AssetSource('notif_sound.ogg'));
-      debugPrint("Suara berhasil diputar");
     } catch (e) {
-      debugPrint("Error saat memutar suara: $e");
+      debugPrint("Error when play sound: $e");
     }
   }
 

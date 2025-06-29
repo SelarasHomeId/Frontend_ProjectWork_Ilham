@@ -184,11 +184,11 @@ class _ProjectWidgetState extends State<ProjectWidget>
       } else {
         General.showSnackBar(
             context, 'Gagal mengekspor data. Status: ${response.statusCode}');
-        print('Response error: ${response.body}');
+        debugPrint('Response error: ${response.body}');
       }
     } catch (e) {
       General.showSnackBar(context, 'Terjadi kesalahan saat ekspor: $e');
-      print('Error: $e');
+      debugPrint('Error: $e');
     }
     setState(() {
       _isLoadingExport = false;
@@ -235,10 +235,9 @@ class _ProjectWidgetState extends State<ProjectWidget>
           durationSeconds: 5,
         );
 
-        print('File berhasil disimpan di: $filePath');
       } catch (e) {
         General.showSnackBar(context, 'Gagal menyimpan file: $e');
-        print('Gagal menyimpan file: $e');
+        debugPrint('Gagal menyimpan file: $e');
       }
     } else {
       General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');

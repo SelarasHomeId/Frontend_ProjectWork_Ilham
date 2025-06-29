@@ -109,16 +109,15 @@ class ApiService {
           );
 
           if (response != null && response['code'] == 200) {
-            debugPrint("✅ Logout berhasil, menghapus sesi...");
             General.clearSharedPreferences();
           } else {
             debugPrint(
-              "❌ Logout API gagal atau code != 200: ${response?['code']}",
+              "Logout API gagal: ${response?['code']}",
             );
             General.clearSharedPreferences();
           }
         } catch (e) {
-          debugPrint("🚨 Error saat logout: $e");
+          debugPrint("Error when logout: $e");
         } finally {
           General.clearSharedPreferences();
           navigatorKey.currentState?.pushAndRemoveUntil(
@@ -132,7 +131,7 @@ class ApiService {
       final Map<String, dynamic> jsonBody = jsonDecode(response.body);
       return jsonBody;
     } catch (e, trace) {
-      print("trace :>>> $trace");
+      debugPrint("trace :>>> $trace");
       // return null;
       rethrow;
     }
@@ -219,14 +218,13 @@ class ApiService {
       );
 
       if (response != null && response['code'] == 200) {
-        debugPrint("✅ Logout berhasil, menghapus sesi...");
         General.clearSharedPreferences();
       } else {
-        debugPrint("❌ Logout API gagal atau code != 200: ${response?['code']}");
+        debugPrint("Logout API gagal: ${response?['code']}");
         General.clearSharedPreferences();
       }
     } catch (e) {
-      debugPrint("🚨 Error saat logout: $e");
+      debugPrint("Error when logout: $e");
     }
     // Pastikan context masih valid sebelum navigasi
     finally {
@@ -237,8 +235,6 @@ class ApiService {
           MaterialPageRoute(builder: (_) => LoginScreen()),
           (route) => false,
         );
-      } else {
-        debugPrint("⚠️ Gunakan context yang valid dari parent widget!");
       }
     }
   }
@@ -308,7 +304,7 @@ class ApiService {
         return {'data': contactsList, 'count': count};
       }
     } catch (e, stacktace) {
-      print("stacktace : $stacktace");
+      debugPrint("stacktace : $stacktace");
     }
     return null;
   }
@@ -363,7 +359,7 @@ class ApiService {
         return {'data': affiliateList, 'count': count};
       }
     } catch (e, stacktace) {
-      print("stacktace : $stacktace");
+      debugPrint("stacktace : $stacktace");
     }
     return null;
   }
@@ -426,7 +422,7 @@ class ApiService {
       return response;
     } catch (e) {
       // Menangani kesalahan yang terjadi pada saat pemanggilan API
-      debugPrint('Error saat mengirim email reset: $e');
+      debugPrint('Error when sent email reset: $e');
       return {
         'success': false,
         'message': 'Terjadi kesalahan saat mengirim email reset: $e',
@@ -447,7 +443,6 @@ class ApiService {
     if (dateFilter.isNotEmpty) {
       // endpoint += '&created_at=$dateFilter';
     }
-    debugPrint('ini endpoint: $endpoint');
     final response = await apiRequest(
       method: 'GET',
       endpoint: endpoint,
@@ -919,8 +914,6 @@ class ApiService {
       token: token,
       contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
     );
-    print("Raw Response: ${response?.toString()}");
-    print("Response from API: $response");
     try {
       final encodeValue = json.encode(response);
       log(encodeValue, name: endpoint);
@@ -951,7 +944,7 @@ class ApiService {
           response['code'] == 200) {
         return response; // Kembalikan response jika sukses
       } else {
-        print(
+        debugPrint(
           'Operasi gagal: ${response?['data']['message']}',
         ); // Debugging pesan error
         throw '${response?['data']['message']}';
@@ -974,11 +967,8 @@ class ApiService {
     final token = prefs.getString('token');
 
     if (token == null || token.isEmpty) {
-      print("⚠️ Token tidak ditemukan di SharedPreferences!");
       return null;
     }
-
-    print("✅ Token yang digunakan: $token");
     return token;
   }
 
@@ -1018,8 +1008,6 @@ class ApiService {
           ? 'multipart/form-data'
           : 'application/json',
     );
-    print("Raw Response: ${response?.toString()}");
-    print("Response from API: $response");
     try {
       final encodeValue = json.encode(response);
       log(encodeValue, name: endpoint);
@@ -1047,7 +1035,7 @@ class ApiService {
           response['code'] == 200) {
         return response; // Kembalikan response jika sukses
       } else {
-        print(
+        debugPrint(
           'Operasi gagal: ${response?['message']}',
         ); // Debugging pesan error
         throw Exception(
@@ -1093,8 +1081,6 @@ class ApiService {
       token: token,
       contentType: method == 'PUT' ? 'multipart/form-data' : 'application/json',
     );
-    print("Raw Response: ${response?.toString()}");
-    print("Response from API: $response");
     try {
       final encodeValue = json.encode(response);
       log(encodeValue, name: endpoint);
@@ -1122,7 +1108,7 @@ class ApiService {
           response['code'] == 200) {
         return response; // Kembalikan response jika sukses
       } else {
-        print('Operasi gagal: ${response?['message']}');
+        debugPrint('Operasi gagal: ${response?['message']}');
         throw '${response?['data']['message']}';
       }
     } else {
@@ -1214,16 +1200,15 @@ class ApiService {
           );
 
           if (response != null && response['code'] == 200) {
-            debugPrint("✅ Logout berhasil, menghapus sesi...");
             General.clearSharedPreferences();
           } else {
             debugPrint(
-              "❌ Logout API gagal atau code != 200: ${response?['code']}",
+              "Logout API gagal: ${response?['code']}",
             );
             General.clearSharedPreferences();
           }
         } catch (e) {
-          debugPrint("🚨 Error saat logout: $e");
+          debugPrint("Error when logout: $e");
         } finally {
           General.clearSharedPreferences();
           navigatorKey.currentState?.pushAndRemoveUntil(
@@ -1235,7 +1220,7 @@ class ApiService {
 
       return response;
     } catch (e, trace) {
-      print("trace :>>> $trace");
+      debugPrint("trace :>>> $trace");
       // return null;
       rethrow;
     }

@@ -49,13 +49,12 @@ class _ChangePasswordDialogState extends State<ChangePasswordDialog> {
         data: data,
         resetPass: false
       );
-      print("Response dari API password: $response");
 
       if (response != null && response['success'] == true) {
         General.showSnackBar(context, 'Password berhasil diubah!');
         ApiService.authLogout(context);
       } else {
-        print("Response tidak valid atau gagal: $response");
+        debugPrint("Response tidak valid atau gagal: $response");
         General.showSnackBar(context, 'Gagal mengupdate password');
       }
     } catch (e) {

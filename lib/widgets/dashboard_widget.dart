@@ -253,11 +253,11 @@ class _DashboardWidgetState extends State<DashboardWidget> {
         await _saveDownloadedExcelFile(context, bytes, fileName);
       } else {
         General.showSnackBar(context, 'Gagal mengekspor data. Status: ${response.statusCode}');
-        print('Response error: ${response.body}');
+        debugPrint('Response error: ${response.body}');
       }
     } catch (e) {
       General.showSnackBar(context, 'Terjadi kesalahan saat ekspor: $e');
-      print('Error: $e');
+      debugPrint('Error: $e');
     }
     setState(() {
       _isLoadingAll = false;
@@ -370,11 +370,9 @@ class _DashboardWidgetState extends State<DashboardWidget> {
         General.showSnackBar(
             context, 'File Excel berhasil disimpan di folder Download',
             durationSeconds: 5);
-
-        print('File berhasil disimpan di: $filePath');
       } catch (e) {
         General.showSnackBar(context, 'Gagal menyimpan file: $e');
-        print('Gagal menyimpan file: $e');
+        debugPrint('Gagal menyimpan file: $e');
       }
     } else {
       General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');
@@ -419,11 +417,9 @@ class _DashboardWidgetState extends State<DashboardWidget> {
           'File Excel berhasil diunduh dan disimpan di folder Download',
           durationSeconds: 5,
         );
-
-        print('File berhasil disimpan di: $filePath');
       } catch (e) {
         General.showSnackBar(context, 'Gagal menyimpan file: $e');
-        print('Gagal menyimpan file: $e');
+        debugPrint('Gagal menyimpan file: $e');
       }
     } else {
       General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');

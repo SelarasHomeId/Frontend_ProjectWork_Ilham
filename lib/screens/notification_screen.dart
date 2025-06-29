@@ -33,7 +33,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     // Panggil ApiService untuk mendapatkan notifikasi
     final response = await ApiService.getNotifications(token, selectedFilter);
-    debugPrint("Ini Respon Nottifikasi $response");
     if (response != null && response['success'] == true) {
       final dynamic data = response['data'];
       if (data == null || data['data'] == null || data['data'] is! List) {

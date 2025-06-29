@@ -131,12 +131,12 @@ class _AddProjectWidgetState extends State<AddProjectWidget> {
         Navigator.pop(context);
         General.showSnackBar(context, 'Project berhasil ditambahkan!');
       } else {
-        print("⚠️ Error Response: $responseData"); // Debug Response
+        debugPrint("Error Response: $responseData"); // Debug Response
         General.showSnackBar(
             context, 'Gagal menambahkan project: $responseData');
       }
     } catch (e) {
-      print("⚠️ Error: $e"); // Debug Error
+      debugPrint("Error: $e"); // Debug Error
       General.showSnackBar(context, 'Error: $e');
     }
   }

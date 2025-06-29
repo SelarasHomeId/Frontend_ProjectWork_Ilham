@@ -115,8 +115,6 @@ class _UpdateUserWidgetState extends State<UpdateUserWidget> {
         'is_locked': isLocked.toString(),
       };
 
-      print("Data yang dikirim ke API: $data");
-
       try {
         setState(() {
           _isLoading = true;

@@ -116,25 +116,23 @@ class _DivisionWidgetState extends State<DivisionWidget>
       },
       onConfirm: (divisionName) async {
         try {
-          print("Menambahkan divisi: $divisionName");
           final response = await ApiService.handleDivision(
             method: 'POST',
             data: {'name': divisionName},
           );
 
           if (response != null && response['success'] == true) {
-            print("Divisi berhasil ditambahkan");
             General.showSnackBar(context, 'Divisi berhasil ditambahkan!');
             fetchDivisions();
             return true;
           } else {
-            print("Gagal menambahkan divisi: ${response?['message']}");
+            debugPrint("Gagal menambahkan divisi: ${response?['message']}");
             General.showSnackBar(
                 context, 'Gagal menambahkan divisi: ${response?['message']}');
             return false;
           }
         } catch (e) {
-          print("Error saat menambahkan divisi: $e");
+          debugPrint("Error saat menambahkan divisi: $e");
           General.showSnackBar(context, 'Error: $e');
           return false;
         }
@@ -143,7 +141,6 @@ class _DivisionWidgetState extends State<DivisionWidget>
   }
 
   Future<void> _editDivision(int divisiId) async {
-    print("Fetching divisi data for ID: $divisiId");
     try {
       final response = await ApiService.handleDivision(
         method: 'GET',
@@ -182,7 +179,7 @@ class _DivisionWidgetState extends State<DivisionWidget>
         );
       }
     } catch (e) {
-      print("Error: $e");
+      debugPrint("Error: $e");
       General.showSnackBar(context, 'Gagal memuat data Division: $e');
       setState(() => _isLoading = false);
     }
@@ -198,7 +195,6 @@ class _DivisionWidgetState extends State<DivisionWidget>
 
     if (confirm != null && confirm) {
       try {
-        print("Menghapus divisi dengan ID: $divisiId");
         final response = await ApiService.handleDivision(
             method: 'DELETE', divisiId: divisiId);
 
@@ -253,11 +249,11 @@ class _DivisionWidgetState extends State<DivisionWidget>
       } else {
         General.showSnackBar(
             context, 'Gagal mengekspor data. Status: ${response.statusCode}');
-        print('Response error: ${response.body}');
+        debugPrint('Response error: ${response.body}');
       }
     } catch (e) {
       General.showSnackBar(context, 'Terjadi kesalahan saat ekspor: $e');
-      print('Error: $e');
+      debugPrint('Error: $e');
     }
     setState(() {
       _isLoadingExport = false;
@@ -304,10 +300,9 @@ class _DivisionWidgetState extends State<DivisionWidget>
           durationSeconds: 5,
         );
 
-        print('File berhasil disimpan di: $filePath');
       } catch (e) {
         General.showSnackBar(context, 'Gagal menyimpan file: $e');
-        print('Gagal menyimpan file: $e');
+        debugPrint('Gagal menyimpan file: $e');
       }
     } else {
       General.showSnackBar(context, 'Gagal mendapatkan direktori penyimpanan.');

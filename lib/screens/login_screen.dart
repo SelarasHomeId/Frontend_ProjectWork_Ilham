@@ -361,8 +361,6 @@ class _LoginScreenState extends State<LoginScreen> {
                                     final response =
                                         await ApiService.sendForgotPasswordEmail(email);
 
-                                    debugPrint('Response dari API: $response');
-
                                     if (response != null && response['success'] == true) {
                                       Navigator.of(context).pop();
                                       General.showDialogSuccess(

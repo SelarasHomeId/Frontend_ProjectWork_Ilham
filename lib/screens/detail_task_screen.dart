@@ -387,19 +387,15 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
 
     if (confirm == true) {
       try {
-        print('[DELETE_TASK] User konfirmasi penghapusan');
         final response =
             await ApiService.handleTask(method: 'DELETE', taskId: taskId);
-        print('[DELETE_TASK] Response dari API: $response');
 
         if (response != null && response['message'] == 'success delete!') {
-          print('[DELETE_TASK] Task berhasil dihapus. Menampilkan snackbar');
 
           General.showSnackBar(context, 'Task berhasil dihapus!');
 
           await Future.delayed(Duration(milliseconds: 500));
 
-          print('[DELETE_TASK] Navigasi ke WorkspaceWidget');
           final prefs = await SharedPreferences.getInstance();
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
@@ -413,11 +409,11 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             (route) => false,
           );
         } else {
-          print('[DELETE_TASK] Response tidak sesuai ekspektasi.');
+          debugPrint('Response tidak sesuai ekspektasi.');
           General.showSnackBar(context, 'Gagal menghapus task.');
         }
       } catch (e) {
-        print('[DELETE_TASK] Terjadi error saat hapus task: $e');
+        debugPrint('Terjadi error saat hapus task: $e');
         General.showSnackBar(context, 'Terjadi error: $e');
       }
     }
@@ -446,13 +442,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   //assign to user============================================================
   Future<void> fetchUsers() async {
     setState(() => _isLoading = true);
-    print("Fetching users...");
 
     try {
       final result = await ApiService.handleUser(
           method: 'GET', params: {'no_paging': 'yes'});
-
-      print("Fetched users: $result"); // Cek apakah data berhasil diambil
 
       if (result != null) {
         setState(() {
@@ -461,11 +454,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         });
       }
     } catch (e) {
-      print("Error fetching users: $e");
+      debugPrint("Error fetching users: $e");
       General.showSnackBar(context, 'Failed to load data: $e');
     } finally {
       setState(() => _isLoading = false);
-      print("Loading complete");
     }
 
     _searchController.addListener(() {
@@ -978,19 +970,13 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
               leading: IconButton(
                 icon: Icon(Icons.arrow_back),
                 onPressed: () async {
-                  print("⬅️ Back button ditekan");
                   final delta = _quillController.document.toDelta();
                   final converter = QuillDeltaToHtmlConverter(delta.toJson());
                   final currentText = converter.convert();
                   // final currentText = _quillController.document.toPlainText().trim();
                   final originalText = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
-                  print("🔍 currentText: '$currentText'");
-                  print("📦 originalText: '$originalText'");
 
                   if (currentText != originalText) {
-                    print("⚠️ Deskripsi berubah, tampilkan dialog");
-                    debugPrint('ini current $currentText');
-                    debugPrint('ini original $originalText');
                     final shouldExit = await General.showDialogConfirmCustom(
                             context: context,
                             coreIcon: Icons.help,
@@ -1007,7 +993,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                       Navigator.pop(context);
                     }
                   } else {
-                    print("🟢 Tidak ada perubahan, keluar langsung");
                     Navigator.pop(context);
                   }
                 },
@@ -1710,8 +1695,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   } else {
                     General.showSnackBar(context, "Gagal memindahkan task");
                   }
-                } else {
-                  print("❌ Aksi pindah dibatalkan user");
                 }
               },
               style: ElevatedButton.styleFrom(

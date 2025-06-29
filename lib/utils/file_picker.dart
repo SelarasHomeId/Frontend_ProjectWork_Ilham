@@ -35,7 +35,7 @@ Future<void> uploadPhotoFromFile(
       // await cropImages(pickedImage!.path);
     }
   } catch (e) {
-    print("ERROR : ${e.toString()}");
+    debugPrint("ERROR : ${e.toString()}");
   }
 }
 
@@ -78,7 +78,7 @@ Future<AsPathResponse?> cropImages(
         fileExtension: fileExtension.toString().replaceAll("jpeg", "jpg"),
         fileType: fileType);
   } catch (e, stack) {
-    print('eng Error cropping image: $e $stack');
+    debugPrint('Error cropping image: $e $stack');
   }
   return null;
 }

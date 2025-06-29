@@ -26,33 +26,20 @@ class WebSocket {
     );
 
     _client.connected.listen((event) {
-      debugPrint("✅ Connected: ${event.client}");
       _subscribeToChannel();
     });
 
     _client.disconnected.listen((event) {
-      debugPrint('❌ Disconnected: code=${event.code}, reason=${event.reason}');
-
       switch (event.code) {
         case 109:
-          debugPrint(
-            '🔄 Token expired. Attempting to refresh token and reconnect...',
-          );
           _handleTokenExpired(token);
           break;
         case 3500:
-          debugPrint('🔄 Token invalid. Attempting to reconnect...');
           _handleTokenInvalid();
           break;
         case 3000:
-          debugPrint(
-            '🚪 Manual disconnect (e.g., debugPrintout). No reconnect needed.',
-          );
           break;
         default:
-          debugPrint(
-            '⚠️ Unexpected disconnect code. Attempting to reconnect...',
-          );
           _reconnect();
       }
     });
@@ -66,7 +53,6 @@ class WebSocket {
 
     _subscription?.publication.listen((event) {
       final Map<String, dynamic> message = json.decode(utf8.decode(event.data));
-      debugPrint('📩 Received: $message');
       onDataReceive(message);
     });
 
@@ -79,7 +65,7 @@ class WebSocket {
   ) async {
     try {
       if (_client.state != centrifuge.State.connected) {
-        debugPrint('❌ Cannot send RPC: Client is not connected.');
+        debugPrint('Cannot send RPC: Client is not connected.');
         await _reconnect();
         if (_client.state != centrifuge.State.connected) {
           return null;
@@ -87,16 +73,14 @@ class WebSocket {
       }
 
       final encodedData = jsonEncode(data);
-      debugPrint('📤 Sending RPC: method=$method, data=$encodedData');
 
       final response = await _client.rpc(method, utf8.encode(encodedData));
 
       final decodedResponse = json.decode(utf8.decode(response.data));
-      debugPrint('📥 RPC Response: $decodedResponse');
 
       return decodedResponse as Map<String, dynamic>;
     } catch (e) {
-      debugPrint('❌ RPC Error: $e');
+      debugPrint('RPC Error: $e');
       return null;
     }
   }
@@ -111,7 +95,7 @@ class WebSocket {
       await _client.disconnect();
       await connect();
     } else {
-      debugPrint('❌ Failed to refresh token.');
+      debugPrint('Failed to refresh token.');
     }
   }
 
