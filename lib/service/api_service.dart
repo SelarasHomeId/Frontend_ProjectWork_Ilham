@@ -9,9 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:selarashomeid/main.dart';
 
 class ApiService {
-  // ==================================================================================================== //
-
-  // function api request for use api backend
+  
+  // ============================== API REQUEST ============================== //
   static Future<Map<String, dynamic>?> apiRequest({
     required String method,
     required String endpoint,
@@ -137,7 +136,7 @@ class ApiService {
     }
   }
 
-  // function hit api with multipart/form-data
+  // ============================== API REQUEST (PRIVATE FUNCTION) ============================== //
   static Future<http.Response> _handleMultipartRequest(
     String method,
     String url,
@@ -155,7 +154,6 @@ class ApiService {
     return await http.Response.fromStream(await request.send());
   }
 
-  // function refresh token
   static Future<String?> _refreshToken(String? token) async {
     try {
       final response = await authRefeshToken(token!);
@@ -173,9 +171,8 @@ class ApiService {
     }
   }
 
-  // ==================================================================================================== //
 
-  // START AUTH================================================================
+  // ============================== AUTH ============================== //
   static Future<Map<String, dynamic>?> authLogin(
     String email,
     String password,
@@ -239,10 +236,53 @@ class ApiService {
     }
   }
 
-  //END AUTH ================================================================
+  static Future<Map<String, dynamic>?> sendForgotPasswordEmail(
+    String email,
+  ) async {
+    try {
+      final response = await apiRequest(
+        method: 'POST',
+        endpoint: '/auth/send-email/forgot-password',
+        body: {'email': email},
+        token: null,
+        contentType: 'application/json',
+      );
 
-  //START DASHBOARD================================================================
-  //dashboard
+      if (response != null && response['code'] == 401) {
+        return {'success': false, 'message': 'Email tidak terdaftar'};
+      }
+
+      // Jika response sukses (kode selain 401)
+      return response;
+    } catch (e) {
+      // Menangani kesalahan yang terjadi pada saat pemanggilan API
+      debugPrint('Error when sent email reset: $e');
+      return {
+        'success': false,
+        'message': 'Terjadi kesalahan saat mengirim email reset: $e',
+      };
+    }
+  }
+
+  static Future<String?> refreshTokenForWebSocket(String? token) async {
+    try {
+      final response = await authRefeshToken(token!);
+      if (response!['success'] == true) {
+        final newToken = response['data']['token'];
+        General.editSharedPreferences('token', newToken);
+        final prefs = await SharedPreferences.getInstance();
+        final token = prefs.getString('token');
+        return token;
+      } else {
+        return null;
+      }
+    } catch (e) {
+      return null;
+    }
+  }
+
+  
+  // ============================== CMS ============================== //
   static Future<Map<String, dynamic>?> fetchDashboard(String token) async {
     final response = await apiRequest(
       method: 'GET',
@@ -379,9 +419,8 @@ class ApiService {
     return List<Map<String, dynamic>>.from(response?['data']['data']);
   }
 
-  //END DASHBOARD================================================================
 
-  // START WORKSPACE================================================================
+  // ============================== WORKSPACE ============================== //
   static Future<List<Map<String, dynamic>>> workspaceFind({
     Map<String, String>? params,
   }) async {
@@ -399,39 +438,9 @@ class ApiService {
 
     return List<Map<String, dynamic>>.from(response?['data']['data'] ?? []);
   }
-  //END WORKSPACE================================================================
 
-  // Send email forgot password
-  static Future<Map<String, dynamic>?> sendForgotPasswordEmail(
-    String email,
-  ) async {
-    try {
-      final response = await apiRequest(
-        method: 'POST',
-        endpoint: '/auth/send-email/forgot-password',
-        body: {'email': email},
-        token: null,
-        contentType: 'application/json',
-      );
 
-      if (response != null && response['code'] == 401) {
-        return {'success': false, 'message': 'Email tidak terdaftar'};
-      }
-
-      // Jika response sukses (kode selain 401)
-      return response;
-    } catch (e) {
-      // Menangani kesalahan yang terjadi pada saat pemanggilan API
-      debugPrint('Error when sent email reset: $e');
-      return {
-        'success': false,
-        'message': 'Terjadi kesalahan saat mengirim email reset: $e',
-      };
-    }
-  }
-
-  //START NOTIFICATION================================================================
-  // Fungsi untuk mendapatkan notifikasi
+  // ============================== NOTIFICATION ============================== //
   static Future<Map<String, dynamic>?> getNotifications(
     String token,
     String filter,
@@ -467,9 +476,9 @@ class ApiService {
     );
     return response;
   }
-  //END NOTIFICATION================================================================
 
-  //START BOARD================================================================
+
+  // ============================== BOARD ============================== //
   static Future<dynamic> handleBoard({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     required int workspaceId, // Tidak boleh null dan wajib diisi
@@ -515,9 +524,9 @@ class ApiService {
       throw Exception('Operasi $method gagal pada endpoint $endpoint');
     }
   }
-  //END BOARD================================================================
 
-  //START TASK================================================================
+
+  // ============================== TASK ============================== //
   static Future<dynamic> handleTask({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? boardId, // Tidak boleh null dan wajib diisi
@@ -871,10 +880,9 @@ class ApiService {
       throw Exception('Operasi $method gagal pada endpoint $endpoint');
     }
   }
-  //END TASK================================================================
 
-  //START MASTER DATA================================================================
-  //handle user
+
+  // ============================== MASTER DATA (USER) ============================== //
   static Future<dynamic> handleUser({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? userId,
@@ -955,23 +963,8 @@ class ApiService {
     }
   }
 
-  //handle project
-  static String getProjectUrl({int? projectId}) {
-    return projectId != null
-        ? '$baseUrl/project/$projectId'
-        : '$baseUrl/project';
-  }
 
-  static Future<String?> getToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('token');
-
-    if (token == null || token.isEmpty) {
-      return null;
-    }
-    return token;
-  }
-
+  // ============================== MASTER DATA (PROJECT) ============================== //
   static Future<dynamic> handleProject({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? projectId,
@@ -1048,7 +1041,24 @@ class ApiService {
     }
   }
 
-  //handle division
+  static String getProjectUrl({int? projectId}) {
+    return projectId != null
+        ? '$baseUrl/project/$projectId'
+        : '$baseUrl/project';
+  }
+
+  static Future<String?> getToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('token');
+
+    if (token == null || token.isEmpty) {
+      return null;
+    }
+    return token;
+  }
+
+
+  // ============================== MASTER DATA (DIVISION) ============================== //
   static Future<dynamic> handleDivision({
     required String method, // 'GET', 'POST', 'PUT', 'DELETE'
     int? divisiId,
@@ -1117,7 +1127,8 @@ class ApiService {
     }
   }
 
-  //get ROLE
+
+  // ============================== MASTER DATA (ROLE) ============================== //
   static Future<Map<String, dynamic>?> getRoles() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('token');
@@ -1135,10 +1146,9 @@ class ApiService {
       return {'message': 'Failed to fetch data role', 'data': null};
     }
   }
-  //END MASTER DATA
 
-  // ==================================================================================================== //
 
+  // ============================== EXPORT DATA ============================== //
   static Future<http.Response> apiRequestExportData({
     required String method,
     required String endpoint,
@@ -1223,23 +1233,6 @@ class ApiService {
       debugPrint("trace :>>> $trace");
       // return null;
       rethrow;
-    }
-  }
-
-  static Future<String?> refreshTokenForWebSocket(String? token) async {
-    try {
-      final response = await authRefeshToken(token!);
-      if (response!['success'] == true) {
-        final newToken = response['data']['token'];
-        General.editSharedPreferences('token', newToken);
-        final prefs = await SharedPreferences.getInstance();
-        final token = prefs.getString('token');
-        return token;
-      } else {
-        return null;
-      }
-    } catch (e) {
-      return null;
     }
   }
 }

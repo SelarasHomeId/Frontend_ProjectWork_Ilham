@@ -6,6 +6,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class General {
+
+  // ============================== FUNCTION ============================== //
   static Future<void> saveToSharedPreferences(Map<String, dynamic> data) async {
     final prefs = await SharedPreferences.getInstance();
 
@@ -296,7 +298,99 @@ class General {
     return x == y;
   }
 
-  //===============Star Show Dialog==========================================
+  static ButtonStyle _buttonStyle(Color color) {
+    return TextButton.styleFrom(
+      backgroundColor: color,
+      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+    );
+  }
+
+  static String? validatePassword(
+    String flag,
+    String? value,
+  ) {
+    if (value == null || value.isEmpty) {
+      return '$flag wajib diisi';
+    }
+    if (value.length < 8) {
+      return '$flag minimal 8 karakter';
+    }
+    if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
+      return '$flag harus mengandung huruf';
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return '$flag harus mengandung angka';
+    }
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+      return '$flag harus mengandung karakter khusus (!@#\$%^&* dll)';
+    }
+    return null;
+  }
+
+  static int generateRandomId() {
+    final random = Random();
+    int min = 10000000;
+    int max = 99999999;
+    int randomNumber = min + random.nextInt(max - min + 1);
+    return randomNumber;
+  }
+
+  static Future<void> initializeNotification(FlutterLocalNotificationsPlugin notificationsPlugin) async {
+    await notificationsPlugin.initialize(InitializationSettings(
+      // android
+      android: AndroidInitializationSettings(
+        '@mipmap/ic_launcher'
+      ),
+      // ios
+      iOS: DarwinInitializationSettings(
+        requestAlertPermission: false,
+        requestBadgePermission: true,
+        requestSoundPermission: false,
+      ),
+    ));
+  }
+
+  static Future<void> sendNotification(FlutterLocalNotificationsPlugin notificationsPlugin, int badgeCount, String? title, String? subtitle, {bool stackNotif = true}) async {
+    await initializeNotification(notificationsPlugin);
+    final NotificationDetails platformChannelSpecifics = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'badge_channel', 
+        'Badge Updates',
+        channelDescription: 'Digunakan untuk update badge count',
+        importance: Importance.min,
+        priority: Priority.min,
+        number: badgeCount,
+        channelShowBadge: true,
+        playSound: false,
+        enableVibration: false,
+        visibility: NotificationVisibility.private,
+      ),
+      iOS: DarwinNotificationDetails(
+        badgeNumber: badgeCount,
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
+    
+    if (badgeCount > 0) {
+      if (stackNotif){
+        final List<ActiveNotification> notifActive = await notificationsPlugin.getActiveNotifications();
+        if (notifActive.isNotEmpty){
+          await notificationsPlugin.cancelAll();
+        }
+      }
+      final int notificationId = General.generateRandomId();
+      await notificationsPlugin.show(
+        notificationId, title, subtitle, platformChannelSpecifics,
+      );
+    } else {
+      await notificationsPlugin.cancelAll();
+    }
+  }
+
+  // ============================== DIALOG ============================== //
   static Future<void> showDialogAdd({
     required BuildContext context,
     required String title,
@@ -911,14 +1005,6 @@ class General {
     );
   }
 
-  static ButtonStyle _buttonStyle(Color color) {
-    return TextButton.styleFrom(
-      backgroundColor: color,
-      padding: EdgeInsets.symmetric(horizontal: 30, vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-    );
-  }
-
   static Future<bool?> showDialogConfirmEdit({
     required BuildContext context,
     required String title,
@@ -1359,93 +1445,7 @@ class General {
       },
     );
   }
-
-  static String? validatePassword(
-    String flag,
-    String? value,
-  ) {
-    if (value == null || value.isEmpty) {
-      return '$flag wajib diisi';
-    }
-    if (value.length < 8) {
-      return '$flag minimal 8 karakter';
-    }
-    if (!RegExp(r'[a-zA-Z]').hasMatch(value)) {
-      return '$flag harus mengandung huruf';
-    }
-    if (!RegExp(r'[0-9]').hasMatch(value)) {
-      return '$flag harus mengandung angka';
-    }
-    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
-      return '$flag harus mengandung karakter khusus (!@#\$%^&* dll)';
-    }
-    return null;
-  }
-
-  static int generateRandomId() {
-    final random = Random();
-    int min = 10000000;
-    int max = 99999999;
-    int randomNumber = min + random.nextInt(max - min + 1);
-    return randomNumber;
-  }
-
-  static Future<void> initializeNotification(FlutterLocalNotificationsPlugin notificationsPlugin) async {
-    await notificationsPlugin.initialize(InitializationSettings(
-      // android
-      android: AndroidInitializationSettings(
-        '@mipmap/ic_launcher'
-      ),
-      // ios
-      iOS: DarwinInitializationSettings(
-        requestAlertPermission: false,
-        requestBadgePermission: true,
-        requestSoundPermission: false,
-      ),
-    ));
-  }
-
-  static Future<void> sendNotification(FlutterLocalNotificationsPlugin notificationsPlugin, int badgeCount, String? title, String? subtitle, {bool stackNotif = true}) async {
-    await initializeNotification(notificationsPlugin);
-    final NotificationDetails platformChannelSpecifics = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'badge_channel', 
-        'Badge Updates',
-        channelDescription: 'Digunakan untuk update badge count',
-        importance: Importance.min,
-        priority: Priority.min,
-        number: badgeCount,
-        channelShowBadge: true,
-        playSound: false,
-        enableVibration: false,
-        visibility: NotificationVisibility.private,
-      ),
-      iOS: DarwinNotificationDetails(
-        badgeNumber: badgeCount,
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      ),
-    );
-    
-    if (badgeCount > 0) {
-      if (stackNotif){
-        final List<ActiveNotification> notifActive = await notificationsPlugin.getActiveNotifications();
-        if (notifActive.isNotEmpty){
-          await notificationsPlugin.cancelAll();
-        }
-      }
-      final int notificationId = General.generateRandomId();
-      await notificationsPlugin.show(
-        notificationId, title, subtitle, platformChannelSpecifics,
-      );
-    } else {
-      await notificationsPlugin.cancelAll();
-    }
-  }
 }
-
-//===============End Show Dialog
 
 class ValueListenableBuilder2<A, B> extends StatelessWidget {
   final ValueListenable<A> first;

@@ -37,6 +37,8 @@ class DetailTaskScreen extends StatefulWidget {
 }
 
 class _DetailTaskScreenState extends State<DetailTaskScreen> {
+
+  // ============================== INITIALIZE ============================== //
   late Future<Map<String, String>> userProfileFuture;
   Map<String, String> userProfile = {};
   late ValueNotifier<bool> onExpandableValue;
@@ -105,12 +107,8 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
   List<dynamic> filteredUsers = [];
   List<Map<String, dynamic>> assignedMembers = [];
 
-  loadInitialData() async {
-    await onLoadValue();
-    await loadFile();
-    setState(() {});
-  }
 
+  // ============================== INIT STATE ============================== //
   @override
   void initState() {
     userProfileFuture = General.getUserProfile();
@@ -177,15 +175,12 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     loadInitialData();
   }
 
-  Future<void> onLoadDesc() async {
-    _quillController.addListener(() {
-      final delta = _quillController.document.toDelta();
-      final converter = QuillDeltaToHtmlConverter(delta.toJson());
-      final now = converter.convert();
-      final original = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
-      showSaveDescButton.value = now != original;
-    });
-    isEditingDesc.value = false;
+
+  // ============================== FUNCTION LOAD ============================== //
+  loadInitialData() async {
+    await onLoadValue();
+    await loadFile();
+    setState(() {});
   }
 
   Future<void> onLoadValue() async {
@@ -285,6 +280,106 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     onLoadingNotifier.value = false;
   }
 
+  Future<void> onLoadDesc() async {
+    _quillController.addListener(() {
+      final delta = _quillController.document.toDelta();
+      final converter = QuillDeltaToHtmlConverter(delta.toJson());
+      final now = converter.convert();
+      final original = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
+      showSaveDescButton.value = now != original;
+    });
+    isEditingDesc.value = false;
+  }
+
+  Future<void> loadFile() async {
+    onLoadingFileNotifier.value = true;
+    final getFileList = await ApiService.handleTaskFile(
+        method: "GET", taskId: widget.taskId, params: {'no_paging': 'yes'});
+
+    onFileNotifier.value = (getFileList is List
+        ? getFileList.map((e) {
+            return {
+              "id": e["id"],
+              "fileName": e["file"]["name"],
+              "filePath": e["file"]["view"],
+              "fileExt": e["file"]["ext"],
+              "fileDownload": e["file"]["content"],
+            };
+          }).toList()
+        : <Map<String, dynamic>>[]);
+
+    onLoadingFileNotifier.value = false;
+  }
+
+  Future<void> loadComments() async {
+    onLoadingCommentNotifier.value = true;
+
+    final response = await ApiService.handleDetailTask(widget.taskId);
+
+    final getComment = response['comment'];
+    if (response != null && getComment != null) {
+      final getCommentData = getComment['data'];
+      final commentData = getCommentData != null && getCommentData is List
+          ? getCommentData
+          : [];
+
+      onCommentNotifier.value = commentData.map((e) {
+        return {
+          "id": e["id"],
+          "comment": e["comment"],
+          "is_history": e["is_history"],
+          "updated_at": e["updated_at"],
+          "user_name": e['created_by']['name'],
+          "user_id": e['created_by']['id'],
+        };
+      }).toList();
+    }
+
+    onLoadingCommentNotifier.value = false;
+  }
+
+  Future<void> loadChecklists() async {
+    onLoadingChecklistNotifier.value = true;
+
+    final checklistData = await ApiService.handleChecklist(
+        method: 'GET', taskId: widget.taskId, params: {'no_paging': 'yes'});
+
+    if (checklistData != null) {
+      checklistItems.value.clear();
+
+      for (final checklist in checklistData) {
+        checklistItems.value[checklist["id"]] = List<Map<String, dynamic>>.from(
+          checklist["item"]?["data"] ?? [],
+        );
+      }
+
+      onChecklistNotifier.value =
+          (checklistData as List).map<Map<String, dynamic>>((checklist) {
+        final map = checklist as Map<String, dynamic>;
+        return {
+          "id": map["id"],
+          "title": map["title"],
+          "task_id": map["task_id"],
+          "check_persentase": map["check_persentase"],
+          "item_count": map["item"]["count"],
+        };
+      }).toList();
+    }
+
+    onLoadingChecklistNotifier.value = false;
+  }
+
+  Future<void> _handleRefresh() async {
+    await Future.wait([
+      onLoadValue(),
+      loadComments(),
+      loadChecklists(),
+      loadFile(),
+    ]);
+
+  }
+
+  // ============================== DISPOSE ============================== //
   @override
   void dispose() {
     onExpandableValue.dispose();
@@ -315,7 +410,10 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
   }
 
-//Start Cover=========================================================
+
+  // ============================== FUNCTION HANDLER ============================== //
+
+  // ============================== COVER ============================== //
   Future<void> _pickCover() async {
     final ImagePicker picker = ImagePicker();
     final XFile? pickedImage =
@@ -375,7 +473,32 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
   }
 
-//========end Cover===================================================
+  // ============================== IS COMPLETE ============================== //
+  Future<void> toggleCompleteStatus() async {
+    final newStatus = !currentIsCompleted.value;
+    final data = {"is_completed": newStatus};
+
+    final response = await ApiService.handleTask(
+      method: 'PUT',
+      data: data,
+      taskId: widget.taskId,
+    );
+
+    if (response != null) {
+      await onLoadValue();
+      setState(() {});
+      General.showSnackBar(
+        context,
+        newStatus ? "Task marked as complete" : "Task marked as incomplete",
+      );
+    }
+  }
+
+  // ============================== IS WATCH ============================== //
+
+  // ============================== TITLE ============================== //
+
+  // ============================== DELETE ============================== //
   void deleteTask(int taskId) async {
     final confirm = await General.showDialogDelete(
       context: context,
@@ -419,27 +542,204 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
   }
 
-  Future<void> toggleCompleteStatus() async {
-    final newStatus = !currentIsCompleted.value;
-    final data = {"is_completed": newStatus};
+  // ============================== MOVE ============================== //
+  Future<Map<String, int>?> _showMoveDialog(int workspaceId, int boardId) async {
+    List<Map<String, dynamic>> workspaces = [];
+    List<Map<String, dynamic>> boards = [];
+    int? selectedWorkspaceId = workspaceId;
+    int? selectedBoardId = boardId;
 
-    final response = await ApiService.handleTask(
-      method: 'PUT',
-      data: data,
-      taskId: widget.taskId,
-    );
-
-    if (response != null) {
-      await onLoadValue();
-      setState(() {});
-      General.showSnackBar(
-        context,
-        newStatus ? "Task marked as complete" : "Task marked as incomplete",
-      );
+    setState(() {
+      _isLoading = true;
+    });
+    try {
+      final response = await ApiService.workspaceFind();
+      if (response.isNotEmpty) {
+        workspaces = List<Map<String, dynamic>>.from(response);
+        if (!workspaces.any((w) => w['id'] == selectedWorkspaceId)) {
+          selectedWorkspaceId = workspaces.first['id']; // Default workspace
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        General.showSnackBar(context, 'Gagal memuat workspace: $e');
+      }
     }
+
+    Future<void> loadBoards(int workspaceId) async {
+      try {
+        final response = await ApiService.handleBoard(
+            method: "GET", workspaceId: workspaceId);
+        if (response.isNotEmpty) {
+          boards = List<Map<String, dynamic>>.from(response);
+          if (!boards.any((b) => b['id'] == selectedBoardId)) {
+            selectedBoardId = boards.first['id']; // Default board
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          General.showSnackBar(context, 'Gagal memuat board: $e');
+        }
+      }
+    }
+
+    await loadBoards(selectedWorkspaceId!);
+
+    setState(() {
+      _isLoading = false;
+    });
+
+    return await showDialog<Map<String, int>>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: StatefulBuilder(
+            builder: (context, setModalState) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Color.fromARGB(255, 13, 20, 158),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(16),
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(Icons.move_to_inbox,
+                          size: 80, color: Colors.white),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Move To',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 10),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: DropdownButtonFormField<int>(
+                      value: selectedWorkspaceId,
+                      items: workspaces.map((workspace) {
+                        return DropdownMenuItem<int>(
+                          value: workspace['id'],
+                          child: SizedBox(
+                            width: 200, // batas maksimal lebar dropdown item
+                            child: Text(
+                              workspace['name'] ?? '',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) async {
+                        if (newValue == null) return;
+
+                        setModalState(() {
+                          selectedWorkspaceId = newValue;
+                          selectedBoardId = null;
+                          boards = [];
+                        });
+
+                        try {
+                          final response = await ApiService.handleBoard(
+                            method: "GET",
+                            workspaceId: newValue,
+                          );
+                          if (response.isNotEmpty) {
+                            setModalState(() {
+                              boards =
+                                  List<Map<String, dynamic>>.from(response);
+                              selectedBoardId = boards.first['id'];
+                            });
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            General.showSnackBar(
+                                context, 'Gagal memuat board: $e');
+                          }
+                        }
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Select Workspace",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 20),
+                    child: DropdownButtonFormField<int>(
+                      value: selectedBoardId,
+                      items: boards.map((board) {
+                        return DropdownMenuItem<int>(
+                          value: board['id'],
+                          child: Text(board['name'] ?? ''),
+                        );
+                      }).toList(),
+                      onChanged: (int? newValue) {
+                        setModalState(() {
+                          selectedBoardId = newValue;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        labelText: "Select Board",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, null),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Colors.grey[600],
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: Text('Cancel',
+                            style: TextStyle(color: Colors.white)),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, {
+                          'workspace_id': selectedWorkspaceId!,
+                          'board_id': selectedBoardId!
+                        }),
+                        style: TextButton.styleFrom(
+                          backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child:
+                            Text('Move', style: TextStyle(color: Colors.white)),
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 20),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
   }
 
-  //assign to user============================================================
+  // ============================== DUE DATE ============================== //
+
+  // ============================== DESCRIPTION ============================== //
+
+  // ============================== MEMBER ============================== //
   Future<void> fetchUsers() async {
     setState(() => _isLoading = true);
 
@@ -672,124 +972,57 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     });
   }
 
-  Widget _buildMemberSection() {
-    return ValueListenableBuilder2<List<Map<String, dynamic>>, bool>(
-      first: assignedMembersNotifier,
-      second: isMemberExpanded,
-      builder: (context, members, expanded, _) {
-        return Container(
-          margin: EdgeInsets.symmetric(
-              vertical: 8, horizontal: 8), // Margin di sekitar panel
-          decoration: BoxDecoration(
-            color: Colors.white, // Background color untuk container
-            borderRadius: BorderRadius.circular(12), // Sudut membulat
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1), // Warna shadow
-                blurRadius: 6, // Blur shadow
-                spreadRadius: 2, // Spread shadow
-              ),
-            ],
-          ),
+  // ============================== LABEL ============================== //
 
-          child: ExpansionPanelList(
-            elevation: 1,
-            expandedHeaderPadding: EdgeInsets.all(0),
-            expansionCallback: (int index, bool isExpanded) {
-              isMemberExpanded.value = isExpanded;
-            },
-            children: [
-              ExpansionPanel(
-                backgroundColor: Colors.white,
-                headerBuilder: (context, isExpanded) {
-                  return Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Assigned Members',
-                      style:
-                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                  );
-                },
-                isExpanded: expanded,
-                body: members.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text('No members assigned yet.'),
-                      )
-                    : Column(
-                        children: members.map((member) {
-                          final initials = General.getInitials(member['name']);
-                          final bgColor = General.getColorFromInitial(initials);
-                          // pilih warna teks yang kontras
-                          final textColor =
-                              General.getContrastingTextColor(bgColor);
-                          return ListTile(
-                            leading: CircleAvatar(
-                              backgroundColor: bgColor,
-                              child: Text(
-                                initials,
-                                style: TextStyle(color: textColor),
-                              ),
-                            ),
-                            title: Text(member['name']),
-                            subtitle:
-                                Text(member['role'] + ' - ' + member['divisi']),
-                            trailing: IconButton(
-                              icon: Icon(Icons.close, color: Colors.red),
-                              onPressed: () async {
-                                final confirm = await General.showDialogDelete(
-                                    context: context,
-                                    title: "Hapus User",
-                                    message:
-                                        "Apakah Yakin Ingin Menghapus User ini?",
-                                    confirmButtonText: "Hapus",
-                                    cancelButtonText: "Batal");
+  // ============================== ATTACHMENT ============================== //
+  void _deleteFile(int fileId) async {
+    try {
+      // Memanggil API untuk menghapus file
+      await ApiService.handleTaskFile(
+        method: 'DELETE',
+        taskId: widget.taskId,
+        fileId: fileId, // ID file yang akan dihapus
+      );
 
-                                if (confirm == true) {
-                                  try {
-                                    // Buat array baru tanpa user yang dihapus
-                                    final remainingIds = assignedMembersNotifier
-                                        .value
-                                        .where((u) => u['id'] != member['id'])
-                                        .map((u) => u['id'] as int)
-                                        .toList();
+      // Jika berhasil, lakukan sesuatu, misalnya memuat ulang data
+      setState(() {
+        loadFile();
+        loadComments();
+      });
 
-                                    final res = await ApiService.handleTask(
-                                      method: "PUT",
-                                      taskId: widget.taskId,
-                                      data: {
-                                        "assign_to_user": remainingIds,
-                                      },
-                                    );
-
-                                    if (res != null) {
-                                      await onLoadValue();
-                                      setState(() {});
-                                      General.showSnackBar(
-                                          context, "Berhasil menghapus user");
-                                    }
-                                  } catch (e) {
-                                    General.showSnackBar(
-                                        context, "Gagal menghapus: $e");
-                                  }
-                                }
-                              },
-                            ),
-                          );
-                        }).toList(),
-                      ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+      // Tampilkan snackbar atau feedback kepada pengguna
+      General.showSnackBar(context, "File berhasil dihapus");
+    } catch (e) {
+      // Tangani error jika terjadi kesalahan
+      General.showSnackBar(context, "Gagal menghapus file, coba lagi.");
+    }
   }
 
-//end assogn to user==========================================================
+  void _renameFile(int fileId, String fileName) async {
+    try {
+      final data = {"name": fileName};
+      // Memanggil API untuk menghapus file
+      await ApiService.handleTaskFile(
+        method: 'PUT',
+        taskId: widget.taskId,
+        fileId: fileId, // ID file yang akan dihapus
+        data: data,
+      );
 
-//==================Start File Preview=========================================
+      // Jika berhasil, lakukan sesuatu, misalnya memuat ulang data
+      setState(() {
+        loadFile();
+        loadComments();
+      });
+
+      // Tampilkan snackbar atau feedback kepada pengguna
+      General.showSnackBar(context, "Nama File berhasil diganti");
+    } catch (e) {
+      // Tangani error jika terjadi kesalahan
+      General.showSnackBar(context, "Gagal mengganti nama file, coba lagi.");
+    }
+  }
+
   void showPDFPreview(BuildContext context, String url) {
     showDialog(
       context: context,
@@ -895,1434 +1128,100 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     });
   }
 
-//===================End File Preview==========================================
+  void _showDeleteConfirmationDialog(int fileId) async {
+    final confirm = await General.showDialogDelete(
+        context: context,
+        title: "Hapus File",
+        message: "Apakah Anda Yakin Ingin Menghapus File Ini ? ",
+        confirmButtonText: "Hapus",
+        cancelButtonText: "Batal");
 
-//=======================Widget Build===========================================
-  @override
-  Widget build(BuildContext context) {
-    return ConnectionChecker(
-        child: PopScope(
-      canPop: !titleFocusNode.hasFocus && !descFocusNode.hasFocus && !isEditingDesc.value,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (titleFocusNode.hasFocus) titleFocusNode.unfocus();
-        if (descFocusNode.hasFocus) descFocusNode.unfocus();
-        if (isEditingDesc.value) isEditingDesc.value = false;
-        if (checklistFocusNode.hasFocus) checklistFocusNode.unfocus();
-        if (commentFocusNode.hasFocus) commentFocusNode.unfocus();
-
-        if (didPop) return;
-      },
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          titleFocusNode.unfocus();
-          descFocusNode.unfocus();
-          checklistFocusNode.unfocus();
-          commentFocusNode.unfocus();
-          isEditingDesc.value = false;
-        },
-        child: ValueListenableBuilder(
-          valueListenable: onLoadingNotifier,
-          builder: (context, value, child) {
-            return Stack(
-              children: [
-                child ?? Container(),
-                if (value) ...{
-                  loadingScreenWidget(context),
-                },
-              ],
-            );
-          },
-          child: Scaffold(
-            appBar: AppBar(
-              backgroundColor: Colors.red[900],
-              title: TextField(
-                controller: textTitleController,
-                focusNode: titleFocusNode,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                ),
-                onEditingComplete: () async {
-                  final value = textTitleController.text;
-
-                  if (value.isNotEmpty) {
-                    final data = {"title": value};
-
-                    final response = await ApiService.handleTask(
-                      method: 'PUT',
-                      data: data,
-                      taskId: widget.taskId,
-                    );
-
-                    if (response != null) {
-                      // Jika API berhasil, kita update text controller dengan nilai yang dikirim
-                      textTitleController.text =
-                          value; // Pastikan text controller memiliki nilai terbaru
-                    }
-                    titleFocusNode.unfocus();
-                  }
-                },
-              ),
-              leading: IconButton(
-                icon: Icon(Icons.arrow_back),
-                onPressed: () async {
-                  final delta = _quillController.document.toDelta();
-                  final converter = QuillDeltaToHtmlConverter(delta.toJson());
-                  final currentText = converter.convert();
-                  // final currentText = _quillController.document.toPlainText().trim();
-                  final originalText = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
-
-                  if (currentText != originalText) {
-                    final shouldExit = await General.showDialogConfirmCustom(
-                            context: context,
-                            coreIcon: Icons.help,
-                            coreTheme: Colors.orange,
-                            title: "Perubahan Belum Disimpan",
-                            message:
-                                "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?",
-                            additionalMessage: "",
-                            confirmButtonText: "Ya, Keluar",
-                            cancelButtonText: "Tidakk") ??
-                        false;
-
-                    if (shouldExit == true && context.mounted) {
-                      Navigator.pop(context);
-                    }
-                  } else {
-                    Navigator.pop(context);
-                  }
-                },
-                color: Colors.white,
-              ),
-              actions: [
-                Padding(
-                  padding: EdgeInsets.only(top: 10.0),
-                  child: PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert,
-                      color: Colors.white,
-                    ),
-                    offset: Offset(0, 40),
-                    onSelected: (String result) async {
-                      switch (result) {
-                        case 'complete_toggle':
-                          await toggleCompleteStatus();
-                          break;
-
-                        case 'watch':
-                          final valueWatch = !currentWatch.value;
-                          final data = {"watch": valueWatch};
-
-                          final response = await ApiService.handleTask(
-                            method: 'PUT',
-                            data: data,
-                            taskId: widget.taskId,
-                          );
-
-                          if (response != null) {
-                            currentWatch.value = valueWatch;
-                          }
-                          break;
-                        case 'add_cover':
-                          _pickCover();
-                          break;
-                        case 'del_cover':
-                          deleteCover(widget.taskId);
-                          break;
-                        case 'delete':
-                          deleteTask(widget.taskId);
-                          break;
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => [
-                      PopupMenuItem<String>(
-                        value: 'complete_toggle',
-                        child: Row(
-                          children: [
-                            Icon(
-                              currentIsCompleted.value
-                                  ? Icons.unpublished_outlined
-                                  : Icons.check,
-                              color: currentIsCompleted.value
-                                  ? Colors.red
-                                  : Colors.green,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              currentIsCompleted.value
-                                  ? "Mark as Incomplete"
-                                  : "Mark as Complete",
-                            ),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<String>(
-                        value: 'watch',
-                        child: Row(
-                          children: [
-                            Icon(
-                              currentWatch.value == false
-                                  ? Icons.visibility
-                                  : Icons.visibility,
-                              color: currentWatch.value == false
-                                  ? Colors.blueGrey
-                                  : Colors.blue[900],
-                            ),
-                            SizedBox(width: 8),
-                            Text(currentWatch.value == false
-                                ? "Watch"
-                                : "Stop Watching"),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<String>(
-                        value: currentCover.value == null
-                            ? 'add_cover'
-                            : 'del_cover',
-                        child: Row(
-                          children: [
-                            Icon(currentCover.value == null
-                                ? Icons.image
-                                : Icons.broken_image),
-                            SizedBox(width: 8),
-                            Text(currentCover.value == null
-                                ? "Add Cover"
-                                : "Delete Cover"),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.delete,
-                              color: Colors.red[900],
-                            ),
-                            SizedBox(width: 8),
-                            Text('Delete Task'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            body: RefreshIndicator(
-              onRefresh: _handleRefresh, // Tambahkan ini
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: SingleChildScrollView(
-                  physics:
-                      const AlwaysScrollableScrollPhysics(), // Penting untuk refresh indicator
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Cover
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 3),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(
-                                color: Colors.black,
-                                width: 0.5), // Border tipis
-                            borderRadius:
-                                BorderRadius.circular(8), // Radius container
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(
-                                7.5), // Radius sedikit lebih kecil dari container
-                            child: currentCover.value == null
-                                ? Image.asset(
-                                    'assets/no_cover.png',
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: 120,
-                                  )
-                                : Image.network(
-                                    currentCover.value.toString(),
-                                    fit: BoxFit.cover,
-                                    width: double.infinity,
-                                    height: 120,
-                                  ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(height: 10),
-
-                      //Show Workspace and Board Data
-                      _buildShowSummaryTask(),
-                      SizedBox(height: 10),
-
-                      // Quick Actions
-                      _buildQuickActions(onExpandableValue),
-                      SizedBox(height: 10),
-
-                      // Assigned Member/user
-                      _buildMemberSection(),
-                      SizedBox(height: 10),
-
-                      // Labels
-                      _buildLabelsButton(
-                        onAddingLabel: (labelId) async {
-                          onLoadingNotifier.value = true;
-                          if (!currentLabelIds.contains(labelId)) {
-                            currentLabelIds.add(labelId);
-                          }
-                          final getUpdatedData = await ApiService.handleTask(
-                              method: 'PUT',
-                              taskId: widget.taskId,
-                              boardId: widget.boardId,
-                              data: {'label': currentLabelIds},
-                              contentType: 'application/json');
-
-                          if (getUpdatedData != null && context.mounted) {
-                            General.showSnackBar(
-                                context, 'Update Label: Berhasil');
-                            await onLoadValue();
-                          }
-                        },
-                      ),
-                      SizedBox(height: 20),
-
-                      // Due Dates
-                      _buildDatePickers(),
-                      SizedBox(height: 20),
-
-                      // Description
-                      _buildCardDescription(
-                        quillController: _quillController,
-                        focusNodeDesc: descFocusNode,
-                        showSaveDescButton: showSaveDescButton,
-                        isDescEditing: isEditingDesc,
-                        onSubmitButton: () async {
-                          late String htmlStr;
-                          final delta = _quillController.document.toDelta();
-                          final converter = QuillDeltaToHtmlConverter(delta.toJson());
-                          htmlStr = converter.convert();
-
-                          final plainText = _quillController.document.toPlainText().trim();
-                          if (plainText == ''){
-                            htmlStr = '';
-                            final Delta delta = Delta()..insert('\n'); // baris kosong
-                            _quillController = quill.QuillController(
-                              document: quill.Document.fromDelta(delta),
-                              selection: const TextSelection.collapsed(offset: 0),
-                            );
-                          }
-                          final getUpdatedData = await ApiService.handleTask(
-                            method: 'PUT',
-                            taskId: widget.taskId,
-                            boardId: widget.boardId,
-                            data: {'description': htmlStr},
-                          );
-
-                          if (getUpdatedData != null && context.mounted) {
-                            General.showSnackBar(
-                                context, 'Update Deskripsi: Berhasil');
-                            currentDesc = htmlStr;
-                          } else {
-                            General.showSnackBar(
-                                context, 'Gagal Update Deskripsi ');
-                            currentDesc = htmlStr;
-                          }
-                          await onLoadDesc();
-                          await loadComments();
-                        },
-                        onFormatBold: () => _toggleFormat(quill.Attribute.bold),
-                        onFormatItalic: () => _toggleFormat(quill.Attribute.italic),
-                        onFormatUnderline: () => _toggleFormat(quill.Attribute.underline),
-                        onFormatStrike: () => _toggleFormat(quill.Attribute.strikeThrough),
-                        onFormatCode: () => _toggleFormat(quill.Attribute.codeBlock),
-                        onFormatLink: () async {
-                          final selection = _quillController.selection;
-
-                          if (selection.isCollapsed) {
-                            General.showSnackBar(context, "Pilih teks terlebih dahulu untuk menambahkan link");
-                            return;
-                          }
-
-                          final url = await showDialog<String>(
-                            context: context,
-                            builder: (context) {
-                              String inputUrl = '';
-                              return AlertDialog(
-                                title: Text('Tambahkan Link'),
-                                content: TextField(
-                                  decoration: InputDecoration(
-                                    hintText: 'ex: https://example.com',
-                                  ),
-                                  onChanged: (value) {
-                                    inputUrl = value;
-                                  },
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, null),
-                                    child: Text('Batal'),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, inputUrl),
-                                    child: Text('Simpan'),
-                                  ),
-                                ],
-                              );
-                            },
-                          );
-
-                          if (url != null && url.isNotEmpty) {
-                            _quillController.formatSelection(quill.LinkAttribute(url));
-                          }
-                        },
-                        onFormatAlignLeft: () => _toggleFormat(quill.Attribute.leftAlignment),
-                        onFormatAlignRight: () => _toggleFormat(quill.Attribute.rightAlignment),
-                        onFormatAlignJustify: () => _toggleFormat(quill.Attribute.justifyAlignment),
-                      ),
-                      SizedBox(height: 20),
-
-                      // Attachment
-                      listFileWidget(),
-                      SizedBox(height: 20),
-
-                      // Checklist
-                      _buildAddChecklistSection(widget.taskId),
-                      SizedBox(height: 20),
-
-                      // Comments
-                      _buildAddCommentSection(widget.taskId),
-                      SizedBox(height: 10),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    ));
+    if (confirm == true) {
+      _deleteFile(fileId);
+    }
   }
 
-//=======================End Widget Build===========================================
-  Future<Map<String, int>?> _showMoveDialog(
-      int workspaceId, int boardId) async {
-    List<Map<String, dynamic>> workspaces = [];
-    List<Map<String, dynamic>> boards = [];
-    int? selectedWorkspaceId = workspaceId;
-    int? selectedBoardId = boardId;
-
-    setState(() {
-      _isLoading = true;
-    });
-    try {
-      final response = await ApiService.workspaceFind();
-      if (response.isNotEmpty) {
-        workspaces = List<Map<String, dynamic>>.from(response);
-        if (!workspaces.any((w) => w['id'] == selectedWorkspaceId)) {
-          selectedWorkspaceId = workspaces.first['id']; // Default workspace
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        General.showSnackBar(context, 'Gagal memuat workspace: $e');
-      }
-    }
-
-    Future<void> loadBoards(int workspaceId) async {
-      try {
-        final response = await ApiService.handleBoard(
-            method: "GET", workspaceId: workspaceId);
-        if (response.isNotEmpty) {
-          boards = List<Map<String, dynamic>>.from(response);
-          if (!boards.any((b) => b['id'] == selectedBoardId)) {
-            selectedBoardId = boards.first['id']; // Default board
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          General.showSnackBar(context, 'Gagal memuat board: $e');
-        }
-      }
-    }
-
-    await loadBoards(selectedWorkspaceId!);
-
-    setState(() {
-      _isLoading = false;
-    });
-
-    return await showDialog<Map<String, int>>(
+  Future<void> _showEditFileDialog(
+      int fileId, String currentTitle) async {
+    _fileEditTextController.text = currentTitle;
+    await showDialog(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          child: StatefulBuilder(
-            builder: (context, setModalState) {
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 13, 20, 158),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(16),
-                      ),
-                    ),
-                    child: Center(
-                      child: Icon(Icons.move_to_inbox,
-                          size: 80, color: Colors.white),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Move To',
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
-                  SizedBox(height: 10),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: DropdownButtonFormField<int>(
-                      value: selectedWorkspaceId,
-                      items: workspaces.map((workspace) {
-                        return DropdownMenuItem<int>(
-                          value: workspace['id'],
-                          child: SizedBox(
-                            width: 200, // batas maksimal lebar dropdown item
-                            child: Text(
-                              workspace['name'] ?? '',
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (int? newValue) async {
-                        if (newValue == null) return;
-
-                        setModalState(() {
-                          selectedWorkspaceId = newValue;
-                          selectedBoardId = null;
-                          boards = [];
-                        });
-
-                        try {
-                          final response = await ApiService.handleBoard(
-                            method: "GET",
-                            workspaceId: newValue,
-                          );
-                          if (response.isNotEmpty) {
-                            setModalState(() {
-                              boards =
-                                  List<Map<String, dynamic>>.from(response);
-                              selectedBoardId = boards.first['id'];
-                            });
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            General.showSnackBar(
-                                context, 'Gagal memuat board: $e');
-                          }
-                        }
-                      },
-                      decoration: InputDecoration(
-                        labelText: "Select Workspace",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 16),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20),
-                    child: DropdownButtonFormField<int>(
-                      value: selectedBoardId,
-                      items: boards.map((board) {
-                        return DropdownMenuItem<int>(
-                          value: board['id'],
-                          child: Text(board['name'] ?? ''),
-                        );
-                      }).toList(),
-                      onChanged: (int? newValue) {
-                        setModalState(() {
-                          selectedBoardId = newValue;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        labelText: "Select Board",
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, null),
-                        style: TextButton.styleFrom(
-                          backgroundColor: Colors.grey[600],
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child: Text('Cancel',
-                            style: TextStyle(color: Colors.white)),
-                      ),
-                      TextButton(
-                        onPressed: () => Navigator.pop(context, {
-                          'workspace_id': selectedWorkspaceId!,
-                          'board_id': selectedBoardId!
-                        }),
-                        style: TextButton.styleFrom(
-                          backgroundColor: Color.fromARGB(255, 13, 20, 158),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        child:
-                            Text('Move', style: TextStyle(color: Colors.white)),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                ],
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-//================= Load File dan Comment======================================
-  Future<void> loadFile() async {
-    onLoadingFileNotifier.value = true;
-    final getFileList = await ApiService.handleTaskFile(
-        method: "GET", taskId: widget.taskId, params: {'no_paging': 'yes'});
-
-    onFileNotifier.value = (getFileList is List
-        ? getFileList.map((e) {
-            return {
-              "id": e["id"],
-              "fileName": e["file"]["name"],
-              "filePath": e["file"]["view"],
-              "fileExt": e["file"]["ext"],
-              "fileDownload": e["file"]["content"],
-            };
-          }).toList()
-        : <Map<String, dynamic>>[]);
-
-    onLoadingFileNotifier.value = false;
-  }
-
-  Future<void> loadComments() async {
-    onLoadingCommentNotifier.value = true;
-
-    final response = await ApiService.handleDetailTask(widget.taskId);
-
-    final getComment = response['comment'];
-    if (response != null && getComment != null) {
-      final getCommentData = getComment['data'];
-      final commentData = getCommentData != null && getCommentData is List
-          ? getCommentData
-          : [];
-
-      onCommentNotifier.value = commentData.map((e) {
-        return {
-          "id": e["id"],
-          "comment": e["comment"],
-          "is_history": e["is_history"],
-          "updated_at": e["updated_at"],
-          "user_name": e['created_by']['name'],
-          "user_id": e['created_by']['id'],
-        };
-      }).toList();
-    }
-
-    onLoadingCommentNotifier.value = false;
-  }
-
-  Future<void> loadChecklists() async {
-    onLoadingChecklistNotifier.value = true;
-
-    final checklistData = await ApiService.handleChecklist(
-        method: 'GET', taskId: widget.taskId, params: {'no_paging': 'yes'});
-
-    if (checklistData != null) {
-      checklistItems.value.clear();
-
-      for (final checklist in checklistData) {
-        checklistItems.value[checklist["id"]] = List<Map<String, dynamic>>.from(
-          checklist["item"]?["data"] ?? [],
-        );
-      }
-
-      onChecklistNotifier.value =
-          (checklistData as List).map<Map<String, dynamic>>((checklist) {
-        final map = checklist as Map<String, dynamic>;
-        return {
-          "id": map["id"],
-          "title": map["title"],
-          "task_id": map["task_id"],
-          "check_persentase": map["check_persentase"],
-          "item_count": map["item"]["count"],
-        };
-      }).toList();
-    }
-
-    onLoadingChecklistNotifier.value = false;
-  }
-
-  //==============================End Load File dan Comment=====================
-
-  // Fungsi untuk onRefresh RefreshIndicator==================================
-  Future<void> _handleRefresh() async {
-    await Future.wait([
-      onLoadValue(),
-      loadComments(),
-      loadChecklists(),
-      loadFile(),
-    ]);
-  }
-//End Refresh Indicator======================================================
-
-//Start Summary And Quick Aactions
-  Widget _buildShowSummaryTask() {
-    return Card(
-      color: Colors.white,
-      elevation: 5,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      margin: EdgeInsets.all(5),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Kiri: Informasi workspace dan board
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (workspaceName != "") ...[
-                    Text(
-                      workspaceName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                  if (boardName == "") ...[
-                    SizedBox(height: 9),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Text(
-                          "Prepare your data...",
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                        SizedBox(width: 8), // spasi antara teks dan loader
-                        SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (boardName != "") ...[
-                    SizedBox(height: 4),
-                    Text(
-                      boardName,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                  ],
-                  if (latestUpdatedAt != "" || latestUpdatedBy != "") ...[
-                    SizedBox(height: 12),
-                    Text(
-                      'Latest Update: ${DateFormat('yyyy-MM-dd hh:mm:ss').format(DateTime.parse(latestUpdatedAt))}\nBy $latestUpdatedBy',
-                      style: TextStyle(
-                        fontStyle: FontStyle.italic,
-                        fontSize: 14,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-
-            // Kanan: Tombol "Move"
-            ElevatedButton(
-              onPressed: () async {
-                Map<String, int>? dataDialog = await _showMoveDialog(
-                  currentWorkspaceId.value,
-                  currentBoardId.value,
-                );
-
-                if (dataDialog != null) {
-                  final data = {"board_id": dataDialog["board_id"]};
-
-                  final response = await ApiService.handleTask(
-                    method: 'PUT',
-                    data: data,
-                    taskId: widget.taskId,
-                  );
-
-                  if (response != null) {
-                    General.showSnackBar(context, "Task berhasil dipindahkan");
-                    await onLoadValue();
-                    setState(() {});
-                  } else {
-                    General.showSnackBar(context, "Gagal memindahkan task");
-                  }
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: _isLoading
-                  ? SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text('Move'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions(ValueNotifier<bool> onExpandableValue) {
-    return ValueListenableBuilder(
-      valueListenable: onExpandableValue,
-      builder: (context, expandletrue, _) {
-        return Container(
-          margin: EdgeInsets.symmetric(
-              vertical: 8, horizontal: 8), // Margin di sekitar panel
-          decoration: BoxDecoration(
-            color: Colors.white, // Background color untuk container
-            borderRadius: BorderRadius.circular(12), // Sudut membulat
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1), // Warna shadow
-                blurRadius: 6, // Blur shadow
-                spreadRadius: 2, // Spread shadow
-              ),
-            ],
-          ),
-          child: ExpansionPanelList(
-            elevation: 0, // Menghilangkan shadow default
-            expandedHeaderPadding: EdgeInsets.all(16),
-            expansionCallback: (int index, bool isExpanded) {
-              onExpandableValue.value = isExpanded;
-            },
-            children: [
-              ExpansionPanel(
-                backgroundColor: expandletrue ? Colors.white38 : Colors.white70,
-                headerBuilder: (BuildContext context, bool isExpanded) {
-                  return InkWell(
-                    onTap: () {
-                      final currentValueExpandale = onExpandableValue.value;
-                      onExpandableValue.value = !currentValueExpandale;
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        'Quick Actions',
-                        style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                    ),
-                  );
-                },
-                body: Padding(
-                  padding:
-                      const EdgeInsets.only(left: 16, right: 16, bottom: 16),
-                  child: Wrap(
-                    runSpacing: 15,
-                    spacing: 10,
-                    children: [
-                      // Baris Pertama: Checklist & Members
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.9,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Flexible(
-                              child: ElevatedButton.icon(
-                                onPressed: () async {
-                                  _showAddChecklistDialog(widget.taskId);
-                                },
-                                icon: Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                                label: Text(
-                                  'Add Checklist',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      const Color.fromARGB(255, 27, 169, 11),
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 12, horizontal: 15),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 20,
-                                  shadowColor:
-                                      const Color.fromARGB(255, 255, 255, 255)
-                                          .withOpacity(0.4),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 10),
-                            Flexible(
-                              child: ElevatedButton.icon(
-                                icon: Icon(
-                                  Icons.person_add_alt_1_rounded,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                                onPressed: _showAddMemberDialog,
-                                label: Text(
-                                  'Add Members',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor:
-                                      const Color.fromARGB(255, 144, 9, 156),
-                                  padding: EdgeInsets.symmetric(
-                                      vertical: 12, horizontal: 20),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 10,
-                                  shadowColor:
-                                      const Color.fromARGB(255, 255, 255, 255)
-                                          .withOpacity(0.4),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      // Baris Kedua: Attachment
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          minWidth: MediaQuery.of(context).size.width * 0.8,
-                        ),
-                        child: ElevatedButton.icon(
-                          icon: Icon(
-                            Icons.attach_file_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          onPressed: () async {
-                            onLoadingNotifier.value = true;
-                            onLoadingFileNotifier.value = true;
-
-                            AsPathResponse? croppedValue;
-                            await uploadPhotoFromFile(
-                              context,
-                              filePicked: (onFilePicker, type) {
-                                final path = onFilePicker.path;
-                                final mimeType = lookupMimeType(path!);
-                                MediaType fileType = MediaType.parse(mimeType!);
-
-                                croppedValue = AsPathResponse(
-                                  path: path,
-                                  fileName: onFilePicker.name
-                                      .toString()
-                                      .replaceAll(" ", "_"),
-                                  fileExtension:
-                                      type.toString().replaceAll("jpeg", "jpg"),
-                                  fileType: fileType,
-                                );
-                              },
-                              cropImages: (onSelectedPhoto) async {
-                                croppedValue = await cropImages(
-                                  context: context,
-                                  path: onSelectedPhoto,
-                                );
-                              },
-                            );
-
-                            final currentCropped = croppedValue;
-                            if (currentCropped != null) {
-                              final listFile = await Future.wait([
-                                http.MultipartFile.fromPath(
-                                  'file',
-                                  currentCropped.path!,
-                                  contentType: currentCropped.fileType,
-                                )
-                              ]);
-
-                              await ApiService.handleTaskFile(
-                                method: 'POST',
-                                taskId: widget.taskId,
-                                listFile: listFile,
-                                data: {
-                                  "task_id": widget.taskId.toString(),
-                                },
-                              );
-                            }
-                            loadFile();
-                            loadComments();
-                            onLoadingNotifier.value = false;
-                            onLoadingFileNotifier.value = false;
-                          },
-                          label: Text(
-                            'Add Attachment',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor:
-                                const Color.fromARGB(255, 9, 61, 150),
-                            padding: EdgeInsets.symmetric(
-                                vertical: 12, horizontal: 25),
-                            minimumSize: Size(double.infinity, 48),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 10,
-                            shadowColor: Colors.black.withOpacity(0.4),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                isExpanded: expandletrue,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-// end quick actions and summary========================================
-
-  Widget _buildCardDescription({
-    required quill.QuillController quillController,
-    required FocusNode focusNodeDesc,
-    required Future<void> Function() onSubmitButton,
-    required ValueNotifier<bool> showSaveDescButton,
-    required ValueNotifier<bool> isDescEditing,
-    required void Function() onFormatBold,
-    required void Function() onFormatItalic,
-    required void Function() onFormatUnderline,
-    required void Function() onFormatStrike,
-    required void Function() onFormatCode,
-    required void Function() onFormatLink,
-    required void Function() onFormatAlignLeft,
-    required void Function() onFormatAlignRight,
-    required void Function() onFormatAlignJustify,
-  }) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: Offset(3, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Description", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                IconButton(icon: Icon(Icons.format_bold), onPressed: onFormatBold),
-                IconButton(icon: Icon(Icons.format_italic), onPressed: onFormatItalic),
-                IconButton(icon: Icon(Icons.format_underline), onPressed: onFormatUnderline),
-                IconButton(icon: Icon(Icons.format_strikethrough), onPressed: onFormatStrike),
-                IconButton(icon: Icon(Icons.code), onPressed: onFormatCode),
-                IconButton(icon: Icon(Icons.link), onPressed: onFormatLink),
-                IconButton(icon: Icon(Icons.format_align_left), onPressed: onFormatAlignLeft),
-                IconButton(icon: Icon(Icons.format_align_right), onPressed: onFormatAlignRight),
-                IconButton(icon: Icon(Icons.format_align_justify), onPressed: onFormatAlignJustify),
-              ],
-            ),
-          ),
-          SizedBox(height: 10),
-          ValueListenableBuilder<bool>(
-            valueListenable: isDescEditing,
-            builder: (context, editing, _) {
-              return GestureDetector(
-                onTap: () {
-                  if (!editing) {
-                    isDescEditing.value = true;
-                    FocusScope.of(context).requestFocus(focusNodeDesc);
-                  }
-                },
-                child: AbsorbPointer(
-                  absorbing: !editing,
-                  child: Container(
-                    constraints: BoxConstraints(
-                      minHeight: 150,
-                      maxHeight: double.infinity,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: FutureBuilder<bool>(
-                      future: Future.delayed(Duration(milliseconds: 300), () => true),
-                      builder: (context, snapshot) {
-                        quillController.readOnly = !editing;
-                        return quill.QuillEditor.basic(
-                          controller: quillController,
-                          focusNode: focusNodeDesc,
-                          scrollController: ScrollController(),
-                          config: quill.QuillEditorConfig(
-                            scrollable: false,
-                            expands: false,
-                            padding: EdgeInsets.all(8),
-                            showCursor: editing
-                          ),
-                        );
-                      },
-                    )
-                  ),
-                ),
-              );
-            },
-          ),
-          SizedBox(height: 10),
-          ValueListenableBuilder<bool>(
-            valueListenable: showSaveDescButton,
-            builder: (context, show, child) {
-              final double buttonHeight = 40.0;
-              final double buttonRadius = 12.0;
-              final double buttonFontSize = 16.0;
-              return show
-                  ? ElevatedButton(
-                      focusNode: FocusNode(),
-                      onPressed: () async {
-                        FocusScope.of(context).requestFocus(FocusNode());
-                        await onSubmitButton();
-                        showSaveDescButton.value = false;
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(buttonRadius),
-                        ),
-                        fixedSize: Size.fromHeight(buttonHeight),
-                      ),
-                      child: Text(
-                        "Simpan",
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: buttonFontSize,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    )
-                  : SizedBox();
-            },
-          )
-        ],
-      ),
-    );
-  }
-
-//===================================Label=====================================
-  Widget _buildLabelsButton(
-      {required Future<void> Function(int) onAddingLabel}) {
-    final double buttonHeight = 40.0;
-    final double buttonRadius = 17.0;
-    final double buttonFontSize = 14.0;
-    final double horizontalPadding = 12.0;
-
-    return Container(
-      width: MediaQuery.of(context).size.width,
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white, // Warna background box
-        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withOpacity(0.1), // Warna shadow
-              spreadRadius: 2, // Jarak shadow
-              blurRadius: 5, // Ukuran blur shadow
-              offset: Offset(0, 3)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Labels",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-          SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: ElevatedButton.icon(
-              icon: Icon(Icons.add,
-                  color: Colors.white, size: buttonFontSize + 4),
-              label: Text(
-                'Add Label',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: buttonFontSize,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(buttonRadius),
-                ),
-                // biarkan width fleksibel, tetapi ketinggian terjaga:
-                minimumSize: Size(0, buttonHeight),
-                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              ),
-              onPressed: () async {
-                final id = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => LabelScreen()),
-                );
-                if (id != null) await onAddingLabel(id);
-              },
-            ),
-          ),
-          SizedBox(height: 8), // Jarak antara tombol dan label
-          ValueListenableBuilder(
-            valueListenable: notifierLabelColor,
-            builder: (context, value, child) {
-              if (value.isNotEmpty) {
-                return SizedBox(
-                  height: 40, // Sesuaikan tinggi agar label terlihat
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: value.map((label) {
-                        return GestureDetector(
-                          onTap: () async {
-                            final confirmDelete =
-                                await General.showDialogDelete(
-                                    context: context,
-                                    title: "Hapus Label",
-                                    message: "Apakah Yakin Menghapus Label ?",
-                                    confirmButtonText: "Hapus",
-                                    cancelButtonText: "Batal");
-
-                            if (confirmDelete == true) {
-                              // Hapus label dari daftar
-                              currentLabelIds.remove(label.$3);
-
-                              // Perbarui ValueNotifier
-                              notifierLabelColor.value =
-                                  List.from(notifierLabelColor.value)
-                                    ..remove(label);
-
-                              // Kirim data terbaru ke API
-                              onLoadingNotifier.value = true;
-                              final getUpdatedData =
-                                  await ApiService.handleTask(
-                                method: 'PUT',
-                                taskId: widget.taskId,
-                                boardId: widget.boardId,
-                                data: {'label': currentLabelIds},
-                                contentType: 'application/json',
-                              );
-
-                              if (getUpdatedData != null && context.mounted) {
-                                General.showSnackBar(
-                                    context, 'Label berhasil dihapus');
-                                loadComments();
-                              }
-                              onLoadingNotifier.value = false;
-                            }
-                          },
-                          child: Container(
-                            margin: EdgeInsets.only(right: 8),
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 12, vertical: 8),
-                            decoration: BoxDecoration(
-                              borderRadius:
-                                  BorderRadius.all(Radius.circular(12)),
-                              color: label.$2, // Warna dari label
-                            ),
-                            child: Text(
-                              label.$1, // Nama label
-                              style: TextStyle(
-                                  color: Colors.white), // Teks lebih kontras
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                );
-              }
-              return Container();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-//=====================end Label============================================
-
-//=========== Date dan Due Date===========================================
-
-  Widget _buildDatePickers() {
-    return ValueListenableBuilder<DateTime?>(
-      valueListenable: onEndDateNotifier,
-      builder: (context, selectedDate, child) {
-        final double buttonHeight = 40.0;
-        final double buttonRadius = 17.0;
-        final double buttonFontSize = 14.0;
-        final double horizontalPadding = 12.0;
-        final dateText = selectedDate != null
-            ? DateFormat('EEEE, dd MMMM yyyy - HH:mm WIB').format(selectedDate)
-            : 'Belum ada Deadline';
-
-        return Container(
-          width: MediaQuery.of(context).size.width,
-          padding: EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white, // Warna background box
-            borderRadius: BorderRadius.circular(12), // Radius sudut kotak
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1), // Warna shadow
-                spreadRadius: 2, // Jarak shadow
-                blurRadius: 5, // Ukuran blur shadow
-                offset: Offset(0, 3), // Posisi shadow
-              ),
-            ],
-          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text("Due Date",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              SizedBox(
-                height: 5,
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Color.fromARGB(255, 18, 168, 243),
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(16),
+                  ),
+                ),
+                child: Center(
+                  child: Icon(Icons.edit_note, size: 80, color: Colors.white),
+                ),
               ),
+              SizedBox(height: 20),
+              Text(
+                'Rename File',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
               Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: Text(
-                  dateText,
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: selectedDate != null ? Colors.black : Colors.grey,
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: TextField(
+                  controller: _fileEditTextController,
+                  decoration: InputDecoration(
+                    hintText: 'Enter file name',
+                    border: OutlineInputBorder(),
                   ),
                 ),
               ),
-
-              // Tombol Pilih Tanggal & Hapus
+              SizedBox(height: 20),
               Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  // Tombol “Pilih Tanggal”
-                  ElevatedButton.icon(
-                    icon: Icon(Icons.calendar_today,
-                        color: Colors.white, size: buttonFontSize + 2),
-                    label: Text(
-                      "Pilih Tanggal",
-                      style: TextStyle(
-                          color: Colors.white, fontSize: buttonFontSize),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: Size(0, buttonHeight),
-                      padding:
-                          EdgeInsets.symmetric(horizontal: horizontalPadding),
-                      backgroundColor: Colors.blue,
+                  TextButton(
+                    onPressed: () {
+                      _fileEditTextController.clear();
+                      Navigator.pop(context);
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.grey[600],
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(buttonRadius),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    onPressed: () => _pickDueDate(context),
+                    child:
+                        Text('Cancel', style: TextStyle(color: Colors.white)),
                   ),
-                  SizedBox(width: 10),
-                  if (selectedDate != null)
-                    ElevatedButton.icon(
-                      icon: Icon(Icons.cancel),
-                      label: Text(
-                        "Hapus",
-                        style: TextStyle(color: Colors.white),
+                  TextButton(
+                    onPressed: () async {
+                      final itemTitle =
+                          _fileEditTextController.text.trim();
+                      if (itemTitle.isNotEmpty) {
+                        _renameFile(fileId, itemTitle);
+                        _fileEditTextController.clear();
+                        Navigator.pop(context);
+                      }
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
-                      ),
-                      onPressed: () async {
-                        onLoadingNotifier.value = true;
-
-                        final getUpdatedData = await ApiService.handleTask(
-                          method: 'PUT',
-                          taskId: widget.taskId,
-                          boardId: widget.boardId,
-                          data: {'due_date': ''},
-                        );
-
-                        if (getUpdatedData != null) {
-                          onEndDateNotifier.value = null;
-                          loadComments();
-                        }
-
-                        onLoadingNotifier.value = false;
-                      },
                     ),
+                    child: Text('Rename', style: TextStyle(color: Colors.white)),
+                  ),
                 ],
               ),
+              SizedBox(height: 20),
             ],
           ),
         );
@@ -2330,7 +1229,157 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
-  Future<void> _pickDueDate(BuildContext context) async {
+  ImageProvider getImage(String fileFormat, String path) {
+    switch (fileFormat) {
+      case "pdf":
+        return AssetImage("assets/pdf.png");
+      case "docx":
+        return AssetImage("assets/docx.png");
+      case "pptx":
+        return AssetImage("assets/pptx.png");
+      case "csv":
+        return AssetImage("assets/csv.png");
+      case "mp3":
+        return AssetImage("assets/mp3.png");
+      case "mp4":
+        return AssetImage("assets/mp4.png");
+      case "txt":
+        return AssetImage("assets/txt.png");
+      case "xlsx":
+        return AssetImage("assets/xlsx.png");
+      default:
+        return NetworkImage(path);
+    }
+  }
+
+  // ============================== CHECKLIST ============================== //
+
+  // API
+  Future<void> _addChecklist(int taskId) async {
+    if (textChecklistController.text.isEmpty) return;
+
+    final data = {
+      "title": textChecklistController.text,
+    };
+
+    final response = await ApiService.handleChecklist(
+      method: 'POST',
+      taskId: taskId,
+      data: data,
+    );
+
+    if (response != null) {
+      textChecklistController.clear();
+      await loadChecklists();
+      await loadComments();
+    }
+  }
+
+  Future<void> _editChecklist(int checklistId, String itemTitle) async {
+    final data = {
+      'title': itemTitle,
+    };
+
+    final response = await ApiService.handleChecklist(
+      method: 'PUT',
+      checklistId: checklistId,
+      data: data,
+    );
+
+    if (response != null) {
+      await loadChecklists(); // Refresh checklist setelah menambah item
+      await loadComments();
+    }
+  }
+
+  Future<void> _removeChecklist(int checklistId) async {
+    final response = await ApiService.handleChecklist(
+      method: 'DELETE',
+      checklistId: checklistId,
+    );
+
+    if (response != null) {
+      await loadChecklists();
+      await loadComments();
+    }
+  }
+  
+  Future<void> _addItemToChecklist(int checklistId, String itemTitle) async {
+    final data = {
+      'title': itemTitle,
+    };
+
+    final response = await ApiService.handleChecklistItem(
+      method: 'POST',
+      checklistId: checklistId,
+      data: data,
+    );
+
+    if (response != null) {
+      await loadChecklists();
+      await loadComments();
+    }
+  }
+
+  Future<void> _editChecklistItem(int itemId, String itemTitle) async {
+    final data = {
+      'title': itemTitle,
+    };
+
+    final response = await ApiService.handleChecklistItem(
+      method: 'PUT',
+      checklistItemId: itemId,
+      data: data,
+    );
+
+    if (response != null) {
+      await loadChecklists(); // Refresh checklist setelah menambah item
+      await loadComments();
+    }
+  }
+
+  Future<void> _toggleItemCompletion(int itemId, bool isCompleted) async {
+    final data = {'is_completed': isCompleted};
+
+    final response = await ApiService.handleChecklistItem(
+      method: 'PUT',
+      checklistItemId: itemId,
+      data: data,
+    );
+
+    if (response != null) {
+      // Setelah update, refresh checklist
+      await loadChecklists(); // Refresh checklist setelah mengupdate status item
+      await loadComments();
+    }
+  }
+
+  Future<void> _deleteItemChecklist(int itemId) async {
+    final response = await ApiService.handleChecklistItem(
+      method: 'DELETE',
+      checklistItemId: itemId,
+    );
+
+    if (response != null) {
+      await loadChecklists();
+      await loadComments();
+    }
+  }
+
+  Future<void> _convertItemChecklistToTask(int itemId) async {
+    final response = await ApiService.handleChecklistItem(
+      method: 'PATCH',
+      checklistItemId: itemId,
+    );
+
+    if (response != null) {
+      await loadChecklists();
+      await loadComments();
+    }
+  }
+
+  Future<void> _pickDueDateChecklistItem(
+      BuildContext context, int itemId) async {
     final initialDate = onEndDateNotifier.value ?? DateTime.now();
 
     final datePicker = await showDatePicker(
@@ -2367,20 +1416,15 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         onLoadingNotifier.value = true;
 
         try {
-          final getUpdatedData = await ApiService.handleTask(
+          final response = await ApiService.handleChecklistItem(
             method: 'PUT',
-            taskId: widget.taskId,
-            boardId: widget.boardId,
+            checklistItemId: itemId,
             data: {'due_date': dueDate},
           );
 
-          if (getUpdatedData != null) {
-            onEndDateNotifier.value = selectedDate;
-            General.showSnackBar(
-                context, "Waktu Deadline berhasil ditambahkan");
-            loadComments();
-          } else {
-            General.showSnackBar(context, "Gagal Menambahkan Tanggal e");
+          if (response != null) {
+            await loadChecklists();
+            await loadComments();
           }
         } catch (e) {
           General.showSnackBar(context, "Gagal Menambahkan Tanggal e: $e");
@@ -2391,366 +1435,44 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     }
   }
 
-  //============================================================================
+  Future<void> _deleteDueDateItemChecklist(int itemId) async {
 
-// =============== COMMENT =====================================================
-  Widget _buildCommentList() {
-    return ValueListenableBuilder(
-      valueListenable: onCommentNotifier,
-      builder: (context, commentList, child) {
-        if (commentList.isEmpty) {
-          return Center(child: Text('Belum ada komentar'));
-        }
-
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: commentList.length,
-          itemBuilder: (context, index) {
-            final comment = commentList[index];
-            return ListTile(
-              leading: comment['is_history'] == true
-                  ? Image.asset(
-                      'assets/selaras_logo2.png',
-                      width: 40,
-                      height: 40,
-                    )
-                  : CircleAvatar(
-                      backgroundColor: General.getColorFromInitial(
-                        General.getInitials(comment['user_name']),
-                      ),
-                      child: Text(
-                        General.getInitials(comment['user_name']),
-                      ),
-                    ),
-              title: Text(comment['user_name']),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(comment['comment']),
-                  Text(
-                    DateFormat('dd MMM yyyy HH:mm').format(
-                      DateTime.parse(comment['updated_at']).toUtc(),
-                    ),
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
-              ),
-              trailing: (comment['is_history'] == false &&
-                      comment['user_id'] ==
-                          int.tryParse(userProfile['id'].toString()))
-                  ? PopupMenuButton<String>(
-                      icon: Icon(Icons.more_vert),
-                      offset: Offset(0, 40),
-                      onSelected: (String result) async {
-                        switch (result) {
-                          case 'edit':
-                            _showEditCommentDialog(
-                                comment['id'], comment['comment']);
-                            break;
-                          case 'delete':
-                            await _deleteComment(comment['id']);
-                            break;
-                        }
-                      },
-                      itemBuilder: (context) => [
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Text('Edit'),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text('Delete'),
-                        ),
-                      ],
-                    )
-                  : null,
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Future<void> _addComment(int taskId) async {
-    if (textCommentController.text.isEmpty) return;
-
-    final data = {"comment": textCommentController.text};
-
-    final response = await ApiService.handleComment(
-      method: 'POST',
-      data: data,
-      taskId: taskId,
-    );
-
-    if (response != null) {
-      textCommentController.clear();
-      await loadComments();
-    }
-  }
-
-  Future<void> _showEditCommentDialog(
-      int commentId, String currentComment) async {
-    textEditCommentController.text = currentComment;
-
-    await General.showDialogEdit(
-      context: context,
-      controller: textEditCommentController,
-      existingItems: [],
-      itemName: 'Comment',
-      hintText: 'Enter your comment: ',
-      emptyFieldMessage: 'Comment cannot be empty.',
-      duplicateMessage: 'Duplicate comment found.',
-      onSave: (data) async {
-        final updatedComment = data['name'];
-        try {
-          await _editComment(commentId, updatedComment);
-        } catch (e) {
-          General.showSnackBar(context, 'Failed to update comment: $e');
-        }
-      },
-    );
-  }
-
-  Future<void> _editComment(int commentId, String comment) async {
-    final data = {"comment": comment};
-
-    final response = await ApiService.handleComment(
+    final response = await ApiService.handleChecklistItem(
       method: 'PUT',
-      data: data,
-      commentId: commentId,
+      checklistItemId: itemId,
+      data: {'due_date': ""},
     );
 
     if (response != null) {
-      textEditCommentController.clear();
+      await loadChecklists();
       await loadComments();
     }
   }
-
-  Future<void> _deleteComment(int commentId) async {
-    final response = await ApiService.handleComment(
-      method: 'DELETE',
-      commentId: commentId,
-    );
-
-    if (response != null) {
-      await loadComments();
-    }
-  }
-
-  Widget _buildAddCommentSection(int taskId) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    return Container(
-      padding: EdgeInsets.all(16), // Padding di dalam container
-      decoration: BoxDecoration(
-        color: Colors.white, // Warna background box
-        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1), // Warna shadow
-            spreadRadius: 2, // Jarak shadow
-            blurRadius: 5, // Ukuran blur shadow
-            offset: Offset(0, 3), // Posisi shadow
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Activity",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              FutureBuilder<Map<String, String>>(
-                future: userProfileFuture,
-                builder: (context, snapshot) {
-                  final initials =
-                      General.getInitials(snapshot.data?['name'] ?? 'U');
-                  final bgColor = General.getColorFromInitial(initials);
-                  final textColor = General.getContrastingTextColor(bgColor);
-                  // String initial =
-                  //     General.getInitials();
-                  return Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: Colors.black, // Warna border
-                        width: 1, // Ketebalan border
-                      ),
-                    ),
-                    child: CircleAvatar(
-                      radius: screenWidth * 0.065,
-                      backgroundColor: bgColor,
-                      child: Text(
-                        initials,
-                        style: TextStyle(
-                          fontSize: screenWidth *
-                              0.06, // Ukuran font sesuai dengan lebar layar
-                          fontWeight: FontWeight.bold,
-                          color: textColor, // Warna teks
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              SizedBox(width: 10),
-              Expanded(
-                flex: 6,
-                child: TextField(
-                  controller: textCommentController,
-                  focusNode: commentFocusNode,
-                  decoration: InputDecoration(
-                    hintText: 'Add Comment',
-                    hintStyle: TextStyle(color: Colors.grey[500]),
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    suffixIcon: InkWell(
-                      onTap: () async {
-                        await _addComment(taskId);
-                      },
-                      child: Icon(Icons.check_circle),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          ValueListenableBuilder(
-            valueListenable: onLoadingNotifier,
-            builder: (context, value, child) {
-              return Container(
-                constraints: BoxConstraints(
-                  minHeight: 300,
-                  maxHeight: double.infinity,
-                ),
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: _buildCommentList(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-  //===================================End Comment==============================
-
-//======================Start Checklist=========================================
-  Widget _buildChecklistList() {
-    return ValueListenableBuilder(
-      valueListenable: onChecklistNotifier,
-      builder: (context, checklistList, child) {
-        if (checklistList.isEmpty) {
-          return Center(child: Text('Belum ada checklist'));
+  
+  // UI
+  Future<void> _showAddChecklistDialog(int taskId) async {
+    await General.showDialogAdd(
+      context: context,
+      title: 'Add Checklist',
+      hintText: 'Enter Checklist title',
+      controller: textChecklistController,
+      onConfirm: (input) async {
+        // Mempertahankan logika validasi asli
+        if (input.isEmpty) {
+          return false;
         }
 
-        return ListView.builder(
-          shrinkWrap: true,
-          physics: NeverScrollableScrollPhysics(),
-          itemCount: checklistList.length,
-          itemBuilder: (context, index) {
-            final checklist = checklistList[index];
-
-            return Card(
-              color: Colors.white,
-              margin: EdgeInsets.symmetric(vertical: 5),
-              child: ListTile(
-                title: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        // Menampilkan judul checklist dengan scroll horizontal + onTap
-                        Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: GestureDetector(
-                              onTap: () {
-                                _showEditChecklistDialog(
-                                    checklist['id'], checklist['title']);
-                              },
-                              child: Row(
-                                children: [
-                                  Text(
-                                    checklist['title'] ?? 'No title',
-                                    style: TextStyle(fontSize: 16),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                        // Tombol tambah item
-                        IconButton(
-                          icon: Icon(Icons.add),
-                          onPressed: () {
-                            _showAddItemDialog(checklist['id']);
-                          },
-                        ),
-                        // Tombol hapus checklist
-                        IconButton(
-                          icon: Icon(Icons.remove_circle),
-                          onPressed: () async {
-                            await _removeChecklist(checklist['id']);
-                          },
-                        ),
-                      ],
-                    ),
-                    SizedBox(height: 4),
-                    // Progress bar & label persentase
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TweenAnimationBuilder<double>(
-                          tween: Tween<double>(
-                            begin: 0,
-                            end: double.tryParse(checklist['check_persentase']
-                                        ?.replaceAll('%', '') ??
-                                    '0')! /
-                                100,
-                          ),
-                          duration: Duration(milliseconds: 800),
-                          builder: (context, value, child) {
-                            return LinearProgressIndicator(
-                              value: value,
-                              minHeight: 6,
-                              color: Colors.green,
-                              backgroundColor: Colors.grey[300],
-                            );
-                          },
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          checklist['check_persentase'] ?? '0%',
-                          style:
-                              TextStyle(fontSize: 12, color: Colors.grey[700]),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                subtitle: Column(
-                  children: [
-                    SizedBox(height: 5),
-                    _buildItemList(checklist[
-                        'id']), // Tampilkan item berdasarkan ID checklist
-                    SizedBox(height: 5),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
+        // Mempertahankan logika penambahan checklist asli
+        try {
+          await _addChecklist(taskId);
+          return true;
+        } catch (e) {
+          // Error handling sesuai reusable dialog
+          throw e;
+        }
       },
+      confirmButtonText: 'Add',
+      cancelButtonText: 'Cancel',
     );
   }
 
@@ -2839,331 +1561,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildItemList(int checklistId) {
-    final items = checklistItems.value[checklistId] ?? [];
-    final mq = MediaQuery.of(context).size;
-
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: NeverScrollableScrollPhysics(),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        bool isChecked = item['is_completed'] ?? false;
-
-        // --- due date widget ---
-        Widget? dueWidget;
-        if (item['due_date'] != null) {
-          final dueDate = DateTime.parse(item['due_date']);
-          final isPast = dueDate.isBefore(DateTime.now());
-
-          dueWidget = GestureDetector(
-            onTap: () async {
-              bool confirmed =
-                  await _showDeleteDueDateItemChecklistConfirmationDialog();
-              if (confirmed) {
-                await _deleteDueDateItemChecklist(item['id']);
-              }
-            },
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: mq.width * 0.008,
-                vertical: mq.height * 0.008,
-              ),
-              decoration: BoxDecoration(
-                color: isChecked
-                    ? Colors.green.withOpacity(0.2)
-                    : (isPast
-                        ? Colors.red.withOpacity(0.2)
-                        : Colors.black.withOpacity(0.1)),
-                borderRadius: BorderRadius.circular(5),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.alarm,
-                    size: mq.width * 0.028,
-                    color: isChecked
-                        ? Colors.green
-                        : (isPast ? Colors.red : Colors.black),
-                  ),
-                  SizedBox(width: mq.width * 0.015),
-                  Text(
-                    DateFormat(dueDate.year.toString() !=
-                                DateTime.now().year.toString()
-                            ? 'MMM dd, yyyy'
-                            : 'MMM dd')
-                        .format(dueDate),
-                    style: TextStyle(
-                      fontSize: mq.width * 0.028,
-                      color: isChecked
-                          ? Colors.green
-                          : (isPast ? Colors.red : Colors.black),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-
-        // --- avatar widget (lebih kecil) ---
-        Widget? avatarWidget;
-        if (item['assign_to_user'] != null) {
-          avatarWidget = SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                for (var member in item['assign_to_user']["data"] as List)
-                  Padding(
-                    padding: EdgeInsets.only(right: mq.width * 0.009),
-                    child: CircleAvatar(
-                      radius: mq.width * 0.03,
-                      backgroundColor: General.getColorFromInitial(
-                          General.getInitials(member['name'])),
-                      child: FittedBox(
-                        child: Text(
-                          General.getInitials(member['name']),
-                          style: TextStyle(
-                              fontSize: mq.width * 0.03,
-                              color: General.getContrastingTextColor(
-                                  General.getColorFromInitial(
-                                      General.getInitials(member['name'])))),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          );
-        }
-
-        // --- bottom row jika ada avatar atau due date ---
-        Widget? bottomRow;
-        if (avatarWidget != null || dueWidget != null) {
-          bottomRow = Padding(
-            // <<-- Padding kiri untuk align dengan title/di bawah checkbox
-            padding: EdgeInsets.only(
-              top: mq.height * 0.003,
-              left: mq.width * 0.02,
-            ),
-            child: Row(
-              children: [
-                if (avatarWidget != null) Expanded(child: avatarWidget),
-                if (avatarWidget != null && dueWidget != null)
-                  SizedBox(width: mq.width * 0.02),
-                if (dueWidget != null) dueWidget,
-              ],
-            ),
-          );
-        }
-
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: mq.height * 0.005),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey, width: 1.0),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: mq.width * 0.025,
-                vertical: mq.height * 0.008,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top row: checkbox, title, menu
-                  Row(
-                    children: [
-                      Checkbox(
-                        key: ValueKey(isChecked),
-                        value: isChecked,
-                        onChanged: (bool? value) async {
-                          await _toggleItemCompletion(item['id'], !isChecked);
-                        },
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4)),
-                      ),
-                      SizedBox(width: mq.width * 0.01),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            _showEditChecklistItemDialog(
-                                item['id'], item['title']);
-                          },
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: Text(
-                              item['title'] ?? 'No item',
-                              style: TextStyle(
-                                color: isChecked ? Colors.grey : Colors.black,
-                                decoration: isChecked
-                                    ? TextDecoration.lineThrough
-                                    : null,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.fade,
-                              softWrap: true,
-                            ),
-                          ),
-                        ),
-                      ),
-                      PopupMenuButton<String>(
-                        icon: Icon(Icons.more_vert, color: Colors.black),
-                        offset: Offset(0, mq.height * 0.05),
-                        onSelected: (String result) async {
-                          switch (result) {
-                            case 'move':
-                              Map<String, int>? dataDialog =
-                                  await _showMoveItemDialog(checklistId);
-
-                              if (dataDialog != null) {
-                                final data = {
-                                  "task_checklist_id":
-                                      dataDialog["task_checklist_id"]
-                                };
-
-                                final response =
-                                    await ApiService.handleChecklistItem(
-                                        method: 'PUT',
-                                        data: data,
-                                        checklistItemId: item['id']);
-
-                                if (response != null) {
-                                  await loadChecklists();
-                                  await loadComments();
-                                  General.showSnackBar(
-                                      context, "Item berhasil dipindahkan");
-                                } else {
-                                  General.showSnackBar(
-                                      context, "Gagal memindahkan item");
-                                }
-                              }
-                            case 'due_date':
-                              await _pickDueDateChecklistItem(
-                                  context, item['id']);
-                              break;
-                            case 'member':
-                              ValueNotifier<List<Map<String, dynamic>>>
-                                  assignedMembers =
-                                  ValueNotifier<List<Map<String, dynamic>>>(
-                                List<Map<String, dynamic>>.from(
-                                    item['assign_to_user']?["data"] ?? []),
-                              );
-                              await _showAssignedMembersChecklistItemDialog(
-                                  context, assignedMembers, item['id']);
-                              break;
-                            case 'convert':
-                              bool confirmed =
-                                  await _showConvertItemChecklistToTaskConfirmationDialog();
-                              if (confirmed) {
-                                await _convertItemChecklistToTask(item['id']);
-                              }
-                              break;
-                            case 'delete':
-                              bool confirmed =
-                                  await _showDeleteItemChecklistConfirmationDialog();
-                              if (confirmed) {
-                                await _deleteItemChecklist(item['id']);
-                              }
-                              break;
-                          }
-                        },
-                        itemBuilder: (BuildContext context) => [
-                          PopupMenuItem<String>(
-                            value: 'move',
-                            child: Row(
-                              children: [
-                                Icon(Icons.move_to_inbox),
-                                SizedBox(width: 8),
-                                Text('Move Item'),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'due_date',
-                            child: Row(
-                              children: [
-                                Icon(Icons.calendar_today),
-                                SizedBox(width: 8),
-                                Text('Add Due Date'),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'member',
-                            child: Row(
-                              children: [
-                                Icon(Icons.person_add),
-                                SizedBox(width: 8),
-                                Text('Add Member'),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'convert',
-                            child: Row(
-                              children: [
-                                Icon(Icons.add_task),
-                                SizedBox(width: 8),
-                                Text('Convert to Task'),
-                              ],
-                            ),
-                          ),
-                          PopupMenuItem<String>(
-                            value: 'delete',
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete),
-                                SizedBox(width: 8),
-                                Text('Delete Item'),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-
-                  // Tampilkan bottom row tanpa '!' dan hanya jika non-null
-                  if (bottomRow != null) bottomRow,
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _showAddChecklistDialog(int taskId) async {
-    await General.showDialogAdd(
-      context: context,
-      title: 'Add Checklist',
-      hintText: 'Enter Checklist title',
-      controller: textChecklistController,
-      onConfirm: (input) async {
-        // Mempertahankan logika validasi asli
-        if (input.isEmpty) {
-          return false;
-        }
-
-        // Mempertahankan logika penambahan checklist asli
-        try {
-          await _addChecklist(taskId);
-          return true;
-        } catch (e) {
-          // Error handling sesuai reusable dialog
-          throw e;
-        }
-      },
-      confirmButtonText: 'Add',
-      cancelButtonText: 'Cancel',
     );
   }
 
@@ -3277,40 +1674,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
-  Future<void> _addItemToChecklist(int checklistId, String itemTitle) async {
-    final data = {
-      'title': itemTitle,
-    };
-
-    final response = await ApiService.handleChecklistItem(
-      method: 'POST',
-      checklistId: checklistId,
-      data: data,
-    );
-
-    if (response != null) {
-      await loadChecklists();
-      await loadComments();
-    }
-  }
-
-  Future<void> _editChecklist(int checklistId, String itemTitle) async {
-    final data = {
-      'title': itemTitle,
-    };
-
-    final response = await ApiService.handleChecklist(
-      method: 'PUT',
-      checklistId: checklistId,
-      data: data,
-    );
-
-    if (response != null) {
-      await loadChecklists(); // Refresh checklist setelah menambah item
-      await loadComments();
-    }
-  }
-
   Future<void> _showEditChecklistItemDialog(
       int itemId, String currentTitle) async {
     _checklistEditTextController.text = currentTitle;
@@ -3334,39 +1697,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
-  Future<void> _editChecklistItem(int itemId, String itemTitle) async {
-    final data = {
-      'title': itemTitle,
-    };
-
-    final response = await ApiService.handleChecklistItem(
-      method: 'PUT',
-      checklistItemId: itemId,
-      data: data,
-    );
-
-    if (response != null) {
-      await loadChecklists(); // Refresh checklist setelah menambah item
-      await loadComments();
-    }
-  }
-
-  Future<void> _toggleItemCompletion(int itemId, bool isCompleted) async {
-    final data = {'is_completed': isCompleted};
-
-    final response = await ApiService.handleChecklistItem(
-      method: 'PUT',
-      checklistItemId: itemId,
-      data: data,
-    );
-
-    if (response != null) {
-      // Setelah update, refresh checklist
-      await loadChecklists(); // Refresh checklist setelah mengupdate status item
-      await loadComments();
-    }
-  }
-
   Future<bool> _showDeleteItemChecklistConfirmationDialog() async {
     return await General.showDialogConfirmDelete(
             context: context,
@@ -3376,18 +1706,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             confirmButtonText: "Hapus",
             cancelButtonText: "Batal") ??
         false;
-  }
-
-  Future<void> _deleteItemChecklist(int itemId) async {
-    final response = await ApiService.handleChecklistItem(
-      method: 'DELETE',
-      checklistItemId: itemId,
-    );
-
-    if (response != null) {
-      await loadChecklists();
-      await loadComments();
-    }
   }
 
   Future<bool> _showConvertItemChecklistToTaskConfirmationDialog() async {
@@ -3404,87 +1722,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
         false;
   }
 
-  Future<void> _convertItemChecklistToTask(int itemId) async {
-    final response = await ApiService.handleChecklistItem(
-      method: 'PATCH',
-      checklistItemId: itemId,
-    );
-
-    if (response != null) {
-      await loadChecklists();
-      await loadComments();
-    }
-  }
-
-  Future<void> _removeChecklist(int checklistId) async {
-    final response = await ApiService.handleChecklist(
-      method: 'DELETE',
-      checklistId: checklistId,
-    );
-
-    if (response != null) {
-      await loadChecklists();
-      await loadComments();
-    }
-  }
-
-  Future<void> _pickDueDateChecklistItem(
-      BuildContext context, int itemId) async {
-    final initialDate = onEndDateNotifier.value ?? DateTime.now();
-
-    final datePicker = await showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2500),
-      fieldLabelText: "Waktu Akhir Task",
-    );
-
-    if (datePicker != null && context.mounted) {
-      final currentTime = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay.fromDateTime(initialDate),
-      );
-
-      if (currentTime != null) {
-        final selectedDate = datePicker.copyWith(
-          hour: currentTime.hour,
-          minute: currentTime.minute,
-        );
-
-        final now = DateTime.now();
-
-        // ✅ VALIDASI: waktu tidak boleh di masa lalu
-        if (selectedDate.isBefore(now)) {
-          General.showSnackBar(context, "Waktu Deadline Tidak Valid");
-          return;
-        }
-
-        final dueDate =
-            DateFormat("yyyy-MM-dd HH:mm:ss").format(selectedDate.toLocal());
-
-        onLoadingNotifier.value = true;
-
-        try {
-          final response = await ApiService.handleChecklistItem(
-            method: 'PUT',
-            checklistItemId: itemId,
-            data: {'due_date': dueDate},
-          );
-
-          if (response != null) {
-            await loadChecklists();
-            await loadComments();
-          }
-        } catch (e) {
-          General.showSnackBar(context, "Gagal Menambahkan Tanggal e: $e");
-        }
-
-        onLoadingNotifier.value = false;
-      }
-    }
-  }
-
   Future<bool> _showDeleteDueDateItemChecklistConfirmationDialog() async {
     return await General.showDialogConfirmDelete(
             context: context,
@@ -3494,20 +1731,6 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
             confirmButtonText: "Hapus",
             cancelButtonText: "Batal") ??
         false;
-  }
-
-  Future<void> _deleteDueDateItemChecklist(int itemId) async {
-
-    final response = await ApiService.handleChecklistItem(
-      method: 'PUT',
-      checklistItemId: itemId,
-      data: {'due_date': ""},
-    );
-
-    if (response != null) {
-      await loadChecklists();
-      await loadComments();
-    }
   }
 
   Future<void> _showAssignedMembersChecklistItemDialog(
@@ -4041,242 +2264,833 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
-  Widget _buildAddChecklistSection(int taskId) {
-    return Container(
-      padding: EdgeInsets.all(16), // Padding di dalam container
-      decoration: BoxDecoration(
-        color: Colors.white, // Warna background box
-        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1), // Warna shadow
-            spreadRadius: 2, // Jarak shadow
-            blurRadius: 5, // Ukuran blur shadow
-            offset: Offset(0, 3), // Posisi shadow
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Checklist",
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                flex: 6,
-                child: TextField(
-                  controller: textChecklistController,
-                  focusNode: checklistFocusNode,
-                  decoration: InputDecoration(
-                    hintText: 'Add checklist item',
-                    hintStyle: TextStyle(color: Colors.grey[500]),
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    suffixIcon: InkWell(
-                      onTap: () async {
-                        await _addChecklist(taskId);
-                      },
-                      child: Icon(Icons.check_circle),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 10),
-          ValueListenableBuilder(
-            valueListenable: onLoadingChecklistNotifier,
-            builder: (context, value, child) {
-              return Container(
-                constraints: BoxConstraints(
-                  minHeight: 300,
-                  maxHeight: double.infinity,
-                ),
-                padding: EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[200],
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                // Menampilkan daftar checklist
-                child: _buildChecklistList(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
+  // ============================== ACTIVITY ============================== //
+  Future<void> _addComment(int taskId) async {
+    if (textCommentController.text.isEmpty) return;
 
-  Future<void> _addChecklist(int taskId) async {
-    if (textChecklistController.text.isEmpty) return;
+    final data = {"comment": textCommentController.text};
 
-    final data = {
-      "title": textChecklistController.text,
-    };
-
-    final response = await ApiService.handleChecklist(
+    final response = await ApiService.handleComment(
       method: 'POST',
-      taskId: taskId,
       data: data,
+      taskId: taskId,
     );
 
     if (response != null) {
-      textChecklistController.clear();
-      await loadChecklists();
+      textCommentController.clear();
       await loadComments();
     }
   }
 
-//======================End Checklist===========================================
+  Future<void> _editComment(int commentId, String comment) async {
+    final data = {"comment": comment};
 
-//================================Start Attachment==============================
-  void _deleteFile(int fileId) async {
-    try {
-      // Memanggil API untuk menghapus file
-      await ApiService.handleTaskFile(
-        method: 'DELETE',
-        taskId: widget.taskId,
-        fileId: fileId, // ID file yang akan dihapus
-      );
+    final response = await ApiService.handleComment(
+      method: 'PUT',
+      data: data,
+      commentId: commentId,
+    );
 
-      // Jika berhasil, lakukan sesuatu, misalnya memuat ulang data
-      setState(() {
-        loadFile();
-        loadComments();
-      });
-
-      // Tampilkan snackbar atau feedback kepada pengguna
-      General.showSnackBar(context, "File berhasil dihapus");
-    } catch (e) {
-      // Tangani error jika terjadi kesalahan
-      General.showSnackBar(context, "Gagal menghapus file, coba lagi.");
+    if (response != null) {
+      textEditCommentController.clear();
+      await loadComments();
     }
   }
 
-  void _renameFile(int fileId, String fileName) async {
-    try {
-      final data = {"name": fileName};
-      // Memanggil API untuk menghapus file
-      await ApiService.handleTaskFile(
-        method: 'PUT',
-        taskId: widget.taskId,
-        fileId: fileId, // ID file yang akan dihapus
-        data: data,
-      );
+  Future<void> _deleteComment(int commentId) async {
+    final response = await ApiService.handleComment(
+      method: 'DELETE',
+      commentId: commentId,
+    );
 
-      // Jika berhasil, lakukan sesuatu, misalnya memuat ulang data
-      setState(() {
-        loadFile();
-        loadComments();
-      });
-
-      // Tampilkan snackbar atau feedback kepada pengguna
-      General.showSnackBar(context, "Nama File berhasil diganti");
-    } catch (e) {
-      // Tangani error jika terjadi kesalahan
-      General.showSnackBar(context, "Gagal mengganti nama file, coba lagi.");
+    if (response != null) {
+      await loadComments();
     }
   }
 
-  void _showDeleteConfirmationDialog(int fileId) async {
-    final confirm = await General.showDialogDelete(
-        context: context,
-        title: "Hapus File",
-        message: "Apakah Anda Yakin Ingin Menghapus File Ini ? ",
-        confirmButtonText: "Hapus",
-        cancelButtonText: "Batal");
+  Future<void> _showEditCommentDialog(
+      int commentId, String currentComment) async {
+    textEditCommentController.text = currentComment;
 
-    if (confirm == true) {
-      _deleteFile(fileId);
-    }
-  }
-
-  Future<void> _showEditFileDialog(
-      int fileId, String currentTitle) async {
-    _fileEditTextController.text = currentTitle;
-    await showDialog(
+    await General.showDialogEdit(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Color.fromARGB(255, 18, 168, 243),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(16),
-                  ),
+      controller: textEditCommentController,
+      existingItems: [],
+      itemName: 'Comment',
+      hintText: 'Enter your comment: ',
+      emptyFieldMessage: 'Comment cannot be empty.',
+      duplicateMessage: 'Duplicate comment found.',
+      onSave: (data) async {
+        final updatedComment = data['name'];
+        try {
+          await _editComment(commentId, updatedComment);
+        } catch (e) {
+          General.showSnackBar(context, 'Failed to update comment: $e');
+        }
+      },
+    );
+  }
+
+
+  // ============================== WIDGET BUILD ============================== //
+  @override
+  Widget build(BuildContext context) {
+    return ConnectionChecker(
+        child: PopScope(
+      canPop: !titleFocusNode.hasFocus && !descFocusNode.hasFocus && !isEditingDesc.value,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (titleFocusNode.hasFocus) titleFocusNode.unfocus();
+        if (descFocusNode.hasFocus) descFocusNode.unfocus();
+        if (isEditingDesc.value) isEditingDesc.value = false;
+        if (checklistFocusNode.hasFocus) checklistFocusNode.unfocus();
+        if (commentFocusNode.hasFocus) commentFocusNode.unfocus();
+
+        if (didPop) return;
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          titleFocusNode.unfocus();
+          descFocusNode.unfocus();
+          checklistFocusNode.unfocus();
+          commentFocusNode.unfocus();
+          isEditingDesc.value = false;
+        },
+        child: ValueListenableBuilder(
+          valueListenable: onLoadingNotifier,
+          builder: (context, value, child) {
+            return Stack(
+              children: [
+                child ?? Container(),
+                if (value) ...{
+                  loadingScreenWidget(context),
+                },
+              ],
+            );
+          },
+          child: Scaffold(
+            appBar: AppBar(
+              backgroundColor: Colors.red[900],
+              title: TextField(
+                controller: textTitleController,
+                focusNode: titleFocusNode,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
                 ),
-                child: Center(
-                  child: Icon(Icons.edit_note, size: 80, color: Colors.white),
+                decoration: InputDecoration(
+                  border: InputBorder.none,
                 ),
+                onEditingComplete: () async {
+                  final value = textTitleController.text;
+
+                  if (value.isNotEmpty) {
+                    final data = {"title": value};
+
+                    final response = await ApiService.handleTask(
+                      method: 'PUT',
+                      data: data,
+                      taskId: widget.taskId,
+                    );
+
+                    if (response != null) {
+                      // Jika API berhasil, kita update text controller dengan nilai yang dikirim
+                      textTitleController.text =
+                          value; // Pastikan text controller memiliki nilai terbaru
+                    }
+                    titleFocusNode.unfocus();
+                  }
+                },
               ),
-              SizedBox(height: 20),
-              Text(
-                'Rename File',
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              SizedBox(height: 10),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20),
-                child: TextField(
-                  controller: _fileEditTextController,
-                  decoration: InputDecoration(
-                    hintText: 'Enter file name',
-                    border: OutlineInputBorder(),
-                  ),
-                ),
-              ),
-              SizedBox(height: 20),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  TextButton(
-                    onPressed: () {
-                      _fileEditTextController.clear();
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back),
+                onPressed: () async {
+                  final delta = _quillController.document.toDelta();
+                  final converter = QuillDeltaToHtmlConverter(delta.toJson());
+                  final currentText = converter.convert();
+                  // final currentText = _quillController.document.toPlainText().trim();
+                  final originalText = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
+
+                  if (currentText != originalText) {
+                    final shouldExit = await General.showDialogConfirmCustom(
+                            context: context,
+                            coreIcon: Icons.help,
+                            coreTheme: Colors.orange,
+                            title: "Perubahan Belum Disimpan",
+                            message:
+                                "Anda Memiliki Perubahan yang belum disimpan, yakin ingin keluar?",
+                            additionalMessage: "",
+                            confirmButtonText: "Ya, Keluar",
+                            cancelButtonText: "Tidakk") ??
+                        false;
+
+                    if (shouldExit == true && context.mounted) {
                       Navigator.pop(context);
-                    },
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.grey[600],
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
+                    }
+                  } else {
+                    Navigator.pop(context);
+                  }
+                },
+                color: Colors.white,
+              ),
+              actions: [
+                Padding(
+                  padding: EdgeInsets.only(top: 10.0),
+                  child: PopupMenuButton<String>(
+                    icon: Icon(
+                      Icons.more_vert,
+                      color: Colors.white,
                     ),
-                    child:
-                        Text('Cancel', style: TextStyle(color: Colors.white)),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      final itemTitle =
-                          _fileEditTextController.text.trim();
-                      if (itemTitle.isNotEmpty) {
-                        _renameFile(fileId, itemTitle);
-                        _fileEditTextController.clear();
-                        Navigator.pop(context);
+                    offset: Offset(0, 40),
+                    onSelected: (String result) async {
+                      switch (result) {
+                        case 'complete_toggle':
+                          await toggleCompleteStatus();
+                          break;
+
+                        case 'watch':
+                          final valueWatch = !currentWatch.value;
+                          final data = {"watch": valueWatch};
+
+                          final response = await ApiService.handleTask(
+                            method: 'PUT',
+                            data: data,
+                            taskId: widget.taskId,
+                          );
+
+                          if (response != null) {
+                            currentWatch.value = valueWatch;
+                          }
+                          break;
+                        case 'add_cover':
+                          _pickCover();
+                          break;
+                        case 'del_cover':
+                          deleteCover(widget.taskId);
+                          break;
+                        case 'delete':
+                          deleteTask(widget.taskId);
+                          break;
                       }
                     },
-                    style: TextButton.styleFrom(
-                      backgroundColor: Color.fromARGB(255, 13, 20, 158),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    itemBuilder: (BuildContext context) => [
+                      PopupMenuItem<String>(
+                        value: 'complete_toggle',
+                        child: Row(
+                          children: [
+                            Icon(
+                              currentIsCompleted.value
+                                  ? Icons.unpublished_outlined
+                                  : Icons.check,
+                              color: currentIsCompleted.value
+                                  ? Colors.red
+                                  : Colors.green,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              currentIsCompleted.value
+                                  ? "Mark as Incomplete"
+                                  : "Mark as Complete",
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'watch',
+                        child: Row(
+                          children: [
+                            Icon(
+                              currentWatch.value == false
+                                  ? Icons.visibility
+                                  : Icons.visibility,
+                              color: currentWatch.value == false
+                                  ? Colors.blueGrey
+                                  : Colors.blue[900],
+                            ),
+                            SizedBox(width: 8),
+                            Text(currentWatch.value == false
+                                ? "Watch"
+                                : "Stop Watching"),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: currentCover.value == null
+                            ? 'add_cover'
+                            : 'del_cover',
+                        child: Row(
+                          children: [
+                            Icon(currentCover.value == null
+                                ? Icons.image
+                                : Icons.broken_image),
+                            SizedBox(width: 8),
+                            Text(currentCover.value == null
+                                ? "Add Cover"
+                                : "Delete Cover"),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.delete,
+                              color: Colors.red[900],
+                            ),
+                            SizedBox(width: 8),
+                            Text('Delete Task'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            body: RefreshIndicator(
+              onRefresh: _handleRefresh, // Tambahkan ini
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SingleChildScrollView(
+                  physics:
+                      const AlwaysScrollableScrollPhysics(), // Penting untuk refresh indicator
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Cover
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                                color: Colors.black,
+                                width: 0.5), // Border tipis
+                            borderRadius:
+                                BorderRadius.circular(8), // Radius container
+                          ),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(
+                                7.5), // Radius sedikit lebih kecil dari container
+                            child: currentCover.value == null
+                                ? Image.asset(
+                                    'assets/no_cover.png',
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 120,
+                                  )
+                                : Image.network(
+                                    currentCover.value.toString(),
+                                    fit: BoxFit.cover,
+                                    width: double.infinity,
+                                    height: 120,
+                                  ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: 10),
+
+                      //Show Workspace and Board Data
+                      _buildShowSummaryTask(),
+                      SizedBox(height: 10),
+
+                      // Quick Actions
+                      _buildQuickActions(onExpandableValue),
+                      SizedBox(height: 10),
+
+                      // Assigned Member/user
+                      _buildMemberSection(),
+                      SizedBox(height: 10),
+
+                      // Labels
+                      _buildLabelsButton(
+                        onAddingLabel: (labelId) async {
+                          onLoadingNotifier.value = true;
+                          if (!currentLabelIds.contains(labelId)) {
+                            currentLabelIds.add(labelId);
+                          }
+                          final getUpdatedData = await ApiService.handleTask(
+                              method: 'PUT',
+                              taskId: widget.taskId,
+                              boardId: widget.boardId,
+                              data: {'label': currentLabelIds},
+                              contentType: 'application/json');
+
+                          if (getUpdatedData != null && context.mounted) {
+                            General.showSnackBar(
+                                context, 'Update Label: Berhasil');
+                            await onLoadValue();
+                          }
+                        },
+                      ),
+                      SizedBox(height: 20),
+
+                      // Due Dates
+                      _buildDatePickers(),
+                      SizedBox(height: 20),
+
+                      // Description
+                      _buildCardDescription(
+                        quillController: _quillController,
+                        focusNodeDesc: descFocusNode,
+                        showSaveDescButton: showSaveDescButton,
+                        isDescEditing: isEditingDesc,
+                        onSubmitButton: () async {
+                          late String htmlStr;
+                          final delta = _quillController.document.toDelta();
+                          final converter = QuillDeltaToHtmlConverter(delta.toJson());
+                          htmlStr = converter.convert();
+
+                          final plainText = _quillController.document.toPlainText().trim();
+                          if (plainText == ''){
+                            htmlStr = '';
+                            final Delta delta = Delta()..insert('\n'); // baris kosong
+                            _quillController = quill.QuillController(
+                              document: quill.Document.fromDelta(delta),
+                              selection: const TextSelection.collapsed(offset: 0),
+                            );
+                          }
+                          final getUpdatedData = await ApiService.handleTask(
+                            method: 'PUT',
+                            taskId: widget.taskId,
+                            boardId: widget.boardId,
+                            data: {'description': htmlStr},
+                          );
+
+                          if (getUpdatedData != null && context.mounted) {
+                            General.showSnackBar(
+                                context, 'Update Deskripsi: Berhasil');
+                            currentDesc = htmlStr;
+                          } else {
+                            General.showSnackBar(
+                                context, 'Gagal Update Deskripsi ');
+                            currentDesc = htmlStr;
+                          }
+                          await onLoadDesc();
+                          await loadComments();
+                        },
+                        onFormatBold: () => _toggleFormat(quill.Attribute.bold),
+                        onFormatItalic: () => _toggleFormat(quill.Attribute.italic),
+                        onFormatUnderline: () => _toggleFormat(quill.Attribute.underline),
+                        onFormatStrike: () => _toggleFormat(quill.Attribute.strikeThrough),
+                        onFormatCode: () => _toggleFormat(quill.Attribute.codeBlock),
+                        onFormatLink: () async {
+                          final selection = _quillController.selection;
+
+                          if (selection.isCollapsed) {
+                            General.showSnackBar(context, "Pilih teks terlebih dahulu untuk menambahkan link");
+                            return;
+                          }
+
+                          final url = await showDialog<String>(
+                            context: context,
+                            builder: (context) {
+                              String inputUrl = '';
+                              return AlertDialog(
+                                title: Text('Tambahkan Link'),
+                                content: TextField(
+                                  decoration: InputDecoration(
+                                    hintText: 'ex: https://example.com',
+                                  ),
+                                  onChanged: (value) {
+                                    inputUrl = value;
+                                  },
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, null),
+                                    child: Text('Batal'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, inputUrl),
+                                    child: Text('Simpan'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+
+                          if (url != null && url.isNotEmpty) {
+                            _quillController.formatSelection(quill.LinkAttribute(url));
+                          }
+                        },
+                        onFormatAlignLeft: () => _toggleFormat(quill.Attribute.leftAlignment),
+                        onFormatAlignRight: () => _toggleFormat(quill.Attribute.rightAlignment),
+                        onFormatAlignJustify: () => _toggleFormat(quill.Attribute.justifyAlignment),
+                      ),
+                      SizedBox(height: 20),
+
+                      // Attachment
+                      listFileWidget(),
+                      SizedBox(height: 20),
+
+                      // Checklist
+                      _buildAddChecklistSection(widget.taskId),
+                      SizedBox(height: 20),
+
+                      // Comments
+                      _buildAddCommentSection(widget.taskId),
+                      SizedBox(height: 10),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    ));
+  }
+
+
+  // ============================== STACK WIDGET ============================== //
+
+  // ============================== SUMMARY TASK ============================== //
+  Widget _buildShowSummaryTask() {
+    return Card(
+      color: Colors.white,
+      elevation: 5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      margin: EdgeInsets.all(5),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Kiri: Informasi workspace dan board
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (workspaceName != "") ...[
+                    Text(
+                      workspaceName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
                       ),
                     ),
-                    child: Text('Rename', style: TextStyle(color: Colors.white)),
-                  ),
+                  ],
+                  if (boardName == "") ...[
+                    SizedBox(height: 9),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          "Prepare your data...",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        SizedBox(width: 8), // spasi antara teks dan loader
+                        SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (boardName != "") ...[
+                    SizedBox(height: 4),
+                    Text(
+                      boardName,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ],
+                  if (latestUpdatedAt != "" || latestUpdatedBy != "") ...[
+                    SizedBox(height: 12),
+                    Text(
+                      'Latest Update: ${DateFormat('yyyy-MM-dd hh:mm:ss').format(DateTime.parse(latestUpdatedAt))}\nBy $latestUpdatedBy',
+                      style: TextStyle(
+                        fontStyle: FontStyle.italic,
+                        fontSize: 14,
+                        color: Colors.grey[700],
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              SizedBox(height: 20),
+            ),
+
+            // Kanan: Tombol "Move"
+            ElevatedButton(
+              onPressed: () async {
+                Map<String, int>? dataDialog = await _showMoveDialog(
+                  currentWorkspaceId.value,
+                  currentBoardId.value,
+                );
+
+                if (dataDialog != null) {
+                  final data = {"board_id": dataDialog["board_id"]};
+
+                  final response = await ApiService.handleTask(
+                    method: 'PUT',
+                    data: data,
+                    taskId: widget.taskId,
+                  );
+
+                  if (response != null) {
+                    General.showSnackBar(context, "Task berhasil dipindahkan");
+                    await onLoadValue();
+                    setState(() {});
+                  } else {
+                    General.showSnackBar(context, "Gagal memindahkan task");
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: _isLoading
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Text('Move'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ============================== QUICK ACTION ============================== //
+  Widget _buildQuickActions(ValueNotifier<bool> onExpandableValue) {
+    return ValueListenableBuilder(
+      valueListenable: onExpandableValue,
+      builder: (context, expandletrue, _) {
+        return Container(
+          margin: EdgeInsets.symmetric(
+              vertical: 8, horizontal: 8), // Margin di sekitar panel
+          decoration: BoxDecoration(
+            color: Colors.white, // Background color untuk container
+            borderRadius: BorderRadius.circular(12), // Sudut membulat
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1), // Warna shadow
+                blurRadius: 6, // Blur shadow
+                spreadRadius: 2, // Spread shadow
+              ),
+            ],
+          ),
+          child: ExpansionPanelList(
+            elevation: 0, // Menghilangkan shadow default
+            expandedHeaderPadding: EdgeInsets.all(16),
+            expansionCallback: (int index, bool isExpanded) {
+              onExpandableValue.value = isExpanded;
+            },
+            children: [
+              ExpansionPanel(
+                backgroundColor: expandletrue ? Colors.white38 : Colors.white70,
+                headerBuilder: (BuildContext context, bool isExpanded) {
+                  return InkWell(
+                    onTap: () {
+                      final currentValueExpandale = onExpandableValue.value;
+                      onExpandableValue.value = !currentValueExpandale;
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Text(
+                        'Quick Actions',
+                        style: TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ),
+                  );
+                },
+                body: Padding(
+                  padding:
+                      const EdgeInsets.only(left: 16, right: 16, bottom: 16),
+                  child: Wrap(
+                    runSpacing: 15,
+                    spacing: 10,
+                    children: [
+                      // Baris Pertama: Checklist & Members
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.9,
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: ElevatedButton.icon(
+                                onPressed: () async {
+                                  _showAddChecklistDialog(widget.taskId);
+                                },
+                                icon: Icon(
+                                  Icons.check,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  'Add Checklist',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      const Color.fromARGB(255, 27, 169, 11),
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 15),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 20,
+                                  shadowColor:
+                                      const Color.fromARGB(255, 255, 255, 255)
+                                          .withOpacity(0.4),
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Flexible(
+                              child: ElevatedButton.icon(
+                                icon: Icon(
+                                  Icons.person_add_alt_1_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                onPressed: _showAddMemberDialog,
+                                label: Text(
+                                  'Add Members',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      const Color.fromARGB(255, 144, 9, 156),
+                                  padding: EdgeInsets.symmetric(
+                                      vertical: 12, horizontal: 20),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 10,
+                                  shadowColor:
+                                      const Color.fromARGB(255, 255, 255, 255)
+                                          .withOpacity(0.4),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Baris Kedua: Attachment
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minWidth: MediaQuery.of(context).size.width * 0.8,
+                        ),
+                        child: ElevatedButton.icon(
+                          icon: Icon(
+                            Icons.attach_file_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          onPressed: () async {
+                            onLoadingNotifier.value = true;
+                            onLoadingFileNotifier.value = true;
+
+                            AsPathResponse? croppedValue;
+                            await uploadPhotoFromFile(
+                              context,
+                              filePicked: (onFilePicker, type) {
+                                final path = onFilePicker.path;
+                                final mimeType = lookupMimeType(path!);
+                                MediaType fileType = MediaType.parse(mimeType!);
+
+                                croppedValue = AsPathResponse(
+                                  path: path,
+                                  fileName: onFilePicker.name
+                                      .toString()
+                                      .replaceAll(" ", "_"),
+                                  fileExtension:
+                                      type.toString().replaceAll("jpeg", "jpg"),
+                                  fileType: fileType,
+                                );
+                              },
+                              cropImages: (onSelectedPhoto) async {
+                                croppedValue = await cropImages(
+                                  context: context,
+                                  path: onSelectedPhoto,
+                                );
+                              },
+                            );
+
+                            final currentCropped = croppedValue;
+                            if (currentCropped != null) {
+                              final listFile = await Future.wait([
+                                http.MultipartFile.fromPath(
+                                  'file',
+                                  currentCropped.path!,
+                                  contentType: currentCropped.fileType,
+                                )
+                              ]);
+
+                              await ApiService.handleTaskFile(
+                                method: 'POST',
+                                taskId: widget.taskId,
+                                listFile: listFile,
+                                data: {
+                                  "task_id": widget.taskId.toString(),
+                                },
+                              );
+                            }
+                            loadFile();
+                            loadComments();
+                            onLoadingNotifier.value = false;
+                            onLoadingFileNotifier.value = false;
+                          },
+                          label: Text(
+                            'Add Attachment',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor:
+                                const Color.fromARGB(255, 9, 61, 150),
+                            padding: EdgeInsets.symmetric(
+                                vertical: 12, horizontal: 25),
+                            minimumSize: Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 10,
+                            shadowColor: Colors.black.withOpacity(0.4),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                isExpanded: expandletrue,
+              ),
             ],
           ),
         );
@@ -4284,6 +3098,566 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     );
   }
 
+  // ============================== MEMBER ============================== //
+  Widget _buildMemberSection() {
+    return ValueListenableBuilder2<List<Map<String, dynamic>>, bool>(
+      first: assignedMembersNotifier,
+      second: isMemberExpanded,
+      builder: (context, members, expanded, _) {
+        return Container(
+          margin: EdgeInsets.symmetric(
+              vertical: 8, horizontal: 8), // Margin di sekitar panel
+          decoration: BoxDecoration(
+            color: Colors.white, // Background color untuk container
+            borderRadius: BorderRadius.circular(12), // Sudut membulat
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1), // Warna shadow
+                blurRadius: 6, // Blur shadow
+                spreadRadius: 2, // Spread shadow
+              ),
+            ],
+          ),
+
+          child: ExpansionPanelList(
+            elevation: 1,
+            expandedHeaderPadding: EdgeInsets.all(0),
+            expansionCallback: (int index, bool isExpanded) {
+              isMemberExpanded.value = isExpanded;
+            },
+            children: [
+              ExpansionPanel(
+                backgroundColor: Colors.white,
+                headerBuilder: (context, isExpanded) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Assigned Members',
+                      style:
+                          TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                  );
+                },
+                isExpanded: expanded,
+                body: members.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text('No members assigned yet.'),
+                      )
+                    : Column(
+                        children: members.map((member) {
+                          final initials = General.getInitials(member['name']);
+                          final bgColor = General.getColorFromInitial(initials);
+                          // pilih warna teks yang kontras
+                          final textColor =
+                              General.getContrastingTextColor(bgColor);
+                          return ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: bgColor,
+                              child: Text(
+                                initials,
+                                style: TextStyle(color: textColor),
+                              ),
+                            ),
+                            title: Text(member['name']),
+                            subtitle:
+                                Text(member['role'] + ' - ' + member['divisi']),
+                            trailing: IconButton(
+                              icon: Icon(Icons.close, color: Colors.red),
+                              onPressed: () async {
+                                final confirm = await General.showDialogDelete(
+                                    context: context,
+                                    title: "Hapus User",
+                                    message:
+                                        "Apakah Yakin Ingin Menghapus User ini?",
+                                    confirmButtonText: "Hapus",
+                                    cancelButtonText: "Batal");
+
+                                if (confirm == true) {
+                                  try {
+                                    // Buat array baru tanpa user yang dihapus
+                                    final remainingIds = assignedMembersNotifier
+                                        .value
+                                        .where((u) => u['id'] != member['id'])
+                                        .map((u) => u['id'] as int)
+                                        .toList();
+
+                                    final res = await ApiService.handleTask(
+                                      method: "PUT",
+                                      taskId: widget.taskId,
+                                      data: {
+                                        "assign_to_user": remainingIds,
+                                      },
+                                    );
+
+                                    if (res != null) {
+                                      await onLoadValue();
+                                      setState(() {});
+                                      General.showSnackBar(
+                                          context, "Berhasil menghapus user");
+                                    }
+                                  } catch (e) {
+                                    General.showSnackBar(
+                                        context, "Gagal menghapus: $e");
+                                  }
+                                }
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ============================== LABEL ============================== //
+  Widget _buildLabelsButton(
+      {required Future<void> Function(int) onAddingLabel}) {
+    final double buttonHeight = 40.0;
+    final double buttonRadius = 17.0;
+    final double buttonFontSize = 14.0;
+    final double horizontalPadding = 12.0;
+
+    return Container(
+      width: MediaQuery.of(context).size.width,
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white, // Warna background box
+        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        boxShadow: [
+          BoxShadow(
+              color: Colors.black.withOpacity(0.1), // Warna shadow
+              spreadRadius: 2, // Jarak shadow
+              blurRadius: 5, // Ukuran blur shadow
+              offset: Offset(0, 3)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Labels",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+          SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ElevatedButton.icon(
+              icon: Icon(Icons.add,
+                  color: Colors.white, size: buttonFontSize + 4),
+              label: Text(
+                'Add Label',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: buttonFontSize,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(buttonRadius),
+                ),
+                // biarkan width fleksibel, tetapi ketinggian terjaga:
+                minimumSize: Size(0, buttonHeight),
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              ),
+              onPressed: () async {
+                final id = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => LabelScreen()),
+                );
+                if (id != null) await onAddingLabel(id);
+              },
+            ),
+          ),
+          SizedBox(height: 8), // Jarak antara tombol dan label
+          ValueListenableBuilder(
+            valueListenable: notifierLabelColor,
+            builder: (context, value, child) {
+              if (value.isNotEmpty) {
+                return SizedBox(
+                  height: 40, // Sesuaikan tinggi agar label terlihat
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: value.map((label) {
+                        return GestureDetector(
+                          onTap: () async {
+                            final confirmDelete =
+                                await General.showDialogDelete(
+                                    context: context,
+                                    title: "Hapus Label",
+                                    message: "Apakah Yakin Menghapus Label ?",
+                                    confirmButtonText: "Hapus",
+                                    cancelButtonText: "Batal");
+
+                            if (confirmDelete == true) {
+                              // Hapus label dari daftar
+                              currentLabelIds.remove(label.$3);
+
+                              // Perbarui ValueNotifier
+                              notifierLabelColor.value =
+                                  List.from(notifierLabelColor.value)
+                                    ..remove(label);
+
+                              // Kirim data terbaru ke API
+                              onLoadingNotifier.value = true;
+                              final getUpdatedData =
+                                  await ApiService.handleTask(
+                                method: 'PUT',
+                                taskId: widget.taskId,
+                                boardId: widget.boardId,
+                                data: {'label': currentLabelIds},
+                                contentType: 'application/json',
+                              );
+
+                              if (getUpdatedData != null && context.mounted) {
+                                General.showSnackBar(
+                                    context, 'Label berhasil dihapus');
+                                loadComments();
+                              }
+                              onLoadingNotifier.value = false;
+                            }
+                          },
+                          child: Container(
+                            margin: EdgeInsets.only(right: 8),
+                            padding: EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.all(Radius.circular(12)),
+                              color: label.$2, // Warna dari label
+                            ),
+                            child: Text(
+                              label.$1, // Nama label
+                              style: TextStyle(
+                                  color: Colors.white), // Teks lebih kontras
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                );
+              }
+              return Container();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================== DUE DATE ============================== //
+  Widget _buildDatePickers() {
+    return ValueListenableBuilder<DateTime?>(
+      valueListenable: onEndDateNotifier,
+      builder: (context, selectedDate, child) {
+        final double buttonHeight = 40.0;
+        final double buttonRadius = 17.0;
+        final double buttonFontSize = 14.0;
+        final double horizontalPadding = 12.0;
+        final dateText = selectedDate != null
+            ? DateFormat('EEEE, dd MMMM yyyy - HH:mm WIB').format(selectedDate)
+            : 'Belum ada Deadline';
+
+        return Container(
+          width: MediaQuery.of(context).size.width,
+          padding: EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white, // Warna background box
+            borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1), // Warna shadow
+                spreadRadius: 2, // Jarak shadow
+                blurRadius: 5, // Ukuran blur shadow
+                offset: Offset(0, 3), // Posisi shadow
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text("Due Date",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              SizedBox(
+                height: 5,
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Text(
+                  dateText,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                    color: selectedDate != null ? Colors.black : Colors.grey,
+                  ),
+                ),
+              ),
+
+              // Tombol Pilih Tanggal & Hapus
+              Row(
+                children: [
+                  // Tombol “Pilih Tanggal”
+                  ElevatedButton.icon(
+                    icon: Icon(Icons.calendar_today,
+                        color: Colors.white, size: buttonFontSize + 2),
+                    label: Text(
+                      "Pilih Tanggal",
+                      style: TextStyle(
+                          color: Colors.white, fontSize: buttonFontSize),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: Size(0, buttonHeight),
+                      padding:
+                          EdgeInsets.symmetric(horizontal: horizontalPadding),
+                      backgroundColor: Colors.blue,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(buttonRadius),
+                      ),
+                    ),
+                    onPressed: () => _pickDueDate(context),
+                  ),
+                  SizedBox(width: 10),
+                  if (selectedDate != null)
+                    ElevatedButton.icon(
+                      icon: Icon(Icons.cancel),
+                      label: Text(
+                        "Hapus",
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () async {
+                        onLoadingNotifier.value = true;
+
+                        final getUpdatedData = await ApiService.handleTask(
+                          method: 'PUT',
+                          taskId: widget.taskId,
+                          boardId: widget.boardId,
+                          data: {'due_date': ''},
+                        );
+
+                        if (getUpdatedData != null) {
+                          onEndDateNotifier.value = null;
+                          loadComments();
+                        }
+
+                        onLoadingNotifier.value = false;
+                      },
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _pickDueDate(BuildContext context) async {
+    final initialDate = onEndDateNotifier.value ?? DateTime.now();
+
+    final datePicker = await showDatePicker(
+      context: context,
+      initialDate: initialDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2500),
+      fieldLabelText: "Waktu Akhir Task",
+    );
+
+    if (datePicker != null && context.mounted) {
+      final currentTime = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(initialDate),
+      );
+
+      if (currentTime != null) {
+        final selectedDate = datePicker.copyWith(
+          hour: currentTime.hour,
+          minute: currentTime.minute,
+        );
+
+        final now = DateTime.now();
+
+        // ✅ VALIDASI: waktu tidak boleh di masa lalu
+        if (selectedDate.isBefore(now)) {
+          General.showSnackBar(context, "Waktu Deadline Tidak Valid");
+          return;
+        }
+
+        final dueDate =
+            DateFormat("yyyy-MM-dd HH:mm:ss").format(selectedDate.toLocal());
+
+        onLoadingNotifier.value = true;
+
+        try {
+          final getUpdatedData = await ApiService.handleTask(
+            method: 'PUT',
+            taskId: widget.taskId,
+            boardId: widget.boardId,
+            data: {'due_date': dueDate},
+          );
+
+          if (getUpdatedData != null) {
+            onEndDateNotifier.value = selectedDate;
+            General.showSnackBar(
+                context, "Waktu Deadline berhasil ditambahkan");
+            loadComments();
+          } else {
+            General.showSnackBar(context, "Gagal Menambahkan Tanggal e");
+          }
+        } catch (e) {
+          General.showSnackBar(context, "Gagal Menambahkan Tanggal e: $e");
+        }
+
+        onLoadingNotifier.value = false;
+      }
+    }
+  }
+
+  // ============================== DESCRIPTION ============================== //
+  Widget _buildCardDescription({
+    required quill.QuillController quillController,
+    required FocusNode focusNodeDesc,
+    required Future<void> Function() onSubmitButton,
+    required ValueNotifier<bool> showSaveDescButton,
+    required ValueNotifier<bool> isDescEditing,
+    required void Function() onFormatBold,
+    required void Function() onFormatItalic,
+    required void Function() onFormatUnderline,
+    required void Function() onFormatStrike,
+    required void Function() onFormatCode,
+    required void Function() onFormatLink,
+    required void Function() onFormatAlignLeft,
+    required void Function() onFormatAlignRight,
+    required void Function() onFormatAlignJustify,
+  }) {
+    return Container(
+      padding: EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: Offset(3, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Description", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                IconButton(icon: Icon(Icons.format_bold), onPressed: onFormatBold),
+                IconButton(icon: Icon(Icons.format_italic), onPressed: onFormatItalic),
+                IconButton(icon: Icon(Icons.format_underline), onPressed: onFormatUnderline),
+                IconButton(icon: Icon(Icons.format_strikethrough), onPressed: onFormatStrike),
+                IconButton(icon: Icon(Icons.code), onPressed: onFormatCode),
+                IconButton(icon: Icon(Icons.link), onPressed: onFormatLink),
+                IconButton(icon: Icon(Icons.format_align_left), onPressed: onFormatAlignLeft),
+                IconButton(icon: Icon(Icons.format_align_right), onPressed: onFormatAlignRight),
+                IconButton(icon: Icon(Icons.format_align_justify), onPressed: onFormatAlignJustify),
+              ],
+            ),
+          ),
+          SizedBox(height: 10),
+          ValueListenableBuilder<bool>(
+            valueListenable: isDescEditing,
+            builder: (context, editing, _) {
+              return GestureDetector(
+                onTap: () {
+                  if (!editing) {
+                    isDescEditing.value = true;
+                    FocusScope.of(context).requestFocus(focusNodeDesc);
+                  }
+                },
+                child: AbsorbPointer(
+                  absorbing: !editing,
+                  child: Container(
+                    constraints: BoxConstraints(
+                      minHeight: 150,
+                      maxHeight: double.infinity,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: FutureBuilder<bool>(
+                      future: Future.delayed(Duration(milliseconds: 300), () => true),
+                      builder: (context, snapshot) {
+                        quillController.readOnly = !editing;
+                        return quill.QuillEditor.basic(
+                          controller: quillController,
+                          focusNode: focusNodeDesc,
+                          scrollController: ScrollController(),
+                          config: quill.QuillEditorConfig(
+                            scrollable: false,
+                            expands: false,
+                            padding: EdgeInsets.all(8),
+                            showCursor: editing
+                          ),
+                        );
+                      },
+                    )
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: 10),
+          ValueListenableBuilder<bool>(
+            valueListenable: showSaveDescButton,
+            builder: (context, show, child) {
+              final double buttonHeight = 40.0;
+              final double buttonRadius = 12.0;
+              final double buttonFontSize = 16.0;
+              return show
+                  ? ElevatedButton(
+                      focusNode: FocusNode(),
+                      onPressed: () async {
+                        FocusScope.of(context).requestFocus(FocusNode());
+                        await onSubmitButton();
+                        showSaveDescButton.value = false;
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(buttonRadius),
+                        ),
+                        fixedSize: Size.fromHeight(buttonHeight),
+                      ),
+                      child: Text(
+                        "Simpan",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: buttonFontSize,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    )
+                  : SizedBox();
+            },
+          )
+        ],
+      ),
+    );
+  }
+
+  // ============================== ATTACHMENT ============================== //
   Widget listFileWidget() {
     return Container(
       padding: EdgeInsets.all(16), // Padding di dalam container
@@ -4558,26 +3932,667 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     // </Column>
   }
 
-  ImageProvider getImage(String fileFormat, String path) {
-    switch (fileFormat) {
-      case "pdf":
-        return AssetImage("assets/pdf.png");
-      case "docx":
-        return AssetImage("assets/docx.png");
-      case "pptx":
-        return AssetImage("assets/pptx.png");
-      case "csv":
-        return AssetImage("assets/csv.png");
-      case "mp3":
-        return AssetImage("assets/mp3.png");
-      case "mp4":
-        return AssetImage("assets/mp4.png");
-      case "txt":
-        return AssetImage("assets/txt.png");
-      case "xlsx":
-        return AssetImage("assets/xlsx.png");
-      default:
-        return NetworkImage(path);
-    }
+  // ============================== CHECKLIST ============================== //
+  Widget _buildAddChecklistSection(int taskId) {
+    return Container(
+      padding: EdgeInsets.all(16), // Padding di dalam container
+      decoration: BoxDecoration(
+        color: Colors.white, // Warna background box
+        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), // Warna shadow
+            spreadRadius: 2, // Jarak shadow
+            blurRadius: 5, // Ukuran blur shadow
+            offset: Offset(0, 3), // Posisi shadow
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Checklist",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                flex: 6,
+                child: TextField(
+                  controller: textChecklistController,
+                  focusNode: checklistFocusNode,
+                  decoration: InputDecoration(
+                    hintText: 'Add checklist item',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    suffixIcon: InkWell(
+                      onTap: () async {
+                        await _addChecklist(taskId);
+                      },
+                      child: Icon(Icons.check_circle),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          ValueListenableBuilder(
+            valueListenable: onLoadingChecklistNotifier,
+            builder: (context, value, child) {
+              return Container(
+                constraints: BoxConstraints(
+                  minHeight: 300,
+                  maxHeight: double.infinity,
+                ),
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                // Menampilkan daftar checklist
+                child: _buildChecklistList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChecklistList() {
+    return ValueListenableBuilder(
+      valueListenable: onChecklistNotifier,
+      builder: (context, checklistList, child) {
+        if (checklistList.isEmpty) {
+          return Center(child: Text('Belum ada checklist'));
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: checklistList.length,
+          itemBuilder: (context, index) {
+            final checklist = checklistList[index];
+
+            return Card(
+              color: Colors.white,
+              margin: EdgeInsets.symmetric(vertical: 5),
+              child: ListTile(
+                title: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        // Menampilkan judul checklist dengan scroll horizontal + onTap
+                        Expanded(
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: GestureDetector(
+                              onTap: () {
+                                _showEditChecklistDialog(
+                                    checklist['id'], checklist['title']);
+                              },
+                              child: Row(
+                                children: [
+                                  Text(
+                                    checklist['title'] ?? 'No title',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        // Tombol tambah item
+                        IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: () {
+                            _showAddItemDialog(checklist['id']);
+                          },
+                        ),
+                        // Tombol hapus checklist
+                        IconButton(
+                          icon: Icon(Icons.remove_circle),
+                          onPressed: () async {
+                            await _removeChecklist(checklist['id']);
+                          },
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 4),
+                    // Progress bar & label persentase
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        TweenAnimationBuilder<double>(
+                          tween: Tween<double>(
+                            begin: 0,
+                            end: double.tryParse(checklist['check_persentase']
+                                        ?.replaceAll('%', '') ??
+                                    '0')! /
+                                100,
+                          ),
+                          duration: Duration(milliseconds: 800),
+                          builder: (context, value, child) {
+                            return LinearProgressIndicator(
+                              value: value,
+                              minHeight: 6,
+                              color: Colors.green,
+                              backgroundColor: Colors.grey[300],
+                            );
+                          },
+                        ),
+                        SizedBox(height: 4),
+                        Text(
+                          checklist['check_persentase'] ?? '0%',
+                          style:
+                              TextStyle(fontSize: 12, color: Colors.grey[700]),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                subtitle: Column(
+                  children: [
+                    SizedBox(height: 5),
+                    _buildItemList(checklist[
+                        'id']), // Tampilkan item berdasarkan ID checklist
+                    SizedBox(height: 5),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildItemList(int checklistId) {
+    final items = checklistItems.value[checklistId] ?? [];
+    final mq = MediaQuery.of(context).size;
+
+    return ListView.builder(
+      shrinkWrap: true,
+      physics: NeverScrollableScrollPhysics(),
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        bool isChecked = item['is_completed'] ?? false;
+
+        // --- due date widget ---
+        Widget? dueWidget;
+        if (item['due_date'] != null) {
+          final dueDate = DateTime.parse(item['due_date']);
+          final isPast = dueDate.isBefore(DateTime.now());
+
+          dueWidget = GestureDetector(
+            onTap: () async {
+              bool confirmed =
+                  await _showDeleteDueDateItemChecklistConfirmationDialog();
+              if (confirmed) {
+                await _deleteDueDateItemChecklist(item['id']);
+              }
+            },
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: mq.width * 0.008,
+                vertical: mq.height * 0.008,
+              ),
+              decoration: BoxDecoration(
+                color: isChecked
+                    ? Colors.green.withOpacity(0.2)
+                    : (isPast
+                        ? Colors.red.withOpacity(0.2)
+                        : Colors.black.withOpacity(0.1)),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.alarm,
+                    size: mq.width * 0.028,
+                    color: isChecked
+                        ? Colors.green
+                        : (isPast ? Colors.red : Colors.black),
+                  ),
+                  SizedBox(width: mq.width * 0.015),
+                  Text(
+                    DateFormat(dueDate.year.toString() !=
+                                DateTime.now().year.toString()
+                            ? 'MMM dd, yyyy'
+                            : 'MMM dd')
+                        .format(dueDate),
+                    style: TextStyle(
+                      fontSize: mq.width * 0.028,
+                      color: isChecked
+                          ? Colors.green
+                          : (isPast ? Colors.red : Colors.black),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        // --- avatar widget (lebih kecil) ---
+        Widget? avatarWidget;
+        if (item['assign_to_user'] != null) {
+          avatarWidget = SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (var member in item['assign_to_user']["data"] as List)
+                  Padding(
+                    padding: EdgeInsets.only(right: mq.width * 0.009),
+                    child: CircleAvatar(
+                      radius: mq.width * 0.03,
+                      backgroundColor: General.getColorFromInitial(
+                          General.getInitials(member['name'])),
+                      child: FittedBox(
+                        child: Text(
+                          General.getInitials(member['name']),
+                          style: TextStyle(
+                              fontSize: mq.width * 0.03,
+                              color: General.getContrastingTextColor(
+                                  General.getColorFromInitial(
+                                      General.getInitials(member['name'])))),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        }
+
+        // --- bottom row jika ada avatar atau due date ---
+        Widget? bottomRow;
+        if (avatarWidget != null || dueWidget != null) {
+          bottomRow = Padding(
+            // <<-- Padding kiri untuk align dengan title/di bawah checkbox
+            padding: EdgeInsets.only(
+              top: mq.height * 0.003,
+              left: mq.width * 0.02,
+            ),
+            child: Row(
+              children: [
+                if (avatarWidget != null) Expanded(child: avatarWidget),
+                if (avatarWidget != null && dueWidget != null)
+                  SizedBox(width: mq.width * 0.02),
+                if (dueWidget != null) dueWidget,
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: mq.height * 0.005),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey, width: 1.0),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: mq.width * 0.025,
+                vertical: mq.height * 0.008,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top row: checkbox, title, menu
+                  Row(
+                    children: [
+                      Checkbox(
+                        key: ValueKey(isChecked),
+                        value: isChecked,
+                        onChanged: (bool? value) async {
+                          await _toggleItemCompletion(item['id'], !isChecked);
+                        },
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4)),
+                      ),
+                      SizedBox(width: mq.width * 0.01),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            _showEditChecklistItemDialog(
+                                item['id'], item['title']);
+                          },
+                          child: SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Text(
+                              item['title'] ?? 'No item',
+                              style: TextStyle(
+                                color: isChecked ? Colors.grey : Colors.black,
+                                decoration: isChecked
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.fade,
+                              softWrap: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_vert, color: Colors.black),
+                        offset: Offset(0, mq.height * 0.05),
+                        onSelected: (String result) async {
+                          switch (result) {
+                            case 'move':
+                              Map<String, int>? dataDialog =
+                                  await _showMoveItemDialog(checklistId);
+
+                              if (dataDialog != null) {
+                                final data = {
+                                  "task_checklist_id":
+                                      dataDialog["task_checklist_id"]
+                                };
+
+                                final response =
+                                    await ApiService.handleChecklistItem(
+                                        method: 'PUT',
+                                        data: data,
+                                        checklistItemId: item['id']);
+
+                                if (response != null) {
+                                  await loadChecklists();
+                                  await loadComments();
+                                  General.showSnackBar(
+                                      context, "Item berhasil dipindahkan");
+                                } else {
+                                  General.showSnackBar(
+                                      context, "Gagal memindahkan item");
+                                }
+                              }
+                            case 'due_date':
+                              await _pickDueDateChecklistItem(
+                                  context, item['id']);
+                              break;
+                            case 'member':
+                              ValueNotifier<List<Map<String, dynamic>>>
+                                  assignedMembers =
+                                  ValueNotifier<List<Map<String, dynamic>>>(
+                                List<Map<String, dynamic>>.from(
+                                    item['assign_to_user']?["data"] ?? []),
+                              );
+                              await _showAssignedMembersChecklistItemDialog(
+                                  context, assignedMembers, item['id']);
+                              break;
+                            case 'convert':
+                              bool confirmed =
+                                  await _showConvertItemChecklistToTaskConfirmationDialog();
+                              if (confirmed) {
+                                await _convertItemChecklistToTask(item['id']);
+                              }
+                              break;
+                            case 'delete':
+                              bool confirmed =
+                                  await _showDeleteItemChecklistConfirmationDialog();
+                              if (confirmed) {
+                                await _deleteItemChecklist(item['id']);
+                              }
+                              break;
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => [
+                          PopupMenuItem<String>(
+                            value: 'move',
+                            child: Row(
+                              children: [
+                                Icon(Icons.move_to_inbox),
+                                SizedBox(width: 8),
+                                Text('Move Item'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'due_date',
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_today),
+                                SizedBox(width: 8),
+                                Text('Add Due Date'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'member',
+                            child: Row(
+                              children: [
+                                Icon(Icons.person_add),
+                                SizedBox(width: 8),
+                                Text('Add Member'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'convert',
+                            child: Row(
+                              children: [
+                                Icon(Icons.add_task),
+                                SizedBox(width: 8),
+                                Text('Convert to Task'),
+                              ],
+                            ),
+                          ),
+                          PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete),
+                                SizedBox(width: 8),
+                                Text('Delete Item'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  // Tampilkan bottom row tanpa '!' dan hanya jika non-null
+                  if (bottomRow != null) bottomRow,
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ============================== ACTIVITY ============================== //
+  Widget _buildAddCommentSection(int taskId) {
+    double screenWidth = MediaQuery.of(context).size.width;
+    return Container(
+      padding: EdgeInsets.all(16), // Padding di dalam container
+      decoration: BoxDecoration(
+        color: Colors.white, // Warna background box
+        borderRadius: BorderRadius.circular(12), // Radius sudut kotak
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1), // Warna shadow
+            spreadRadius: 2, // Jarak shadow
+            blurRadius: 5, // Ukuran blur shadow
+            offset: Offset(0, 3), // Posisi shadow
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Activity",
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          SizedBox(height: 10),
+          Row(
+            children: [
+              FutureBuilder<Map<String, String>>(
+                future: userProfileFuture,
+                builder: (context, snapshot) {
+                  final initials =
+                      General.getInitials(snapshot.data?['name'] ?? 'U');
+                  final bgColor = General.getColorFromInitial(initials);
+                  final textColor = General.getContrastingTextColor(bgColor);
+                  // String initial =
+                  //     General.getInitials();
+                  return Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: Colors.black, // Warna border
+                        width: 1, // Ketebalan border
+                      ),
+                    ),
+                    child: CircleAvatar(
+                      radius: screenWidth * 0.065,
+                      backgroundColor: bgColor,
+                      child: Text(
+                        initials,
+                        style: TextStyle(
+                          fontSize: screenWidth *
+                              0.06, // Ukuran font sesuai dengan lebar layar
+                          fontWeight: FontWeight.bold,
+                          color: textColor, // Warna teks
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              SizedBox(width: 10),
+              Expanded(
+                flex: 6,
+                child: TextField(
+                  controller: textCommentController,
+                  focusNode: commentFocusNode,
+                  decoration: InputDecoration(
+                    hintText: 'Add Comment',
+                    hintStyle: TextStyle(color: Colors.grey[500]),
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    suffixIcon: InkWell(
+                      onTap: () async {
+                        await _addComment(taskId);
+                      },
+                      child: Icon(Icons.check_circle),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 10),
+          ValueListenableBuilder(
+            valueListenable: onLoadingNotifier,
+            builder: (context, value, child) {
+              return Container(
+                constraints: BoxConstraints(
+                  minHeight: 300,
+                  maxHeight: double.infinity,
+                ),
+                padding: EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.grey[200],
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: _buildCommentList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentList() {
+    return ValueListenableBuilder(
+      valueListenable: onCommentNotifier,
+      builder: (context, commentList, child) {
+        if (commentList.isEmpty) {
+          return Center(child: Text('Belum ada komentar'));
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: NeverScrollableScrollPhysics(),
+          itemCount: commentList.length,
+          itemBuilder: (context, index) {
+            final comment = commentList[index];
+            return ListTile(
+              leading: comment['is_history'] == true
+                  ? Image.asset(
+                      'assets/selaras_logo2.png',
+                      width: 40,
+                      height: 40,
+                    )
+                  : CircleAvatar(
+                      backgroundColor: General.getColorFromInitial(
+                        General.getInitials(comment['user_name']),
+                      ),
+                      child: Text(
+                        General.getInitials(comment['user_name']),
+                      ),
+                    ),
+              title: Text(comment['user_name']),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(comment['comment']),
+                  Text(
+                    DateFormat('dd MMM yyyy HH:mm').format(
+                      DateTime.parse(comment['updated_at']).toUtc(),
+                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                ],
+              ),
+              trailing: (comment['is_history'] == false &&
+                      comment['user_id'] ==
+                          int.tryParse(userProfile['id'].toString()))
+                  ? PopupMenuButton<String>(
+                      icon: Icon(Icons.more_vert),
+                      offset: Offset(0, 40),
+                      onSelected: (String result) async {
+                        switch (result) {
+                          case 'edit':
+                            _showEditCommentDialog(
+                                comment['id'], comment['comment']);
+                            break;
+                          case 'delete':
+                            await _deleteComment(comment['id']);
+                            break;
+                        }
+                      },
+                      itemBuilder: (context) => [
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Text('Edit'),
+                        ),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Delete'),
+                        ),
+                      ],
+                    )
+                  : null,
+            );
+          },
+        );
+      },
+    );
   }
 }
