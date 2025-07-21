@@ -114,28 +114,31 @@ class _SearchScreenState extends State<SearchScreen> {
                       itemCount: searchResults.length,
                       itemBuilder: (context, index) {
                         final task = searchResults[index];
-                        return ListTile(
-                          title: Text(task["title"] ?? "No Title",
-                              style: TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(
-                            task["description"] is bool
-                                ? (task["description"]
-                                    ? "Has Description"
-                                    : "No Description")
-                                : (task["description"] ?? "No Description"),
-                          ),
-                          onTap: () async {
-                            await Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => DetailTaskScreen(
-                                  boardId: task['board_id'],
-                                  taskId: task['id'],
+                        if (task['can_access'] == true){
+                          return ListTile(
+                            title: Text(task["title"] ?? "No Title",
+                                style: TextStyle(fontWeight: FontWeight.bold)),
+                            subtitle: Text(
+                              task["description"] is bool
+                                  ? (task["description"]
+                                      ? "Has Description"
+                                      : "No Description")
+                                  : (task["description"] ?? "No Description"),
+                            ),
+                            onTap: () async {
+                              await Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => DetailTaskScreen(
+                                    boardId: task['board_id'],
+                                    taskId: task['id'],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        );
+                              );
+                            },
+                          );
+                        }
+                        return null;
                       },
                     ),
             ),

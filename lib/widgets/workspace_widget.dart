@@ -130,6 +130,7 @@ class _WorkspaceWidgetState extends State<WorkspaceWidget> {
                     }
                   : {},
               singleTask["file"],
+              singleTask["can_access"],
             ),
           );
         }

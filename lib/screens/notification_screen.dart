@@ -80,7 +80,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
     if (response != null && response['success'] == true) {
       final taskDetail = await ApiService.handleDetailTask(taskId);
-      if (taskDetail != null && taskDetail['is_delete'] == false) {
+      if (taskDetail != null && taskDetail['is_delete'] == false && taskDetail['can_access'] == false){
+        General.showSnackBar(context, "Anda tidak dapat mengakses tugas ini!");
+      } else if (taskDetail != null && taskDetail['is_delete'] == false) {
         await Navigator.push(
           context,
           MaterialPageRoute(
