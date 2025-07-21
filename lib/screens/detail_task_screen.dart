@@ -193,7 +193,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
     final converter = deltaFromHtml.HtmlToDelta();
     final delta = converter.convert(((desc == null || desc.trim().isEmpty) ? "<p><br/></p>" : desc));
     _quillController.document = quill.Document.fromDelta(delta);
-    currentDesc = (desc == null || desc.trim().isEmpty) ? "<p><br/></p>" : desc;
+    currentDesc = (desc == null) ? "<p><br/></p>" : desc;
 
     final isCompleted = getUpdatedData["is_completed"];
     final assignToUser = getUpdatedData['assign_to_user'];
@@ -259,7 +259,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       final delta = _quillController.document.toDelta();
       final converter = QuillDeltaToHtmlConverter(delta.toJson());
       final now = converter.convert();
-      final original = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
+      final original = (currentDesc == null) ? "<p><br/></p>" : currentDesc;
       showSaveDescButton.value = now != original;
     });
     currentWorkspaceId.value = workspaceIdCurrent;
@@ -285,7 +285,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       final delta = _quillController.document.toDelta();
       final converter = QuillDeltaToHtmlConverter(delta.toJson());
       final now = converter.convert();
-      final original = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
+      final original = (currentDesc == null) ? "<p><br/></p>" : currentDesc;
       showSaveDescButton.value = now != original;
     });
     isEditingDesc.value = false;
@@ -2409,7 +2409,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   final converter = QuillDeltaToHtmlConverter(delta.toJson());
                   final currentText = converter.convert();
                   // final currentText = _quillController.document.toPlainText().trim();
-                  final originalText = (currentDesc == null || currentDesc!.trim().isEmpty) ? "<p><br/></p>" : currentDesc;
+                  final originalText = (currentDesc == null) ? "<p><br/></p>" : currentDesc;
 
                   if (currentText != originalText) {
                     final shouldExit = await General.showDialogConfirmCustom(
