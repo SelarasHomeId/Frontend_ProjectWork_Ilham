@@ -260,7 +260,7 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
       final converter = QuillDeltaToHtmlConverter(delta.toJson());
       final now = converter.convert();
       final original = (currentDesc == null) ? "<p><br/></p>" : currentDesc;
-      showSaveDescButton.value = now != original;
+      showSaveDescButton.value = General.htmlToCompactText(now) != General.htmlToCompactText(original!);
     });
     currentWorkspaceId.value = workspaceIdCurrent;
     currentBoardId.value = boardId;
@@ -2408,10 +2408,9 @@ class _DetailTaskScreenState extends State<DetailTaskScreen> {
                   final delta = _quillController.document.toDelta();
                   final converter = QuillDeltaToHtmlConverter(delta.toJson());
                   final currentText = converter.convert();
-                  // final currentText = _quillController.document.toPlainText().trim();
                   final originalText = (currentDesc == null) ? "<p><br/></p>" : currentDesc;
 
-                  if (currentText != originalText) {
+                  if (General.htmlToCompactText(currentText) != General.htmlToCompactText(originalText!)) {
                     final shouldExit = await General.showDialogConfirmCustom(
                             context: context,
                             coreIcon: Icons.help,

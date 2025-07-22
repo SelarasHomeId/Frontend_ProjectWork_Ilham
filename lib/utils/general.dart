@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:html/parser.dart' show parse;
+import 'package:html/dom.dart' as dom;
 
 class General {
 
@@ -389,6 +391,13 @@ class General {
       await notificationsPlugin.cancelAll();
     }
   }
+
+  static String htmlToCompactText(String htmlString) {
+    dom.Document document = parse(htmlString);
+    String plainText = document.body?.text ?? '';
+    return plainText.replaceAll(RegExp(r'\s+'), '');
+  }
+
 
   // ============================== DIALOG ============================== //
   static Future<void> showDialogAdd({
